@@ -9,9 +9,10 @@ interface TermBubbleProps {
   onClick: (term: Term) => void;
   userLevel: number;
   darkMode?: boolean;
+  isActive?: boolean;
 }
 
-export const TermBubble: React.FC<TermBubbleProps> = ({ term, weight, onClick, userLevel, darkMode = true }) => {
+export const TermBubble: React.FC<TermBubbleProps> = ({ term, weight, onClick, userLevel, darkMode = true, isActive = false }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const dk = darkMode;
@@ -62,6 +63,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({ term, weight, onClick, u
           ${colors[term.category]}
           font-bold text-center p-2 break-words
           transition-shadow duration-200
+          ${isActive ? 'ring-2 ring-white/30 scale-110 shadow-lg' : ''}
           ${isHovered && dk ? 'shadow-lg shadow-indigo-500/10' : ''}
         `}
         style={{ width: size, height: size, fontSize: Math.max(11, size / 7) }}

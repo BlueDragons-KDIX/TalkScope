@@ -1,73 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 import { TranscriptionView } from './components/TranscriptionView';
 import { BubbleCloud } from './components/BubbleCloud';
-import { TermDetailModal } from './components/TermDetailModal';
-import { SettingsModal } from './components/SettingsModal';
-import { HistoryModal } from './components/HistoryModal';
+import { TermDetailPanel } from './components/TermDetailPanel';
+import { HistoryPanel } from './components/HistoryPanel';
 import { Term } from './data/terms';
 import { extractTerms } from './utils/termDetection';
-import { Settings, Book, LayoutDashboard, User, History, Sparkles, Shield, Zap, GraduationCap, ChevronRight } from 'lucide-react';
+import { Settings, Book, Shield, Zap, GraduationCap, RotateCcw, Play, Info, History } from 'lucide-react';
+import { SettingsModal } from './components/SettingsModal';
 import { Toaster, toast } from 'sonner';
 
-interface LevelInfo {
-  label: string;
-  icon: React.ReactNode;
-  desc: string;
-}
+const DEMO_TEXT = `本日はReactとTypeScriptを使ったフロントエンド開発について話します。バックエンドにはAPIを通じてデータを取得し、DockerでコンテナとしてAWS上にデプロイします。CI/CDパイプラインを整備することで、GitHubへのプッシュをトリガーに自動的にビルドとテストが走る仕組みになっています。データベースにはSQLとNoSQLを用途に応じて使い分けており、LLMを活用した機能も今後追加予定です。`;
 
-interface AccentStyle {
-  text: string;
-  bg: string;
-  ring: string;
-  glow: string;
-  bgSoft: string;
-  border: string;
-}
-
-const ACCENT_MAP: Record<string, AccentStyle> = {
-  blue:    { text: 'text-blue-400',    bg: 'bg-blue-600',    ring: 'ring-blue-500/30',    glow: 'shadow-blue-500/20',    bgSoft: 'bg-blue-500/10',    border: 'border-blue-500/20' },
-  indigo:  { text: 'text-indigo-400',  bg: 'bg-indigo-600',  ring: 'ring-indigo-500/30',  glow: 'shadow-indigo-500/20',  bgSoft: 'bg-indigo-500/10',  border: 'border-indigo-500/20' },
-  purple:  { text: 'text-purple-400',  bg: 'bg-purple-600',  ring: 'ring-purple-500/30',  glow: 'shadow-purple-500/20',  bgSoft: 'bg-purple-500/10',  border: 'border-purple-500/20' },
-  rose:    { text: 'text-rose-400',    bg: 'bg-rose-600',    ring: 'ring-rose-500/30',    glow: 'shadow-rose-500/20',    bgSoft: 'bg-rose-500/10',    border: 'border-rose-500/20' },
-  emerald: { text: 'text-emerald-400', bg: 'bg-emerald-600', ring: 'ring-emerald-500/30', glow: 'shadow-emerald-500/20', bgSoft: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-  orange:  { text: 'text-orange-400',  bg: 'bg-orange-600',  ring: 'ring-orange-500/30',  glow: 'shadow-orange-500/20',  bgSoft: 'bg-orange-500/10',  border: 'border-orange-500/20' },
-};
-
-function getLevelInfo(level: number): LevelInfo {
-  switch (level) {
-    case 0: return { label: 'おまかせ', icon: <Sparkles size={12} />, desc: 'AIが理解度に応じて用語を自動強調' };
-    case 1: return { label: '初級', icon: <GraduationCap size={12} />, desc: '基本的なIT用語から解説します' };
-    case 2: return { label: '中級', icon: <Zap size={12} />, desc: '実務で使われる用語を中心に表示' };
-    case 3: return { label: '上級', icon: <Shield size={12} />, desc: 'アーキテクチャ・設計レベルの用語を優先表示' };
-    default: return { label: '上級', icon: <Shield size={12} />, desc: 'アーキテクチャ・設計レベルの用語を優先表示' };
-  }
-}
 
 const LEVELS = [
-  { val: 0, label: 'おまかせ' },
-  { val: 1, label: '初級' },
-  { val: 2, label: '中級' },
-  { val: 3, label: '上級' },
+  { val: 1, label: '初級', icon: <GraduationCap size={12} /> },
+  { val: 2, label: '中級', icon: <Zap size={12} /> },
+  { val: 3, label: '上級', icon: <Shield size={12} /> },
 ];
 
 const App: React.FC = () => {
-  const { 
-    transcript, 
-    isListening, 
-    startListening, 
-    stopListening, 
-    error 
+  const {
+    transcript,
+    setTranscript,
+    isListening,
+    startListening,
+    stopListening,
+    error
   } = useSpeechRecognition();
 
   const [activeTerms, setActiveTerms] = useState<Term[]>([]);
   const [selectedTerm, setSelectedTerm] = useState<Term | null>(null);
   const [termWeights, setTermWeights] = useState<Record<string, number>>({});
-  const [userLevel, setUserLevel] = useState<number>(3);
-  
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [userLevel, setUserLevel] = useState<number>(2);
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [rightPanel, setRightPanel] = useState<'detail' | 'history'>('detail');
   const [searchHistory, setSearchHistory] = useState<Term[]>([]);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({
     darkMode: true,
     themeColor: 'indigo',
@@ -76,8 +45,6 @@ const App: React.FC = () => {
   });
 
   const dk = settings.darkMode;
-  const accent = ACCENT_MAP[settings.themeColor] || ACCENT_MAP.indigo;
-  const levelInfo = getLevelInfo(userLevel);
 
   useEffect(() => {
     if (dk) {
@@ -86,14 +53,6 @@ const App: React.FC = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [dk]);
-
-  useEffect(() => {
-    if (settings.autoLevel) {
-      setUserLevel(0);
-    } else if (userLevel === 0) {
-      setUserLevel(1);
-    }
-  }, [settings.autoLevel, userLevel]);
 
   useEffect(() => {
     if (error) {
@@ -112,7 +71,7 @@ const App: React.FC = () => {
     }
   }, [transcript]);
 
-  const handleTermClick = (term: Term) => {
+  const handleTermClick = useCallback((term: Term) => {
     setSelectedTerm(term);
     setTermWeights(prev => ({
       ...prev,
@@ -122,42 +81,43 @@ const App: React.FC = () => {
       const filtered = prev.filter(t => t.id !== term.id);
       return [term, ...filtered].slice(0, 50);
     });
-  };
+    setRightPanel('detail');
+  }, []);
 
   const toggleListening = () => {
     if (isListening) {
       stopListening();
+      toast.info('録音を停止しました');
     } else {
       startListening();
-      toast.info('マイクの使用を開始しました。');
+      toast.success('🎙 録音を開始しました');
     }
   };
 
-  const getLevelButtonClass = (val: number) => {
-    const isActive = userLevel === val;
-    if (isActive) {
-      if (dk) {
-        return `bg-slate-700/80 ${accent.text} ring-1 ${accent.ring}`;
-      }
-      return `bg-white ${accent.text} shadow-sm`;
-    }
-    if (dk) return 'text-slate-500 hover:text-slate-300';
-    return 'text-slate-400 hover:text-slate-600';
+  const loadDemo = () => {
+    setTranscript(DEMO_TEXT);
+    toast.success('デモテキストを読み込みました');
   };
 
-  const getLevelIcon = (val: number) => {
-    if (val === 0) return <Sparkles size={12} />;
-    if (val === 1) return <GraduationCap size={12} />;
-    if (val === 2) return <Zap size={12} />;
-    return <Shield size={12} />;
+  const clearAll = () => {
+    if (isListening) stopListening();
+    setTranscript('');
+    setActiveTerms([]);
+    setTermWeights({});
+    setSelectedTerm(null);
+    setCategoryFilter('ALL');
+    toast.info('リセットしました');
   };
 
-  const badgeClass = dk
-    ? `${accent.bgSoft} ${accent.text} border ${accent.border}`
-    : 'bg-indigo-50 text-indigo-600 border border-indigo-100';
+  const filteredTerms = categoryFilter === 'ALL'
+    ? activeTerms
+    : activeTerms.filter(t => t.category === categoryFilter);
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 font-sans ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div
+      className={`min-h-screen flex flex-col font-sans transition-colors duration-500 ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}
+      style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
+    >
       {dk && (
         <div className="fixed inset-0 pointer-events-none z-0">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-600/5 rounded-full blur-3xl" />
@@ -166,180 +126,146 @@ const App: React.FC = () => {
       )}
 
       <Toaster position="top-center" richColors />
-      
-      <header className={`border-b sticky top-0 z-40 transition-colors ${dk ? 'bg-[#0d0e1a]/80 backdrop-blur-xl border-slate-800/60' : 'bg-white/80 backdrop-blur-xl border-slate-200'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`${accent.bg} p-1.5 rounded-lg text-white shadow-lg`}>
+
+      {/* Header */}
+      <header className={`border-b sticky top-0 z-40 transition-colors ${dk ? 'bg-[#0d0e1a]/90 backdrop-blur-xl border-slate-800/60' : 'bg-white/90 backdrop-blur-xl border-slate-200'}`}>
+        <div className="max-w-[1400px] mx-auto px-4 h-14 flex items-center justify-between gap-4">
+          {/* Logo */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="bg-indigo-600 p-1.5 rounded-xl text-white shadow-lg shadow-indigo-600/30">
               <Book size={18} />
             </div>
-            <div className="flex items-baseline gap-2">
-              <h1 className="text-lg font-black tracking-tight">LexiFlow</h1>
-              <span className={`text-[9px] font-bold ${accent.text} uppercase tracking-[0.2em] hidden sm:inline opacity-80`}>
-                Pro
-              </span>
+            <div>
+              <span className="text-lg font-black tracking-tight">LexiFlow</span>
+              <span className="ml-2 text-[9px] font-bold text-indigo-400 uppercase tracking-[0.2em] hidden sm:inline">Pro</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 md:gap-3">
-            <div className={`hidden lg:flex items-center p-0.5 rounded-lg gap-0.5 ${dk ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-slate-100'}`}>
-              {LEVELS.map((level) => (
-                <button
-                  key={level.val}
-                  onClick={() => {
-                    setUserLevel(level.val);
-                    setSettings(s => ({ ...s, autoLevel: level.val === 0 }));
-                  }}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 ${getLevelButtonClass(level.val)}`}
-                >
-                  {getLevelIcon(level.val)}
-                  {level.label}
-                </button>
-              ))}
-            </div>
+          {/* Level Selector */}
+          <div className={`flex items-center gap-1 p-1 rounded-xl border ${dk ? 'bg-slate-800/60 border-slate-700/50' : 'bg-slate-100 border-slate-200'}`}>
+            <span className={`text-[10px] font-bold px-2 hidden sm:inline ${dk ? 'text-slate-600' : 'text-slate-400'}`}>レベル</span>
+            {LEVELS.map(l => (
+              <button
+                key={l.val}
+                onClick={() => setUserLevel(l.val)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  userLevel === l.val
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                    : dk ? 'text-slate-500 hover:text-slate-300' : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                {l.icon}{l.label}
+              </button>
+            ))}
+          </div>
 
-            <div className={`flex items-center gap-0.5 border-l pl-1.5 md:pl-3 ml-1 ${dk ? 'border-slate-700/50' : 'border-slate-200'}`}>
-              <button 
-                onClick={() => setIsHistoryOpen(true)}
-                className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}
-                title="履歴"
-              >
-                <History size={18} />
-              </button>
-              <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}
-                title="設定"
-              >
-                <Settings size={18} />
-              </button>
-            </div>
-            
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer ${dk ? 'bg-slate-800 border border-slate-700/50' : 'bg-slate-200'}`}>
-              <User size={14} className={dk ? 'text-slate-500' : 'text-slate-400'} />
-            </div>
+          {/* Actions */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={loadDemo}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${dk ? 'text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 border-slate-700/50' : 'text-slate-500 hover:text-slate-700 bg-white border-slate-200 hover:bg-slate-50'}`}
+            >
+              <Play size={11} />デモ
+            </button>
+            <button
+              onClick={clearAll}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${dk ? 'text-slate-400 hover:text-red-400 bg-slate-800/50 hover:bg-red-500/10 border-slate-700/50 hover:border-red-500/30' : 'text-slate-500 hover:text-red-500 bg-white border-slate-200 hover:bg-red-50'}`}
+            >
+              <RotateCcw size={11} />リセット
+            </button>
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}
+            >
+              <Settings size={18} />
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="relative z-10 max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
-        <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold ${badgeClass}`}>
-                {levelInfo.icon}
-                <span>{levelInfo.label}モード</span>
-              </div>
-              <div className={`w-1 h-1 rounded-full ${dk ? 'bg-slate-600' : 'bg-slate-300'}`} />
-              <span className={`text-[10px] font-medium ${dk ? 'text-slate-500' : 'text-slate-400'}`}>{levelInfo.desc}</span>
-            </div>
-            <h2 className="text-2xl font-black mb-1">
-              リアルタイム用語解析
-            </h2>
-            <p className={`max-w-xl font-medium text-sm ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
-              音声をリアルタイムで文字起こしし、専門用語を自動検出・解説します。
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <div className={`px-3 py-1.5 rounded-lg border flex items-center gap-2 ${dk ? 'bg-[#0d0e1a] border-slate-800/80' : 'bg-white border-slate-200'}`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${isListening ? 'bg-emerald-400 shadow-lg shadow-emerald-400/50 animate-pulse' : dk ? 'bg-slate-600' : 'bg-slate-300'}`} />
-              <span className={`text-[11px] font-bold ${dk ? 'text-slate-400' : 'text-slate-500'}`}>
-                {isListening ? 'LIVE' : 'STANDBY'}
-              </span>
-            </div>
-          </div>
+      {/* 3-column layout */}
+      <div className="relative z-10 flex-1 flex max-w-[1400px] mx-auto w-full" style={{ height: 'calc(100vh - 56px)' }}>
+
+        {/* LEFT: Transcription (40%) */}
+        <div className={`flex flex-col border-r ${dk ? 'border-slate-800/60' : 'border-slate-200'}`} style={{ width: '40%', minWidth: 280 }}>
+          <TranscriptionView
+            transcript={transcript}
+            isListening={isListening}
+            onToggleListening={toggleListening}
+            onTermClick={handleTermClick}
+            onTermHover={() => {}}
+            onLoadDemo={loadDemo}
+            darkMode={dk}
+          />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-280px)] min-h-[600px]">
-          <div className="flex flex-col h-full">
-            <TranscriptionView
-              transcript={transcript}
-              isListening={isListening}
-              onToggleListening={toggleListening}
-              onTermClick={handleTermClick}
-              onTermHover={() => {}} 
-              darkMode={dk}
-              themeColor={settings.themeColor}
-            />
-          </div>
+        {/* CENTER: Bubble cloud (35%) */}
+        <div className={`flex flex-col border-r ${dk ? 'border-slate-800/60' : 'border-slate-200'}`} style={{ width: '35%' }}>
+          <BubbleCloud
+            activeTerms={filteredTerms}
+            termWeights={termWeights}
+            onTermClick={handleTermClick}
+            userLevel={userLevel}
+            darkMode={dk}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={setCategoryFilter}
+            selectedTermId={selectedTerm?.id}
+          />
+        </div>
 
-          <div className="flex flex-col h-full">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <LayoutDashboard size={14} className={dk ? 'text-slate-600' : 'text-slate-300'} />
-                <h3 className={`text-sm font-bold ${dk ? 'text-slate-300' : 'text-slate-700'}`}>用語マップ</h3>
-              </div>
-              <div className={`text-[10px] border px-2 py-0.5 rounded font-mono font-bold ${dk ? 'bg-slate-800/50 border-slate-700/50 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
-                {activeTerms.length} terms
-              </div>
-            </div>
-            
-            <div className="flex-1 min-h-0">
-              <BubbleCloud
-                activeTerms={activeTerms}
-                termWeights={termWeights}
-                onTermClick={handleTermClick}
-                userLevel={userLevel === 0 ? 1 : userLevel}
-                darkMode={dk}
-              />
-            </div>
-
-            <div className={`mt-3 p-3 border rounded-xl flex items-center justify-between ${dk ? 'bg-slate-900/40 border-slate-800/60' : 'bg-slate-50 border-slate-200'}`}>
-              <div className="flex items-center gap-2">
-                <div className={`p-1 rounded ${dk ? accent.bgSoft : 'bg-indigo-50'}`}>
-                  {levelInfo.icon}
-                </div>
-                <span className={`text-[11px] font-medium ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
-                  {levelInfo.desc}
-                </span>
-              </div>
-              <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className={`text-[10px] font-bold flex items-center gap-0.5 hover:opacity-80 transition-opacity ${accent.text}`}
+        {/* RIGHT: Detail / History panel (25%) */}
+        <div className="flex flex-col" style={{ width: '25%', minWidth: 220 }}>
+          {/* Tab switcher */}
+          <div className={`border-b flex flex-shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/20' : 'border-slate-200 bg-slate-50/80'}`}>
+            {[
+              { key: 'detail' as const, label: '詳細', icon: <Info size={12} /> },
+              { key: 'history' as const, label: '履歴', icon: <History size={12} /> },
+            ].map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setRightPanel(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-bold transition-all border-b-2 ${
+                  rightPanel === tab.key
+                    ? 'border-indigo-500 text-indigo-400'
+                    : `border-transparent ${dk ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'}`
+                }`}
               >
-                変更
-                <ChevronRight size={10} />
+                {tab.icon}{tab.label}
+                {tab.key === 'history' && searchHistory.length > 0 && (
+                  <span className="text-[9px] bg-indigo-600/60 text-indigo-200 rounded-full px-1.5">{searchHistory.length}</span>
+                )}
               </button>
-            </div>
+            ))}
+          </div>
+
+          {/* Panel content */}
+          <div className="flex-1 overflow-hidden">
+            {rightPanel === 'detail'
+              ? <TermDetailPanel
+                  term={selectedTerm}
+                  onClose={() => setSelectedTerm(null)}
+                  onRelatedTermClick={t => handleTermClick(t)}
+                  darkMode={dk}
+                />
+              : <HistoryPanel
+                  history={searchHistory}
+                  onTermClick={(t: Term) => { handleTermClick(t); setRightPanel('detail'); }}
+                  onClear={() => {
+                    setSearchHistory([]);
+                    toast.success('履歴を削除しました');
+                  }}
+                  darkMode={dk}
+                />
+            }
           </div>
         </div>
-      </main>
+      </div>
 
-      <TermDetailModal
-        term={selectedTerm}
-        onClose={() => setSelectedTerm(null)}
-        onRelatedTermClick={(term) => {
-          setSelectedTerm(term);
-          setTermWeights(prev => ({
-            ...prev,
-            [term.id]: (prev[term.id] || 0) + 1
-          }));
-        }}
-        darkMode={dk}
-        themeColor={settings.themeColor}
-      />
-
-      <SettingsModal 
+      <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         updateSettings={(newSettings) => setSettings(s => ({ ...s, ...newSettings }))}
-      />
-
-      <HistoryModal
-        isOpen={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
-        history={searchHistory}
-        onTermClick={(term) => {
-          handleTermClick(term);
-          setIsHistoryOpen(false);
-        }}
-        onClearHistory={() => {
-          setSearchHistory([]);
-          toast.success('履歴を削除しました');
-        }}
-        darkMode={dk}
-        themeColor={settings.themeColor}
       />
     </div>
   );

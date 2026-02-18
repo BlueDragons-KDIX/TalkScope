@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface UseSpeechRecognitionReturn {
   transcript: string;
+  setTranscript: (text: string) => void;
   isListening: boolean;
   startListening: () => void;
   stopListening: () => void;
@@ -14,6 +15,7 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
+  const listeningRef = useRef(false);
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -40,41 +42,42 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
       console.error('Speech recognition error', event.error);
       setError(`音声認識エラー: ${event.error}`);
       setIsListening(false);
+      listeningRef.current = false;
     };
 
     recognition.onend = () => {
-      if (isListening) {
-        recognition.start(); // Keep listening if we're supposed to be
+      if (listeningRef.current) {
+        try { recognition.start(); } catch (e) { }
       }
     };
 
     recognitionRef.current = recognition;
 
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
+      try { recognitionRef.current?.stop(); } catch (e) { }
     };
-  }, [isListening]);
+  }, []);
 
   const startListening = useCallback(() => {
-    if (recognitionRef.current && !isListening) {
+    if (recognitionRef.current && !listeningRef.current) {
       setError(null);
       try {
         recognitionRef.current.start();
+        listeningRef.current = true;
         setIsListening(true);
       } catch (e) {
         console.error('Failed to start recognition', e);
       }
     }
-  }, [isListening]);
+  }, []);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current && isListening) {
-      recognitionRef.current.stop();
+    if (recognitionRef.current && listeningRef.current) {
+      listeningRef.current = false;
+      try { recognitionRef.current.stop(); } catch (e) { }
       setIsListening(false);
     }
-  }, [isListening]);
+  }, []);
 
   const resetTranscript = useCallback(() => {
     setTranscript('');
@@ -82,6 +85,7 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
 
   return {
     transcript,
+    setTranscript,
     isListening,
     startListening,
     stopListening,
