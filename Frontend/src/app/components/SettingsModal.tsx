@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings, X, Moon, Sun, Volume2, Palette, LogIn, Info } from 'lucide-react';
+import { Settings, X, Moon, Sun, Volume2, Palette } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -9,7 +9,6 @@ interface SettingsModalProps {
     darkMode: boolean;
     themeColor: string;
     sensitivity: number;
-    autoLevel: boolean;
   };
   updateSettings: (newSettings: any) => void;
 }
@@ -58,22 +57,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
             </div>
 
             <div className="space-y-5">
-              {/* Login Promotion */}
-              <div className={`p-3.5 rounded-xl border ${dk ? 'bg-slate-900/50 border-slate-800/60' : 'bg-slate-50 border-slate-100'}`}>
-                <div className="flex items-center gap-3 mb-2.5">
-                  <div className="p-1.5 rounded-lg bg-indigo-600 text-white">
-                    <LogIn size={14} />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold">ログインして同期</h3>
-                    <p className={`text-[10px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>データを全デバイスで共有</p>
-                  </div>
-                </div>
-                <button className="w-full py-2 rounded-lg text-[11px] font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors">
-                  ログイン / 新規登録
-                </button>
-              </div>
-
               {/* Display Settings */}
               <section>
                 <div className={`flex items-center gap-1.5 mb-3 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -130,24 +113,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                     <span>低</span>
                     <span>高</span>
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold">おまかせモード</span>
-                    <div className="group relative">
-                      <Info size={10} className={dk ? 'text-slate-600 cursor-help' : 'text-slate-400 cursor-help'} />
-                      <div className={`absolute bottom-full left-0 mb-2 w-44 p-2 text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl ${dk ? 'bg-slate-700 text-slate-300 border border-slate-600' : 'bg-slate-800 text-white'}`}>
-                        理解度に合わせてAIが最適なレベルの単語を自動で強調します。
-                      </div>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => updateSettings({ autoLevel: !settings.autoLevel })}
-                    className={`w-10 h-5 rounded-full relative transition-colors ${settings.autoLevel ? 'bg-indigo-600' : dk ? 'bg-slate-700' : 'bg-slate-200'}`}
-                  >
-                    <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${settings.autoLevel ? 'left-[22px]' : 'left-0.5'} shadow-sm`} />
-                  </button>
                 </div>
               </section>
             </div>
