@@ -7,20 +7,16 @@ interface TermBubbleProps {
   term: Term;
   weight: number;
   onClick: (term: Term) => void;
-  userLevel: number;
   darkMode?: boolean;
   isActive?: boolean;
 }
 
-export const TermBubble: React.FC<TermBubbleProps> = ({ term, weight, onClick, userLevel, darkMode = true, isActive = false }) => {
+export const TermBubble: React.FC<TermBubbleProps> = ({ term, weight, onClick, darkMode = true, isActive = false }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const dk = darkMode;
 
-  const levelDiff = Math.abs(term.level - userLevel);
-  const baseSize = 80 + (weight * 10);
-  const sizeAdjustment = (3 - levelDiff) * 20;
-  const size = Math.max(60, baseSize + sizeAdjustment);
+  const size = Math.max(60, 80 + weight * 10);
 
   const darkColors: Record<string, string> = {
     Frontend: 'bg-blue-500/15 border-blue-500/30 text-blue-300',
@@ -45,8 +41,8 @@ export const TermBubble: React.FC<TermBubbleProps> = ({ term, weight, onClick, u
       <motion.div
         layout
         initial={{ scale: 0, opacity: 0 }}
-        animate={{ 
-          scale: 1, 
+        animate={{
+          scale: 1,
           opacity: 1,
           y: [0, -4, 0],
         }}
