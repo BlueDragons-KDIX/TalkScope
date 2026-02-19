@@ -21,7 +21,7 @@
 | アニメーション | Motion (motion/react) |
 | アイコン | lucide-react |
 | トースト通知 | sonner |
-| パッケージ管理 | npm |
+| パッケージ管理 | Bun |
 
 ---
 
@@ -89,8 +89,8 @@ Frontend/
 
 ```bash
 cd Frontend
-npm install
-npm run dev
+bun install
+bun run dev
 # → http://localhost:5173/
 ```
 
@@ -109,4 +109,10 @@ npm run dev
 - [ ] IT 用語データの拡充（現在 14 件）
 - [ ] バックエンド API との連携（用語解説の動的取得）
 - [ ] テストコードの追加
-- [ ] `package-lock.json` の `.gitignore` 除外要否の検討
+- [ ] 依存の定期更新（`bun update`）運用の確立
+
+---
+
+## 関連ドキュメント
+
+- Bun移行の詳細: `BUN_MIGRATION.md`
