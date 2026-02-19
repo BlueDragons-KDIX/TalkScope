@@ -125,7 +125,7 @@ const App: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen flex flex-col font-sans transition-colors duration-500 ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}
+      className={`h-full flex flex-col font-sans transition-colors duration-500 ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}
       style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
     >
       {dk && (
@@ -139,7 +139,7 @@ const App: React.FC = () => {
 
       {/* Header */}
       <header className={`border-b sticky top-0 z-40 transition-colors ${dk ? 'bg-[#0d0e1a]/90 backdrop-blur-xl border-slate-800/60' : 'bg-white/90 backdrop-blur-xl border-slate-200'}`}>
-        <div className="max-w-[1600px] mx-auto px-4 h-14 flex items-center justify-between gap-4">
+        <div className="w-full px-4 h-14 flex items-center justify-between gap-4">
           {/* Logo */}
           <div className="flex items-center gap-3 flex-shrink-0">
             <div className="bg-indigo-600 p-1.5 rounded-xl text-white shadow-lg shadow-indigo-600/30">
@@ -191,7 +191,7 @@ const App: React.FC = () => {
       </header>
 
       {/* Layout Engine */}
-      <div className="relative z-10 flex-1 max-w-[1600px] mx-auto w-full" style={{ height: 'calc(100vh - 56px)' }}>
+      <div className="relative z-10 flex-1 w-full" style={{ height: 'calc(100vh - 56px)' }}>
         <LayoutEngine
           layout={layout}
           onLayoutChange={setLayout}
