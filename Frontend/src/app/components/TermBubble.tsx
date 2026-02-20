@@ -11,7 +11,6 @@ interface TermBubbleProps {
   isActive?: boolean;
   isPinned?: boolean;
   onTogglePin: (termId: string) => void;
-  isLowInterest?: boolean;
 }
 
 export const TermBubble: React.FC<TermBubbleProps> = ({
@@ -22,7 +21,6 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   isActive = false,
   isPinned = false,
   onTogglePin,
-  isLowInterest = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -71,10 +69,9 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
           flex items-center justify-center rounded-full border cursor-pointer
           ${colors[term.category]}
           font-bold text-center p-2 break-words
-          transition-all duration-500
+          transition-shadow duration-200
           ${isActive ? 'ring-2 ring-white/30 scale-110 shadow-lg' : ''}
           ${isHovered && dk ? 'shadow-lg shadow-indigo-500/10' : ''}
-          ${isLowInterest && !isHovered ? 'opacity-40 grayscale-[40%]' : 'opacity-100'}
         `}
         style={{ width: size, height: size, fontSize: Math.max(11, size / 7) }}
       >

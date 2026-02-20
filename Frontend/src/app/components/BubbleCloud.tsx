@@ -22,7 +22,6 @@ interface BubbleCloudProps {
   selectedTermId?: string;
   pinnedTermIds: Set<string>;
   onTogglePin: (termId: string) => void;
-  lowInterestIds: Set<string>;
 }
 
 export const BubbleCloud: React.FC<BubbleCloudProps> = ({
@@ -35,7 +34,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   selectedTermId,
   pinnedTermIds,
   onTogglePin,
-  lowInterestIds,
 }) => {
   const dk = darkMode;
   const categories = ['ALL', ...Object.keys(CATEGORY_COLORS)];
@@ -151,7 +149,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
               isActive={selectedTermId === term.id}
               isPinned={pinnedTermIds.has(term.id)}
               onTogglePin={onTogglePin}
-              isLowInterest={lowInterestIds.has(term.id)}
             />
           ))
         )}
