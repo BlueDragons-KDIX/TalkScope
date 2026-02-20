@@ -6,7 +6,7 @@ import { TermDetailPanel } from './components/TermDetailPanel';
 import { HistoryPanel } from './components/HistoryPanel';
 import { Term } from './data/terms';
 import { extractTerms } from './utils/termDetection';
-import { Book, LayoutGrid, Play, RotateCcw, Settings } from 'lucide-react';
+import { Book, LayoutGrid, Settings } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
 import { Toaster, toast } from 'sonner';
 import { LayoutEngine } from './layout/LayoutEngine';
@@ -87,6 +87,7 @@ const App: React.FC = () => {
         transcript={transcript}
         isListening={isListening}
         onToggleListening={toggleListening}
+        onClearTranscript={clearAll}
         onTermClick={handleTermClick}
         onTermHover={() => { }}
         onLoadDemo={loadDemo}
@@ -177,12 +178,7 @@ const App: React.FC = () => {
               )}
             </div>
 
-            <button onClick={loadDemo} className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${dk ? 'text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 border-slate-700/50' : 'text-slate-500 hover:text-slate-700 bg-white border-slate-200'}`}>
-              <Play size={11} />デモ
-            </button>
-            <button onClick={clearAll} className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${dk ? 'text-slate-400 hover:text-red-400 bg-slate-800/50 hover:bg-red-500/10 border-slate-700/50 hover:border-red-500/30' : 'text-slate-500 hover:text-red-500 bg-white border-slate-200'}`}>
-              <RotateCcw size={11} />リセット
-            </button>
+
             <button onClick={() => setIsSettingsOpen(true)} className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}>
               <Settings size={18} />
             </button>

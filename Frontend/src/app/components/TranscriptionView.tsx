@@ -2,12 +2,13 @@ import React, { useRef, useEffect, useState } from 'react';
 import { highlightTerms } from '../utils/termDetection';
 import { Term } from '../data/terms';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Radio, Play } from 'lucide-react';
+import { Mic, Square, Radio, Play, RotateCcw } from 'lucide-react';
 
 interface TranscriptionViewProps {
   transcript: string;
   isListening: boolean;
   onToggleListening: () => void;
+  onClearTranscript?: () => void;
   onTermClick: (term: Term) => void;
   onTermHover: (term: Term | null) => void;
   onLoadDemo?: () => void;
@@ -18,6 +19,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   transcript,
   isListening,
   onToggleListening,
+  onClearTranscript,
   onTermClick,
   onTermHover,
   onLoadDemo,
@@ -46,20 +48,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
           </div>
           <span className={`text-xs font-bold ${dk ? 'text-slate-400' : 'text-slate-600'}`}>文字起こし</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className={`text-[10px] font-mono ${dk ? 'text-slate-600' : 'text-slate-400'}`}>{transcript.length} chars</span>
-          <button
-            onClick={onToggleListening}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              isListening
-                ? (dk ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20' : 'bg-red-50 text-red-600 hover:bg-red-100')
-                : (dk ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20' : 'bg-indigo-600 text-white hover:bg-indigo-500')
-            }`}
-          >
-            {isListening ? <MicOff size={14} /> : <Mic size={14} />}
-            {isListening ? '停止' : '開始'}
-          </button>
-        </div>
+        <span className={`text-[10px] font-mono ${dk ? 'text-slate-600' : 'text-slate-400'}`}>{transcript.length} chars</span>
       </div>
 
       {/* Transcript Body */}
@@ -100,14 +89,8 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                   <span key={index} className="relative group inline-block mx-0.5">
                     <button
                       onClick={() => onTermClick(term)}
-                      onMouseEnter={() => {
-                        setHoveredTermId(term.id);
-                        onTermHover(term);
-                      }}
-                      onMouseLeave={() => {
-                        setHoveredTermId(null);
-                        onTermHover(null);
-                      }}
+                      onMouseEnter={() => { setHoveredTermId(term.id); onTermHover(term); }}
+                      onMouseLeave={() => { setHoveredTermId(null); onTermHover(null); }}
                       className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-all font-bold ${
                         dk
                           ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/35 border border-indigo-500/30'
@@ -148,9 +131,79 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
         )}
       </div>
 
-      {/* Footer */}
-      <div className={`px-4 py-2 border-t text-[10px] font-mono flex-shrink-0 ${dk ? 'border-slate-800/60 text-slate-600 bg-slate-900/20' : 'border-slate-100 text-slate-400'}`}>
-        <span className="opacity-60">マーキングされた用語をクリックで詳細表示</span>
+      {/* Footer: Big round recording buttons */}
+      <div className={`px-5 py-4 border-t flex-shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/20' : 'border-slate-100 bg-slate-50/80'}`}>
+        <div className="flex items-center justify-center gap-5">
+
+          {/* リセットボタン（録音終了） */}
+          <div className="flex flex-col items-center gap-1.5">
+            <motion.button
+              onClick={onClearTranscript}
+              whileTap={{ scale: 0.92 }}
+              whileHover={{ scale: 1.06 }}
+              className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-colors shadow-lg ${
+                dk
+                  ? 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-red-500/10 hover:border-red-500/60 hover:text-red-400'
+                  : 'bg-white border-slate-300 text-slate-400 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
+              }`}
+              title="録音終了・リセット"
+            >
+              <RotateCcw size={20} />
+            </motion.button>
+            <span className={`text-[10px] font-bold ${dk ? 'text-slate-600' : 'text-slate-400'}`}>リセット</span>
+          </div>
+
+          {/* 録音開始/中断ボタン（メイン） */}
+          <div className="flex flex-col items-center gap-1.5">
+            <AnimatePresence mode="wait">
+              {isListening ? (
+                <motion.button
+                  key="stop"
+                  onClick={onToggleListening}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                  whileTap={{ scale: 0.92 }}
+                  className={`w-20 h-20 rounded-full flex items-center justify-center relative shadow-2xl ${
+                    dk
+                      ? 'bg-red-500 hover:bg-red-400 text-white shadow-red-500/30'
+                      : 'bg-red-500 hover:bg-red-400 text-white shadow-red-500/20'
+                  }`}
+                  title="録音を中断"
+                >
+                  {/* Pulse ring for recording state */}
+                  <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-25 pointer-events-none" />
+                  <Square size={26} fill="currentColor" />
+                </motion.button>
+              ) : (
+                <motion.button
+                  key="start"
+                  onClick={onToggleListening}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                  whileTap={{ scale: 0.92 }}
+                  className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl ${
+                    dk
+                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/40'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'
+                  }`}
+                  title="録音開始"
+                >
+                  <Mic size={32} />
+                </motion.button>
+              )}
+            </AnimatePresence>
+            <span className={`text-[10px] font-bold ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+              {isListening ? '中断' : '録音開始'}
+            </span>
+          </div>
+
+          {/* スペーサー（左右対称のため） */}
+          <div className="w-14 h-14" />
+        </div>
       </div>
     </div>
   );
