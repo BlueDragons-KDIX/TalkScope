@@ -196,7 +196,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   return (
     <div className={`flex flex-col h-full transition-colors ${dk ? 'bg-[#0d0e1a]' : 'bg-white'}`}>
       {/* Header */}
-      <div className={`flex items-center justify-between px-4 py-2.5 border-b flex-shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50/80'}`}>
+      <div className={`flex items-center justify-between px-4 py-2.5 border-b shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50/80'}`}>
         <div className="flex items-center gap-2">
           <Hexagon size={13} className={dk ? 'text-slate-600' : 'text-slate-300'} />
           <span className={`text-xs font-bold ${dk ? 'text-slate-300' : 'text-slate-600'}`}>用語マップ</span>
@@ -208,7 +208,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
 
       {/* Category filter tabs */}
       <div
-        className={`px-3 py-2 border-b flex gap-1 overflow-x-auto flex-shrink-0 ${dk ? 'border-slate-800/40' : 'border-slate-100'}`}
+        className={`px-3 py-2 border-b flex gap-1 overflow-x-auto shrink-0 ${dk ? 'border-slate-800/40' : 'border-slate-100'}`}
         style={{ scrollbarWidth: 'none' }}
       >
         {categories.map(cat => {
@@ -218,7 +218,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
             <button
               key={cat}
               onClick={() => onCategoryFilterChange(cat)}
-              className={`flex-shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+              className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
                 isActive
                   ? cat === 'ALL'
                     ? (dk ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-800')
@@ -280,6 +280,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                       isPinned={pinnedTermIds.has(term.id)}
                       onTogglePin={onTogglePin}
                       size={node.radius * 2}
+                      mapContainerRef={containerRef}
                     />
                   </motion.div>
                 </div>

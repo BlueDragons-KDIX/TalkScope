@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { motion } from 'motion/react';
 import { Term } from '../data/terms';
 import { Info, Star } from 'lucide-react';
+
+const TOOLTIP = { W: 176, H: 120, PAD: 8, GAP_ABOVE: 12 } as const;
 
 interface TermBubbleProps {
   term: Term;
@@ -12,6 +15,8 @@ interface TermBubbleProps {
   isPinned?: boolean;
   onTogglePin: (termId: string) => void;
   size?: number;
+  /** 用語マップコンテナの参照（ツールチップを枠内に収めるため） */
+  mapContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export const TermBubble: React.FC<TermBubbleProps> = ({
@@ -23,14 +28,50 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   isPinned = false,
   onTogglePin,
   size: explicitSize,
+  mapContainerRef,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-
-  const dk = darkMode;
+  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; showBelow: boolean } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const bubbleElementRef = useRef<HTMLDivElement>(null);
 
   // 重要度とピンの有無によってサイズ（半径×2）を変える
   const defaultSize = Math.max(60, 80 + weight * 10) + (isPinned ? 20 : 0);
   const size = explicitSize ?? defaultSize;
+
+  useLayoutEffect(() => {
+    if (!isHovered || !containerRef.current) {
+      setTooltipPos(null);
+      return;
+    }
+    const bubbleEl = bubbleElementRef.current ?? containerRef.current.querySelector<HTMLElement>('div[style*="width"]');
+    if (!bubbleEl) {
+      setTooltipPos(null);
+      return;
+    }
+
+    const rect = bubbleEl.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const { top: bubbleTop, bottom: bubbleBottom, height: bubbleH } = rect;
+    const bubbleGap = bubbleH * 0.2;
+
+    const map = mapContainerRef?.current?.getBoundingClientRect();
+    const mapLeft = (map?.left ?? 0) + TOOLTIP.PAD;
+    const mapRight = (map?.right ?? window.innerWidth) - TOOLTIP.W - TOOLTIP.PAD;
+    const mapTop = (map?.top ?? 0) + TOOLTIP.PAD;
+    const mapBottom = (map?.bottom ?? window.innerHeight) - TOOLTIP.PAD;
+
+    const showBelow = mapBottom - bubbleBottom >= TOOLTIP.H;
+    const left = Math.max(mapLeft, Math.min(centerX - TOOLTIP.W / 2, mapRight));
+
+    const top = showBelow
+      ? Math.max(mapTop, Math.min(bubbleBottom + TOOLTIP.PAD + bubbleGap, mapBottom - TOOLTIP.H))
+      : Math.min(mapBottom - TOOLTIP.H, Math.max(mapTop, bubbleTop - TOOLTIP.GAP_ABOVE - TOOLTIP.H));
+
+    setTooltipPos({ left, top, showBelow });
+  }, [isHovered, mapContainerRef, size]);
+
+  const dk = darkMode;
 
   const darkColors: Record<string, string> = {
     Frontend: 'bg-blue-500/15 border-blue-500/30 text-blue-300',
@@ -51,8 +92,9 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   const colors = dk ? darkColors : lightColors;
 
   return (
-    <div className="relative inline-block m-1.5">
+    <div ref={containerRef} className="relative inline-block m-1.5">
       <motion.div
+        ref={bubbleElementRef}
         layout
         initial={{ scale: 0, opacity: 0 }}
         animate={{
@@ -72,7 +114,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         className={`
           flex items-center justify-center rounded-full border cursor-pointer
           ${colors[term.category]}
-          font-bold text-center p-2 break-words
+          font-bold text-center p-2 wrap-break-word
           transition-shadow duration-200
           ${isActive ? 'ring-2 ring-white/30 scale-110 shadow-lg' : ''}
           ${isHovered && dk ? 'shadow-lg shadow-indigo-500/10' : ''}
@@ -107,15 +149,18 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         />
       </button>
 
-      <AnimatePresence>
-        {isHovered && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.12 }}
-            className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 shadow-2xl rounded-lg p-2.5 z-20 pointer-events-none border ${dk ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`}
-          >
+      {/* ツールチップ：ポータルで body に描画（枠外にはみ出さないよう position:fixed で配置） */}
+      {isHovered && tooltipPos && createPortal(
+        <motion.div
+          initial={{ opacity: 0, y: tooltipPos.showBelow ? 8 : -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.12 }}
+          className={`fixed w-44 shadow-2xl rounded-lg p-2.5 z-9999 pointer-events-none border ${dk ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`}
+          style={{
+            left: tooltipPos.left,
+            top: tooltipPos.top,
+          }}
+        >
             <div className="flex items-center gap-1.5 mb-1">
               <span className={`text-[9px] font-bold ${dk ? 'text-indigo-400' : 'text-indigo-500'}`}>{term.category}</span>
               <span className={`text-[9px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>Lv.{term.level}</span>
@@ -130,10 +175,17 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
             <div className={`mt-1.5 text-[9px] font-medium flex items-center gap-1 ${dk ? 'text-indigo-400' : 'text-indigo-500'}`}>
               <Info size={8} /> クリックで詳細
             </div>
-            <div className={`absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent ${dk ? 'border-t-slate-800' : 'border-t-white'}`} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {/* 矢印：バブル中央に向けて指す（上向き or 下向き） */}
+            <div
+              className={`absolute left-1/2 -translate-x-1/2 border-[6px] border-transparent ${
+                tooltipPos.showBelow
+                  ? `-top-3 ${dk ? 'border-b-slate-800' : 'border-b-white'}`
+                  : `bottom-0 translate-y-full ${dk ? 'border-t-slate-800' : 'border-t-white'}`
+              }`}
+            />
+        </motion.div>,
+        document.body
+      )}
     </div>
   );
 };
