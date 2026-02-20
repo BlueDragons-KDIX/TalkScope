@@ -109,10 +109,15 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         }}
         whileHover={{ scale: 1.08, zIndex: 10 }}
         onClick={() => onClick(term)}
+        // 右クリックでバブルに星をつける
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onTogglePin(term.id);
+        }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={`
-          flex items-center justify-center rounded-full border cursor-pointer
+          relative flex items-center justify-center rounded-full border cursor-pointer
           ${colors[term.category]}
           font-bold text-center p-2 wrap-break-word
           transition-shadow duration-200
@@ -122,32 +127,31 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         style={{ width: size, height: size, fontSize: Math.max(11, size / 7) }}
       >
         {term.word}
+        {/* 星ボタン：バブル内に配置して y アニメーションと同期 */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePin(term.id);
+          }}
+          title={isPinned ? 'ピン解除' : 'ピン留め（消えなくなります）'}
+          className={`
+            absolute top-0 right-2 z-10
+            w-5 h-5 flex items-center justify-center
+            rounded-full transition-all duration-200
+            ${isPinned
+              ? 'text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.8)]'
+              : 'text-slate-500 hover:text-yellow-400 opacity-0 group-hover:opacity-100'
+            }
+            ${isHovered || isPinned ? 'opacity-100' : 'opacity-0'}
+          `}
+        >
+          <Star
+            size={12}
+            fill={isPinned ? 'currentColor' : 'none'}
+            className="transition-all duration-200"
+          />
+        </button>
       </motion.div>
-
-      {/* 星ボタン（バブル右上） */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onTogglePin(term.id);
-        }}
-        title={isPinned ? 'ピン解除' : 'ピン留め（消えなくなります）'}
-        className={`
-          absolute top-0 right-0 z-10
-          w-5 h-5 flex items-center justify-center
-          rounded-full transition-all duration-200
-          ${isPinned
-            ? 'text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.8)]'
-            : 'text-slate-500 hover:text-yellow-400 opacity-0 group-hover:opacity-100'
-          }
-          ${isHovered || isPinned ? 'opacity-100' : 'opacity-0'}
-        `}
-      >
-        <Star
-          size={12}
-          fill={isPinned ? 'currentColor' : 'none'}
-          className="transition-all duration-200"
-        />
-      </button>
 
       {/* ツールチップ：ポータルで body に描画（枠外にはみ出さないよう position:fixed で配置） */}
       {isHovered && tooltipPos && createPortal(

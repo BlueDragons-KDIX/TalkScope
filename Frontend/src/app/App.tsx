@@ -220,6 +220,8 @@ const App: React.FC = () => {
         onClearTranscript={clearAll}
         onTermClick={handleTermClick}
         onTermHover={() => { }}
+        pinnedTermIds={pinnedTermIds}
+        onTogglePin={handleTogglePin}
         onLoadDemo={loadDemo}
         demoStream={demoStream}
         darkMode={dk}

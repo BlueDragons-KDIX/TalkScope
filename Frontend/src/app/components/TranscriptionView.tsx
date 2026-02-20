@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { highlightTerms } from '../utils/termDetection';
 import { Term } from '../data/terms';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, Square, Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle } from 'lucide-react';
+import { Mic, Square, Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle, Star } from 'lucide-react';
 import { UseDemoStreamReturn } from '../hooks/useDemoStream';
 
 interface TranscriptionViewProps {
@@ -12,6 +12,8 @@ interface TranscriptionViewProps {
   onClearTranscript?: () => void;
   onTermClick: (term: Term) => void;
   onTermHover: (term: Term | null) => void;
+  pinnedTermIds?: Set<string>;
+  onTogglePin?: (termId: string) => void;
   onLoadDemo?: () => void;
   /** 非同期ストリーミングデモの制御オブジェクト（コア機能とは独立） */
   demoStream?: UseDemoStreamReturn;
@@ -25,6 +27,8 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   onClearTranscript,
   onTermClick,
   onTermHover,
+  pinnedTermIds = new Set(),
+  onTogglePin,
   onLoadDemo,
   demoStream,
   darkMode = true,
@@ -130,6 +134,10 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                   <span key={index} className="relative group inline-block mx-0.5">
                     <button
                       onClick={() => onTermClick(term)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        onTogglePin?.(term.id);
+                      }}
                       onMouseEnter={() => { setHoveredTermId(term.id); onTermHover(term); }}
                       onMouseLeave={() => { setHoveredTermId(null); onTermHover(null); }}
                       className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-all font-bold ${
@@ -150,6 +158,15 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                           transition={{ duration: 0.12 }}
                           className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-3 rounded-xl shadow-2xl z-30 pointer-events-none border ${dk ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-900 border-slate-800 text-white'}`}
                         >
+                          <div className="absolute top-2 right-2 flex items-center gap-1 text-[9px] font-bold">
+                            {pinnedTermIds.has(term.id) ? (
+                              <span className="flex items-center gap-0.5 text-yellow-400">
+                                <Star size={10} fill="currentColor" />
+                              </span>
+                            ) : (
+                              <span className={dk ? 'text-slate-500' : 'text-slate-400'}></span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 mb-1.5">
                             <span className={`text-[10px] font-bold ${dk ? 'text-indigo-400' : 'text-indigo-300'}`}>{term.category}</span>
                             <span className={`text-[10px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>Lv.{term.level}</span>
