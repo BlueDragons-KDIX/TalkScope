@@ -1,6 +1,6 @@
 import React, { useState, useRef, useLayoutEffect, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Term } from '../data/terms';
 import { Info, Star } from 'lucide-react';
 
@@ -17,6 +17,7 @@ interface TermBubbleProps {
   size?: number;
   /** 用語マップコンテナの参照（ツールチップを枠内に収めるため） */
   mapContainerRef?: React.RefObject<HTMLDivElement | null>;
+  showDescription?: boolean;
 }
 
 export const TermBubble: React.FC<TermBubbleProps> = ({
@@ -29,6 +30,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   onTogglePin,
   size: explicitSize,
   mapContainerRef,
+  showDescription = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; showBelow: boolean } | null>(null);
@@ -156,10 +158,36 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
           transition-shadow duration-200
           ${isActive ? 'ring-2 ring-white/30 scale-110 shadow-lg' : ''}
           ${isHovered && dk ? 'shadow-lg shadow-indigo-500/10' : ''}
+          ${showDescription ? 'text-[9px] leading-tight font-medium p-3' : ''}
         `}
-        style={{ width: size, height: size, fontSize: Math.max(11, size / 7) }}
+        style={{ width: size, height: size, fontSize: showDescription ? undefined : Math.max(11, size / 7) }}
       >
-        {term.word}
+        <AnimatePresence mode="wait">
+          {showDescription ? (
+          <motion.div
+            key="desc"
+            initial={{ opacity: 0, scale: 0.8, rotateY: 90 }}
+            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+            exit={{ opacity: 0, scale: 0.8, rotateY: -90 }}
+            transition={{ duration: 0.25, ease: "backOut" }}
+            className="line-clamp-4 overflow-hidden"
+            title={term.shortDesc}
+          >
+            {term.shortDesc}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="word"
+            initial={{ opacity: 0, scale: 0.8, rotateY: -90 }}
+            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
+            exit={{ opacity: 0, scale: 0.8, rotateY: 90 }}
+            transition={{ duration: 0.25, ease: "backOut" }}
+          >
+            {term.word}
+          </motion.div>
+        )}
+        </AnimatePresence>
+
         {/* 星ボタン：バブル内に配置して y アニメーションと同期 */}
         <button
           onClick={(e) => {
