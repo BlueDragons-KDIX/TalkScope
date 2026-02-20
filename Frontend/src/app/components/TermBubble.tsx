@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect } from 'react';
+import React, { useState, useRef, useLayoutEffect, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { Term } from '../data/terms';
@@ -39,8 +39,8 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   const defaultSize = Math.max(60, 80 + weight * 10) + (isPinned ? 20 : 0);
   const size = explicitSize ?? defaultSize;
 
-  useLayoutEffect(() => {
-    if (!isHovered || !containerRef.current) {
+  const updateTooltipPos = useCallback(() => {
+    if (!containerRef.current) {
       setTooltipPos(null);
       return;
     }
@@ -69,7 +69,40 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
       : Math.min(mapBottom - TOOLTIP.H, Math.max(mapTop, bubbleTop - TOOLTIP.GAP_ABOVE - TOOLTIP.H));
 
     setTooltipPos({ left, top, showBelow });
-  }, [isHovered, mapContainerRef, size]);
+  }, [mapContainerRef]);
+
+  useLayoutEffect(() => {
+    if (!isHovered) {
+      setTooltipPos(null);
+      return;
+    }
+    updateTooltipPos();
+  }, [isHovered, updateTooltipPos, size]);
+
+  // バブルは物理エンジンで毎フレーム動くため、ホバー中は rAF でツールチップ位置を追従させる
+  useEffect(() => {
+    if (!isHovered) return;
+    let rafId: number;
+    const tick = () => {
+      updateTooltipPos();
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [isHovered, updateTooltipPos]);
+
+  useEffect(() => {
+    if (!isHovered) return;
+    const mapEl = mapContainerRef?.current;
+    const onScroll = () => updateTooltipPos();
+    const onResize = () => updateTooltipPos();
+    if (mapEl) mapEl.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    return () => {
+      if (mapEl) mapEl.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [isHovered, mapContainerRef, updateTooltipPos]);
 
   const dk = darkMode;
 
