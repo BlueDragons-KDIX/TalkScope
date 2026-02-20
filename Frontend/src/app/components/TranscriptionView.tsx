@@ -252,7 +252,8 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                 <div className="flex items-center justify-between">
                   <span className={`text-[9px] font-bold ${dk ? 'text-slate-600' : 'text-slate-400'}`}>速度</span>
                   <span className={`text-[9px] font-black font-mono ${isStreaming ? 'text-purple-400' : (dk ? 'text-slate-500' : 'text-slate-400')}`}>
-                    {demoStream.intervalMs >= 400 ? '遅'
+                    {demoStream.intervalMs >= 2000 ? '超遅'
+                      : demoStream.intervalMs >= 400 ? '遅'
                       : demoStream.intervalMs >= 250 ? '普通'
                       : demoStream.intervalMs >= 130 ? '速い'
                       : '超速'}
@@ -261,13 +262,13 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                 <input
                   type="range"
                   min={60}
-                  max={500}
+                  max={5000}
                   step={10}
-                  // スライダーは「速い = 左、遅い = 右」ではなく直感的に「右が速い」ので max-min を反転
-                  value={500 - (demoStream.intervalMs - 60)}
+                  // スライダーは「右が速い」ので max-min を反転
+                  value={5000 - (demoStream.intervalMs - 60)}
                   onChange={e => {
                     const inverted = Number(e.target.value);
-                    demoStream.setIntervalMs(500 - (inverted - 60));
+                    demoStream.setIntervalMs(5000 - (inverted - 60));
                   }}
                   className={`w-full h-1.5 rounded-full appearance-none cursor-pointer ${
                     isStreaming ? 'accent-purple-500' : (dk ? 'accent-slate-500' : 'accent-slate-400')
