@@ -44,6 +44,9 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeTermsRef = useRef(activeTerms);
 
+  // 用語⇔説明の反転状態を管理するIDセット（Auto-Play ONのときのみ使用）
+  const [descIds, setDescIds] = useState<Set<string>>(new Set());
+
   // ── バブル物理エンジン ──────────────────────────────────────
   const engineRef = useRef<{
     nodes: Map<string, { x: number; y: number; vx: number; vy: number; radius: number }>;
@@ -162,15 +165,38 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
 
   useEffect(() => {
     if (isAutoPlay) {
+      // 最初のON時に即座に半数を「説明」にする
+      const initToggle = () => {
+        const terms = activeTermsRef.current;
+        if (terms.length === 0) return;
+        
+        // シャッフルして約半分のIDを取得
+        const shuffled = [...terms].sort(() => 0.5 - Math.random());
+        const halfCount = Math.ceil(terms.length / 2);
+        const nextDescIds = new Set(shuffled.slice(0, halfCount).map(t => t.id));
+        setDescIds(nextDescIds);
+      };
+      initToggle();
+
       const tick = () => {
         const terms = activeTermsRef.current;
         if (terms.length === 0) return;
-        const next = terms[Math.floor(Math.random() * terms.length)];
-        onTermClick(next);
+        
+        // 現在「説明」になっているものを「用語」に戻し、「用語」になっているものを「説明」にする（完全反転）
+        setDescIds(prev => {
+          const next = new Set<string>();
+          terms.forEach(t => {
+            if (!prev.has(t.id)) {
+              next.add(t.id);
+            }
+          });
+          return next;
+        });
       };
-      tick();
       intervalRef.current = setInterval(tick, intervalSec * 1000);
     } else {
+      // OFFにした瞬間すべて「用語」表示に戻す
+      setDescIds(new Set());
       if (intervalRef.current !== null) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -182,7 +208,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         intervalRef.current = null;
       }
     };
-  }, [isAutoPlay, intervalSec, onTermClick]);
+  }, [isAutoPlay, intervalSec]);
 
   useEffect(() => {
     if (activeTerms.length === 0 && isAutoPlay) setIsAutoPlay(false);
@@ -280,6 +306,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                       isPinned={pinnedTermIds.has(term.id)}
                       onTogglePin={onTogglePin}
                       size={node.radius * 2}
+                      showDescription={descIds.has(term.id)}
                     />
                   </motion.div>
                 </div>

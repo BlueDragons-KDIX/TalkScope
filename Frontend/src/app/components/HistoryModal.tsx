@@ -20,7 +20,6 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
   onTermClick, 
   onClearHistory,
   darkMode,
-  themeColor
 }) => {
   if (!isOpen) return null;
 

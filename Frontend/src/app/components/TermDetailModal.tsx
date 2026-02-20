@@ -11,7 +11,7 @@ interface TermDetailModalProps {
   themeColor?: string;
 }
 
-export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose, onRelatedTermClick, darkMode = true, themeColor = 'indigo' }) => {
+export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose, onRelatedTermClick, darkMode = true }) => {
   if (!term) return null;
 
   const dk = darkMode;
