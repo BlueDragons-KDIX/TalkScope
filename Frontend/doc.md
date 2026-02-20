@@ -1,6 +1,6 @@
 # LexiFlow Frontend — 現状まとめ
 
-> 最終更新: 2026-02-19
+> 最終更新: 2026-02-20
 
 ---
 
@@ -41,19 +41,26 @@ Frontend/
     │   ├── fonts.css           # フォント設定
     │   └── theme.css           # カスタムテーマ変数
     └── app/
-        ├── App.tsx             # ルートコンポーネント
+        ├── App.tsx             # ルートコンポーネント（バブル管理・state）
         ├── components/
         │   ├── TranscriptionView.tsx   # 音声文字起こし表示
         │   ├── BubbleCloud.tsx         # 用語バブルマップ
         │   ├── TermBubble.tsx          # 個別用語バブル
-        │   ├── TermDetailModal.tsx     # 用語詳細モーダル
+        │   ├── TermDetailPanel.tsx     # 用語詳細パネル
+        │   ├── HistoryPanel.tsx        # 検索履歴パネル
         │   ├── SettingsModal.tsx       # 設定モーダル
-        │   ├── HistoryModal.tsx        # 検索履歴モーダル
         │   └── ui/                     # shadcn/ui コンポーネント群
         ├── data/
-        │   └── terms.ts        # IT 用語データ（14 件）
+        │   └── terms.ts        # IT 用語データ
+        ├── demo/
+        │   └── demo.ts         # デモテキスト定義
         ├── hooks/
-        │   └── useSpeechRecognition.ts # Web Speech API フック
+        │   ├── useSpeechRecognition.ts # Web Speech API フック
+        │   └── useDemoStream.ts        # デモストリーミングフック
+        ├── layout/
+        │   ├── types.ts        # LayoutNode バイナリツリー型定義
+        │   ├── layoutUtils.ts  # ツリー操作・プリセット 5 種類
+        │   └── LayoutEngine.tsx# 再帰レンダリング・DnD・リサイズ
         └── utils/
             └── termDetection.ts        # 用語抽出・ハイライトロジック
 ```
@@ -66,27 +73,61 @@ Frontend/
 - Web Speech API（`webkitSpeechRecognition`）を使用
 - 日本語（`ja-JP`）でリアルタイム文字起こし
 - `continuous: true` / `interimResults: true` で連続認識
+- `onend` で自動再起動（ブラウザの強制停止に対応）
 
 ### 2. 用語検出（`termDetection.ts`）
 - `extractTerms`: テキストから IT 用語を抽出（英語・かな両対応）
 - `highlightTerms`: テキスト内の用語をマークアップ（長い単語優先マッチ）
 
 ### 3. 用語データ（`terms.ts`）
-- 14 件の IT 用語を収録
 - カテゴリ: `Frontend` / `Backend` / `Infra` / `AI/Data` / `General`
 - 各用語に `shortDesc`・`longDesc`・`relatedTerms`・`externalUrl` を保持
 
-### 4. UI
+### 4. バブルマップ（`BubbleCloud.tsx` / `TermBubble.tsx`）
+
+#### バブルライフタイム管理（スマート削除）
+バブルの消去はすべて `App.tsx` で 2 秒ごとのポーリングにより行う。
+
+| 条件 | 挙動 |
+|---|---|
+| バブル数 ≤ 12（ソフト上限） | 削除なし |
+| バブル数 13〜20 | 最低スコアのバブルを 1 件ずつ削除 |
+| バブル数 > 20（ハード上限） | ソフト上限まで一括削除 |
+| 追加から 20 秒以内の新出バブル | 削除対象から除外（猶予期間） |
+| 文字起こしに再登場した用語 | タイムスタンプをリセット（猶予期間を延命） |
+| ピン留め済みバブル | 上限・スコアに関係なく永続 |
+
+**興味スコア（時間減衰）**
+```
+score = クリック回数 × exp(−経過時間 / 5分)
+```
+最後にクリックされた時刻を基準に計算。古いクリックほど価値が下がる。
+
+**透明フィードバック**
+- 次に消えそうなバブル上位 3 件を `opacity-40 + grayscale-40%` で警告表示
+- ホバー時は一時的に完全表示に戻る
+
+#### ピン留め機能（★）
+- バブル右上の ☆ ボタン or 詳細パネルの「ピン」ボタンでトグル
+- ピン中は黄色 ★（グロー付き）で強調表示
+- ピン解除時はその時点から猶予タイマーが再スタート
+
+#### その他
+- カテゴリフィルタ（ALL / Frontend / Backend / Infra / AI/Data / General）
+- **自動切換えボタン**: 用語を自動ローテーション表示（1〜10 秒スライダー）
+- クリック回数に比例してバブルサイズが大きくなる
+
+### 5. 動的レイアウトエンジン（`layout/`）
+- VSCode / Unity 風のパネル自由配置
+- ドラッグ＆ドロップでパネルを上下左右に移動・分割
+- 分割線ドラッグでリサイズ
+- 5 種類のプリセットレイアウト（デフォルト / 左右 / 2×2 / 横4列 / 縦4列）
+- 全パネルの枠・ヘッダー・仕切り線がアクセントカラーと連動
+
+### 6. その他 UI
 - **ダークモード対応**（デフォルト: ダーク）
 - **テーマカラー切替**: blue / indigo / purple / rose / emerald / orange
-- **検索履歴**: 最大 50 件保持
-- **自動切換えボタン**（`BubbleCloud.tsx`）: 用語マップグリッド内の用語をランダムに自動選択し詳細表示を切り替える
-  - スピードスライダー: 1〜10 秒で切換え間隔をアナログ調整可能
-- **動的レイアウトエンジン**（`layout/`）: VSCode/Unity 風のパネル自由配置
-  - 各パネルのドラッグ＆ドロップで隣接パネルの左右上下に移動・分割
-  - 分割線ドラッグでリサイズ
-  - ヘッダーから 5 種類のプリセットレイアウトを切り替え可能
-  - 全パネルの枠・ヘッダー・仕切り線がアクセントカラーと連動して変化
+- **検索履歴パネル**: 最大 50 件、履歴内検索機能付き
 
 ---
 
@@ -101,40 +142,30 @@ bun run dev
 
 ---
 
-## Git 状態（2026-02-18 時点）
-
-- ブランチ: `feature/front-base-design`
-- HEAD: `eb4349e7` (Initial commit)
-- ステージング済み: フロントエンドのソースコード一式（`node_modules` は `.gitignore` で除外済み）
-
----
-
-## 今後の課題・TODO
-
-- [ ] IT 用語データの拡充（現在 14 件）
-- [ ] バックエンド API との連携（用語解説の動的取得）
-- [ ] テストコードの追加
-- [ ] 依存の定期更新（`bun update`）運用の確立
-
----
-
-## 関連ドキュメント
-
-- Bun移行の詳細: `BUN_MIGRATION.md`
-
-
 ## 変更履歴
+
+### 2026-02-20
+- **バブルライフタイム v2.0（スマート削除）** を実装（`App.tsx`, `BubbleCloud.tsx`, `TermBubble.tsx`）
+  - 旧 30 秒タイマー廃止
+  - 時間減衰スコアによる優先削除（`クリック数 × exp(−t / 5min)`）
+  - ソフト上限 12 / ハード上限 20 件
+  - 新出バブル猶予期間 20 秒
+  - 再出現延命（文字起こしに再登場したらタイムスタンプリセット）
+  - 低興味バブルの透明フィードバック（opacity-40 + grayscale）
+- **ピン留め機能（★）** を実装（`TermBubble.tsx`, `TermDetailPanel.tsx`）
+  - バブル右上の星ボタン（ホバー時表示）
+  - 詳細パネルヘッダーの「ピン / ピン中」ボタン
+  - ピン済みは削除対象外・黄色グロー表示
 
 ### 2026-02-19
 - ログイン機能を完全削除（`SettingsModal.tsx`）
 - レベル指定（初級/中級/上級）機能を完全削除（`App.tsx`, `BubbleCloud.tsx`, `TermBubble.tsx`, `SettingsModal.tsx`）
 - **自動切換えボタン**を用語マップヘッダーに追加（`BubbleCloud.tsx`）
 - **自動切換えスピードスライダー**（1〜10 秒）をボタン隣に追加（`BubbleCloud.tsx`）
-- **ドラッグリサイズ可能な 3 カラムレイアウト**を実装（`App.tsx`）
 - **VSCode/Unity 風動的レイアウトエンジン**を実装（`layout/` ディレクトリ新設）
   - `types.ts`: LayoutNode バイナリツリー型定義
   - `layoutUtils.ts`: ツリー操作・プリセット 5 種類
   - `LayoutEngine.tsx`: 再帰レンダリング・DnD・リサイズ
   - 詳細・履歴パネルを独立パネルに分離
-- **パネル枠のアクセントカラー連動**: 全パネルの枠・ヘッダー背景・仕切り線が設定のアクセントカラーで統一表示
-- **フルスクリーン対応**: `html`/`body`/`#root` に `height: 100%` を追加し画面全体にレイアウトが広がるよう修正（`tailwind.css`, `App.tsx`）
+- **パネル枠のアクセントカラー連動**
+- **フルスクリーン対応**: `html`/`body`/`#root` に `height: 100%` を追加

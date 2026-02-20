@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
+import { useDemoStream } from './hooks/useDemoStream';
+import { DEMO_TEXT_INSTANT } from './demo/demo';
 import { TranscriptionView } from './components/TranscriptionView';
 import { BubbleCloud } from './components/BubbleCloud';
 import { TermDetailPanel } from './components/TermDetailPanel';
@@ -19,7 +21,7 @@ import {
   makeLeftRightLayout,
 } from './layout/layoutUtils';
 
-const DEMO_TEXT = `本日はReactとTypeScriptを使ったフロントエンド開発について話します。バックエンドにはAPIを通じてデータを取得し、DockerでコンテナとしてAWS上にデプロイします。CI/CDパイプラインを整備することで、GitHubへのプッシュをトリガーに自動的にビルドとテストが走る仕組みになっています。データベースにはSQLとNoSQLを用途に応じて使い分けており、LLMを活用した機能も今後追加予定です。`;
+
 
 // レイアウトプリセット定義
 const PRESETS = [
@@ -42,6 +44,21 @@ const App: React.FC = () => {
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
   const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo', sensitivity: 50 });
+  const [pinnedTermIds, setPinnedTermIds] = useState<Set<string>>(new Set());
+
+  // ── バブル寿命管理 refs ────────────────────────────────────────
+  const termTimestamps    = useRef<Record<string, number>>({});       // termId → 追加時刻
+  const termImportance    = useRef<Record<string, number>>({});       // termId → 重要度スコア（クリック数以外の変数も将来加算）
+  const autoPinnedSet     = useRef<Set<string>>(new Set());           // 自動ピン済み ID（再ピン防止）
+  const pinnedTermIdsRef  = useRef<Set<string>>(new Set());           // pinnedTermIds の ref ミラー
+  const activeTermsRef    = useRef<Term[]>([]);                       // activeTerms の ref ミラー
+
+  // ── デモ機能（コア機能から独立） ──────────────────────────────
+  const demoStream = useDemoStream({
+    onAppend: (text) => setTranscript(text),
+    intervalMs: 220,
+  });
+  // ──────────────────────────────────────────────────────────────
 
   const dk = settings.darkMode;
 
@@ -51,30 +68,143 @@ const App: React.FC = () => {
 
   useEffect(() => { if (error) toast.error(error); }, [error]);
 
+  // refs の同期
+  useEffect(() => { pinnedTermIdsRef.current = pinnedTermIds; }, [pinnedTermIds]);
+  useEffect(() => { activeTermsRef.current = activeTerms; }, [activeTerms]);
+
   useEffect(() => {
     if (!transcript) return;
     const extracted = extractTerms(transcript);
+    const now = Date.now();
     setActiveTerms(prev => {
       const ids = new Set(prev.map(t => t.id));
-      return [...prev, ...extracted.filter(t => !ids.has(t.id))];
+      const newTerms = extracted.filter(t => !ids.has(t.id));
+      newTerms.forEach(t => { termTimestamps.current[t.id] = now; });
+      return [...prev, ...newTerms];
     });
   }, [transcript]);
 
+  // ── バブル削除アルゴリズム (3秒ごとに実行) ───────────────────
+  useEffect(() => {
+    const MAX_BUBBLES        = 25;  // この数以内は削除しない
+    const OLDEST_BATCH       = 10;  // 最古から何件をバッチ評価するか
+    const SURVIVAL_BOOST     = 1;   // 生き残りに加算する重要度
+    const AUTO_PIN_THRESHOLD = 10;  // この重要度を超えたら自動ピン（handleTermClickと共通）
+
+    const id = setInterval(() => {
+      const current = activeTermsRef.current;
+      if (current.length <= MAX_BUBBLES) return;
+
+      const pinned  = pinnedTermIdsRef.current;
+      const imp     = termImportance.current;
+      const ts      = termTimestamps.current;
+
+      // 最山を山を繰り返す：25件以下になるまで削除ループ
+      let terms = [...current];
+      const toAutoPin: string[] = [];
+
+      while (terms.length > MAX_BUBBLES) {
+        // 非ピンを追加時刻順（古い順）にソート
+        const nonPinned = terms
+          .filter(t => !pinned.has(t.id))
+          .sort((a, b) => (ts[a.id] ?? 0) - (ts[b.id] ?? 0));
+
+        if (nonPinned.length === 0) break; // 全ピンなら削除不可能
+
+        // 最古 OLDEST_BATCH 件をバッチ対象に
+        const batch = nonPinned.slice(0, OLDEST_BATCH);
+
+        // 最小重要度を求める
+        const minScore = Math.min(...batch.map(t => imp[t.id] ?? 0));
+
+        // 最小重要度のバブルを全消去
+        const toDelete = new Set(
+          batch.filter(t => (imp[t.id] ?? 0) === minScore).map(t => t.id)
+        );
+        if (toDelete.size === 0) break;
+
+        // 削除されなかったバッチ内のバブルに重要度を加算
+        batch.filter(t => !toDelete.has(t.id)).forEach(t => {
+          imp[t.id] = (imp[t.id] ?? 0) + SURVIVAL_BOOST;
+          // 閾値超えかつ未自動ピンなら自動ピンをキュー
+          if ((imp[t.id] ?? 0) >= AUTO_PIN_THRESHOLD && !autoPinnedSet.current.has(t.id)) {
+            toAutoPin.push(t.id);
+            autoPinnedSet.current.add(t.id);
+          }
+        });
+
+        terms = terms.filter(t => !toDelete.has(t.id));
+      }
+
+      // 削除が発生した場合のみ state を更新
+      if (terms.length !== current.length) {
+        setActiveTerms(terms);
+      }
+
+      // 自動ピン
+      if (toAutoPin.length > 0) {
+        setPinnedTermIds(prev => {
+          const next = new Set(prev);
+          toAutoPin.forEach(id => next.add(id));
+          return next;
+        });
+        toast.success(`⭐ ${toAutoPin.length}件の用語を自動ピン留めしました`);
+      }
+    }, 3000);
+
+    return () => clearInterval(id);
+  }, []); // refs のみ使用するため依存配列は空
+
+  const AUTO_PIN_THRESHOLD = 10; // この重要度を超えたら自動ピン（クリック1回=+2なので5回クリック相当）
+
   const handleTermClick = useCallback((term: Term) => {
     setSelectedTerm(term);
+    // ピン済みのバブルはクリックしても大きさ・重要度が変化しない
+    if (pinnedTermIdsRef.current.has(term.id)) return;
+    // click count (バブルサイズに使用)
     setTermWeights(prev => ({ ...prev, [term.id]: (prev[term.id] || 0) + 1 }));
+    // 重要度スコアに加算（クリック数とは別変数——将来他のシグナルもここに加算できる）
+    const newImp = (termImportance.current[term.id] ?? 0) + 2;
+    termImportance.current[term.id] = newImp;
+    // 閾値到達で即自動ピン（プルーニングループのチェックを待たない）
+    if (newImp >= AUTO_PIN_THRESHOLD && !autoPinnedSet.current.has(term.id)) {
+      autoPinnedSet.current.add(term.id);
+      setPinnedTermIds(prev => new Set([...prev, term.id]));
+      toast.success(`⭐ 「${term.word}」を自動ピン留めしました`);
+    }
     setSearchHistory(prev => [term, ...prev.filter(t => t.id !== term.id)].slice(0, 50));
+  }, []);
+
+  const handleTogglePin = useCallback((termId: string) => {
+    setPinnedTermIds(prev => {
+      const next = new Set(prev);
+      if (next.has(termId)) {
+        // ピン解除: weight・importanceをリセット→生成直後と同じ状態に戻す
+        next.delete(termId);
+        setTermWeights(prev => ({ ...prev, [termId]: 0 }));
+        termImportance.current[termId] = 0;
+        termTimestamps.current[termId] = Date.now();
+      } else {
+        next.add(termId);
+      }
+      return next;
+    });
   }, []);
 
   const toggleListening = () => {
     if (isListening) { stopListening(); toast.info('録音を停止しました'); }
     else { startListening(); toast.success('🎙 録音を開始しました'); }
   };
-  const loadDemo = () => { setTranscript(DEMO_TEXT); toast.success('デモテキストを読み込みました'); };
+  const loadDemo = () => { setTranscript(DEMO_TEXT_INSTANT); toast.success('デモテキストを読み込みました'); };
   const clearAll = () => {
     if (isListening) stopListening();
+    demoStream.stopStream();
     setTranscript(''); setActiveTerms([]); setTermWeights({});
     setSelectedTerm(null); setCategoryFilter('ALL');
+    setPinnedTermIds(new Set());
+    termTimestamps.current = {};
+    termImportance.current = {};
+    autoPinnedSet.current = new Set();
     toast.info('リセットしました');
   };
 
@@ -91,6 +221,7 @@ const App: React.FC = () => {
         onTermClick={handleTermClick}
         onTermHover={() => { }}
         onLoadDemo={loadDemo}
+        demoStream={demoStream}
         darkMode={dk}
       />
     ),
@@ -103,6 +234,8 @@ const App: React.FC = () => {
         categoryFilter={categoryFilter}
         onCategoryFilterChange={setCategoryFilter}
         selectedTermId={selectedTerm?.id}
+        pinnedTermIds={pinnedTermIds}
+        onTogglePin={handleTogglePin}
       />
     ),
     detail: (
@@ -111,6 +244,8 @@ const App: React.FC = () => {
         onClose={() => setSelectedTerm(null)}
         onRelatedTermClick={handleTermClick}
         darkMode={dk}
+        isPinned={selectedTerm ? pinnedTermIds.has(selectedTerm.id) : false}
+        onTogglePin={() => selectedTerm && handleTogglePin(selectedTerm.id)}
       />
     ),
     history: (
@@ -122,7 +257,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick]);
+  }), [transcript, isListening, filteredTerms, termWeights, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, pinnedTermIds, handleTogglePin]);
 
   return (
     <div
