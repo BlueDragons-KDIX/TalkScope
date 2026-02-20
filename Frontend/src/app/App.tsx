@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
+import { useDemoStream } from './hooks/useDemoStream';
+import { DEMO_TEXT_INSTANT } from './demo/demo';
 import { TranscriptionView } from './components/TranscriptionView';
 import { BubbleCloud } from './components/BubbleCloud';
 import { TermDetailPanel } from './components/TermDetailPanel';
@@ -19,7 +21,7 @@ import {
   makeLeftRightLayout,
 } from './layout/layoutUtils';
 
-const DEMO_TEXT = `本日はReactとTypeScriptを使ったフロントエンド開発について話します。バックエンドにはAPIを通じてデータを取得し、DockerでコンテナとしてAWS上にデプロイします。CI/CDパイプラインを整備することで、GitHubへのプッシュをトリガーに自動的にビルドとテストが走る仕組みになっています。データベースにはSQLとNoSQLを用途に応じて使い分けており、LLMを活用した機能も今後追加予定です。`;
+
 
 // レイアウトプリセット定義
 const PRESETS = [
@@ -42,6 +44,13 @@ const App: React.FC = () => {
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
   const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo', sensitivity: 50 });
+
+  // ── デモ機能（コア機能から独立） ──────────────────────────────
+  const demoStream = useDemoStream({
+    onAppend: (text) => setTranscript(text),
+    intervalMs: 220,
+  });
+  // ──────────────────────────────────────────────────────────────
 
   const dk = settings.darkMode;
 
@@ -70,9 +79,10 @@ const App: React.FC = () => {
     if (isListening) { stopListening(); toast.info('録音を停止しました'); }
     else { startListening(); toast.success('🎙 録音を開始しました'); }
   };
-  const loadDemo = () => { setTranscript(DEMO_TEXT); toast.success('デモテキストを読み込みました'); };
+  const loadDemo = () => { setTranscript(DEMO_TEXT_INSTANT); toast.success('デモテキストを読み込みました'); };
   const clearAll = () => {
     if (isListening) stopListening();
+    demoStream.stopStream();
     setTranscript(''); setActiveTerms([]); setTermWeights({});
     setSelectedTerm(null); setCategoryFilter('ALL');
     toast.info('リセットしました');
@@ -91,6 +101,7 @@ const App: React.FC = () => {
         onTermClick={handleTermClick}
         onTermHover={() => { }}
         onLoadDemo={loadDemo}
+        demoStream={demoStream}
         darkMode={dk}
       />
     ),
