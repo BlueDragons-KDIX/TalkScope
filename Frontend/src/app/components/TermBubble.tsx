@@ -38,6 +38,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   const bubbleElementRef = useRef<HTMLDivElement>(null);
 
 
+
   // 重要度とピンの有無によってサイズ（半径×2）を変える
   const defaultSize = Math.max(60, 80 + weight * 10) + (isPinned ? 20 : 0);
   const size = explicitSize ?? defaultSize;
@@ -72,7 +73,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
       : Math.min(mapBottom - TOOLTIP.H, Math.max(mapTop, bubbleTop - TOOLTIP.GAP_ABOVE - TOOLTIP.H));
 
     setTooltipPos({ left, top, showBelow });
-  }, [mapContainerRef]);
+  }, [mapContainerRef, size]);
 
   useLayoutEffect(() => {
     if (!isHovered) {
@@ -106,6 +107,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
       window.removeEventListener('resize', onResize);
     };
   }, [isHovered, mapContainerRef, updateTooltipPos]);
+
 
   const dk = darkMode;
 
@@ -218,6 +220,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         </button>
         </AnimatePresence>
       </motion.div>
+
 
       {/* ツールチップ：ポータルで body に描画（枠外にはみ出さないよう position:fixed で配置） */}
       {isHovered && tooltipPos && createPortal(
