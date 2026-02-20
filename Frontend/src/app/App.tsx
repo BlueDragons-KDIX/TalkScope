@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 import { useDemoStream } from './hooks/useDemoStream';
 import { DEMO_TEXT_INSTANT } from './demo/demo';
@@ -44,6 +44,10 @@ const App: React.FC = () => {
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
   const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo', sensitivity: 50 });
+  const [pinnedTermIds, setPinnedTermIds] = useState<Set<string>>(new Set());
+
+  // バブルの追加時刻を記録（termId → timestamp ms）
+  const termTimestamps = useRef<Record<string, number>>({});
 
   // ── デモ機能（コア機能から独立） ──────────────────────────────
   const demoStream = useDemoStream({
@@ -65,14 +69,46 @@ const App: React.FC = () => {
     const extracted = extractTerms(transcript);
     setActiveTerms(prev => {
       const ids = new Set(prev.map(t => t.id));
-      return [...prev, ...extracted.filter(t => !ids.has(t.id))];
+      const newTerms = extracted.filter(t => !ids.has(t.id));
+      // 新しいバブルの追加時刻を記録
+      const now = Date.now();
+      newTerms.forEach(t => { termTimestamps.current[t.id] = now; });
+      return [...prev, ...newTerms];
     });
   }, [transcript]);
+
+  // 30秒ライフタイム: 1秒ごとに期限切れバブルを除去
+  useEffect(() => {
+    const LIFETIME_MS = 30_000;
+    const id = setInterval(() => {
+      const now = Date.now();
+      setActiveTerms(prev => prev.filter(t => {
+        if (pinnedTermIds.has(t.id)) return true;
+        const ts = termTimestamps.current[t.id];
+        return ts !== undefined && now - ts < LIFETIME_MS;
+      }));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [pinnedTermIds]);
 
   const handleTermClick = useCallback((term: Term) => {
     setSelectedTerm(term);
     setTermWeights(prev => ({ ...prev, [term.id]: (prev[term.id] || 0) + 1 }));
     setSearchHistory(prev => [term, ...prev.filter(t => t.id !== term.id)].slice(0, 50));
+  }, []);
+
+  const handleTogglePin = useCallback((termId: string) => {
+    setPinnedTermIds(prev => {
+      const next = new Set(prev);
+      if (next.has(termId)) {
+        next.delete(termId);
+        // ピン解除時はタイムスタンプをリセット（今から30秒後に消える）
+        termTimestamps.current[termId] = Date.now();
+      } else {
+        next.add(termId);
+      }
+      return next;
+    });
   }, []);
 
   const toggleListening = () => {
@@ -85,6 +121,8 @@ const App: React.FC = () => {
     demoStream.stopStream();
     setTranscript(''); setActiveTerms([]); setTermWeights({});
     setSelectedTerm(null); setCategoryFilter('ALL');
+    setPinnedTermIds(new Set());
+    termTimestamps.current = {};
     toast.info('リセットしました');
   };
 
@@ -114,6 +152,8 @@ const App: React.FC = () => {
         categoryFilter={categoryFilter}
         onCategoryFilterChange={setCategoryFilter}
         selectedTermId={selectedTerm?.id}
+        pinnedTermIds={pinnedTermIds}
+        onTogglePin={handleTogglePin}
       />
     ),
     detail: (
@@ -122,6 +162,8 @@ const App: React.FC = () => {
         onClose={() => setSelectedTerm(null)}
         onRelatedTermClick={handleTermClick}
         darkMode={dk}
+        isPinned={selectedTerm ? pinnedTermIds.has(selectedTerm.id) : false}
+        onTogglePin={() => selectedTerm && handleTogglePin(selectedTerm.id)}
       />
     ),
     history: (
@@ -133,7 +175,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick]);
+  }), [transcript, isListening, filteredTerms, termWeights, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, pinnedTermIds, handleTogglePin]);
 
   return (
     <div
