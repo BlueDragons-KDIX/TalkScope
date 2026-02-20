@@ -83,6 +83,6 @@ uv run uvicorn main:app --reload
 ## 使用技術
 
 - Frontend: React 19, TypeScript, Vite 6, Tailwind CSS v4, Bun
-- Backend: Python, FastAPI, Uvicorn, Pydantic
+- Backend: Python, uv, FastAPI, Uvicorn, Pydantic
 - Browser API: Web Speech API
 - Data/Storage: localStorage（フロント履歴保存）
