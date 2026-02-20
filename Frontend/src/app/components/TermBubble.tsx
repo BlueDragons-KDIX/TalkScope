@@ -11,6 +11,7 @@ interface TermBubbleProps {
   isActive?: boolean;
   isPinned?: boolean;
   onTogglePin: (termId: string) => void;
+  size?: number;
 }
 
 export const TermBubble: React.FC<TermBubbleProps> = ({
@@ -21,12 +22,15 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   isActive = false,
   isPinned = false,
   onTogglePin,
+  size: explicitSize,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   const dk = darkMode;
 
-  const size = Math.max(60, 80 + weight * 10);
+  // 重要度とピンの有無によってサイズ（半径×2）を変える
+  const defaultSize = Math.max(60, 80 + weight * 10) + (isPinned ? 20 : 0);
+  const size = explicitSize ?? defaultSize;
 
   const darkColors: Record<string, string> = {
     Frontend: 'bg-blue-500/15 border-blue-500/30 text-blue-300',

@@ -44,6 +44,118 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeTermsRef = useRef(activeTerms);
 
+  // ── バブル物理エンジン ──────────────────────────────────────
+  const engineRef = useRef<{
+    nodes: Map<string, { x: number; y: number; vx: number; vy: number; radius: number }>;
+    width: number;
+    height: number;
+    rafId: number | null;
+  }>({ nodes: new Map(), width: 800, height: 500, rafId: null });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const bubbleRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // コンテナの寸法を計測（リサイズ対応）
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => {
+      engineRef.current.width = e.contentRect.width;
+      engineRef.current.height = e.contentRect.height;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // ノードの追加・削除・半径更新（レンダリングのタイミングで同期）
+  const activeIds = new Set(activeTerms.map(t => t.id));
+  const engineNodes = engineRef.current.nodes;
+  for (const id of Array.from(engineNodes.keys())) {
+    if (!activeIds.has(id)) engineNodes.delete(id);
+  }
+  for (const term of activeTerms) {
+    const w = pinnedTermIds.has(term.id) ? 0 : (termWeights[term.id] || 0);
+    const r = (Math.max(60, 80 + w * 10) + (pinnedTermIds.has(term.id) ? 20 : 0)) / 2;
+    if (!engineNodes.has(term.id)) {
+      const cw = engineRef.current.width || 800;
+      const ch = engineRef.current.height || 500;
+      const startX = cw * (0.3 + Math.random() * 0.4);
+      const startY = ch + r + Math.random() * 100; // 下から湧いてくる
+      engineNodes.set(term.id, { x: startX, y: startY, vx: (Math.random()-0.5)*4, vy: -(Math.random()*4 + 2), radius: r });
+    } else {
+      engineNodes.get(term.id)!.radius = r; // サイズの動的更新
+    }
+  }
+
+  // 物理シミュレーションループ
+  useEffect(() => {
+    const tick = () => {
+      const e = engineRef.current;
+      const nodes = Array.from(e.nodes.entries());
+      const GRAVITY = -0.15; // 上に向かう浮力
+      const DAMPING = 0.88;
+      
+      for (let i = 0; i < nodes.length; i++) {
+        const [id1, n1] = nodes[i];
+        
+        // 浮力・中央に向かう力
+        n1.vy += GRAVITY;
+        const cx = e.width / 2;
+        n1.vx += (cx - n1.x) * 0.0008; // 緩やかに中央へ
+        
+        // 他のバブルとの衝突判定（重なりによる反発）
+        for (let j = i + 1; j < nodes.length; j++) {
+           const [, n2] = nodes[j];
+           const dx = n2.x - n1.x;
+           const dy = n2.y - n1.y;
+           const dist = Math.hypot(dx, dy);
+           const minDist = n1.radius + n2.radius + 8; // +8px padding
+           if (dist < minDist && dist > 0) {
+              const force = (minDist - dist) * 0.08; 
+              const fx = (dx / dist) * force;
+              const fy = (dy / dist) * force;
+              n1.vx -= fx;
+              n1.vy -= fy;
+              n2.vx += fx;
+              n2.vy += fy;
+           }
+        }
+        
+        // 速度の適用と摩擦
+        ['x', 'y'].forEach(axis => {
+           const pos = axis as 'x'|'y';
+           const vel = axis === 'x' ? 'vx' : 'vy';
+           const max = axis === 'x' ? e.width : e.height;
+           const min = 0;
+           
+           n1[pos] += n1[vel];
+           n1[vel] *= DAMPING; // 摩擦
+           
+           // 壁との衝突
+           if (n1[pos] - n1.radius < min) {
+             n1[pos] = min + n1.radius;
+             n1[vel] *= -0.4;
+           } else if (n1[pos] + n1.radius > max) {
+             n1[pos] = max - n1.radius;
+             n1[vel] *= -0.4;
+           }
+        });
+        
+        // DOM要素の直接更新（Reactのライフサイクル外で高速描画）
+        const el = bubbleRefs.current[id1];
+        if (el) {
+          el.style.transform = `translate3d(${n1.x - n1.radius}px, ${n1.y - n1.radius}px, 0)`;
+        }
+      }
+      e.rafId = requestAnimationFrame(tick);
+    };
+    
+    engineRef.current.rafId = requestAnimationFrame(tick);
+    return () => {
+      if (engineRef.current.rafId) cancelAnimationFrame(engineRef.current.rafId);
+    };
+  }, []);
+
+
   useEffect(() => {
     activeTermsRef.current = activeTerms;
   }, [activeTerms]);
@@ -120,8 +232,8 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         })}
       </div>
 
-      {/* Bubbles area (relative for absolute positioning of auto-play button) */}
-      <div className="relative flex-1 overflow-auto p-4 flex flex-wrap items-center justify-center content-start">
+      {/* Bubbles area — 座標固定+上方フロート */}
+      <div ref={containerRef} className="relative flex-1 overflow-hidden">
         {dk && (
           <div
             className="absolute inset-0 opacity-[0.03] pointer-events-none"
@@ -133,24 +245,47 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         )}
 
         {activeTerms.length === 0 ? (
-          <div className={`text-center ${dk ? 'text-slate-600' : 'text-slate-300'}`}>
-            <Hexagon className="mx-auto mb-3 opacity-30" size={40} />
-            <p className="text-xs font-bold opacity-60">用語抽出待機中</p>
+          <div className={`absolute inset-0 flex flex-col items-center justify-center ${dk ? 'text-slate-600' : 'text-slate-300'}`}>
+            <Hexagon className="mb-3 opacity-30" size={40} />
+            <p className="text-xs font-bold opacity-60">用語抖出待機中</p>
             <p className="text-[10px] opacity-40 mt-1">音声から検出された用語が<br />ここに表示されます</p>
           </div>
         ) : (
-          activeTerms.map(term => (
-            <TermBubble
-              key={term.id}
-              term={term}
-              weight={termWeights[term.id] || 0}
-              onClick={onTermClick}
-              darkMode={dk}
-              isActive={selectedTermId === term.id}
-              isPinned={pinnedTermIds.has(term.id)}
-              onTogglePin={onTogglePin}
-            />
-          ))
+          <AnimatePresence>
+            {activeTerms.map(term => {
+              const node = engineNodes.get(term.id);
+              if (!node) return null;
+              return (
+                <div
+                  key={term.id}
+                  ref={el => { bubbleRefs.current[term.id] = el; }}
+                  className="absolute left-0 top-0 will-change-transform"
+                  style={{ transform: `translate3d(${node.x - node.radius}px, ${node.y - node.radius}px, 0)` }}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0 }}
+                    transition={{
+                      opacity: { duration: 0.4 },
+                      scale:   { type: 'spring', damping: 18, stiffness: 220 },
+                    }}
+                  >
+                    <TermBubble
+                      term={term}
+                      weight={pinnedTermIds.has(term.id) ? 0 : (termWeights[term.id] || 0)}
+                      onClick={onTermClick}
+                      darkMode={dk}
+                      isActive={selectedTermId === term.id}
+                      isPinned={pinnedTermIds.has(term.id)}
+                      onTogglePin={onTogglePin}
+                      size={node.radius * 2}
+                    />
+                  </motion.div>
+                </div>
+              );
+            })}
+          </AnimatePresence>
         )}
 
         {/* Auto-play button (bottom-right, always visible) */}

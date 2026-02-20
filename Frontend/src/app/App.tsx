@@ -89,7 +89,7 @@ const App: React.FC = () => {
     const MAX_BUBBLES        = 25;  // この数以内は削除しない
     const OLDEST_BATCH       = 10;  // 最古から何件をバッチ評価するか
     const SURVIVAL_BOOST     = 1;   // 生き残りに加算する重要度
-    const AUTO_PIN_THRESHOLD = 10;  // この重要度を超えたら自動ピン
+    const AUTO_PIN_THRESHOLD = 10;  // この重要度を超えたら自動ピン（handleTermClickと共通）
 
     const id = setInterval(() => {
       const current = activeTermsRef.current;
@@ -155,12 +155,23 @@ const App: React.FC = () => {
     return () => clearInterval(id);
   }, []); // refs のみ使用するため依存配列は空
 
+  const AUTO_PIN_THRESHOLD = 10; // この重要度を超えたら自動ピン（クリック1回=+2なので5回クリック相当）
+
   const handleTermClick = useCallback((term: Term) => {
     setSelectedTerm(term);
+    // ピン済みのバブルはクリックしても大きさ・重要度が変化しない
+    if (pinnedTermIdsRef.current.has(term.id)) return;
     // click count (バブルサイズに使用)
     setTermWeights(prev => ({ ...prev, [term.id]: (prev[term.id] || 0) + 1 }));
     // 重要度スコアに加算（クリック数とは別変数——将来他のシグナルもここに加算できる）
-    termImportance.current[term.id] = (termImportance.current[term.id] ?? 0) + 2;
+    const newImp = (termImportance.current[term.id] ?? 0) + 2;
+    termImportance.current[term.id] = newImp;
+    // 閾値到達で即自動ピン（プルーニングループのチェックを待たない）
+    if (newImp >= AUTO_PIN_THRESHOLD && !autoPinnedSet.current.has(term.id)) {
+      autoPinnedSet.current.add(term.id);
+      setPinnedTermIds(prev => new Set([...prev, term.id]));
+      toast.success(`⭐ 「${term.word}」を自動ピン留めしました`);
+    }
     setSearchHistory(prev => [term, ...prev.filter(t => t.id !== term.id)].slice(0, 50));
   }, []);
 
@@ -168,8 +179,10 @@ const App: React.FC = () => {
     setPinnedTermIds(prev => {
       const next = new Set(prev);
       if (next.has(termId)) {
+        // ピン解除: weight・importanceをリセット→生成直後と同じ状態に戻す
         next.delete(termId);
-        // ピン解除時はタイムスタンプをリセット（今から30秒後に消える）
+        setTermWeights(prev => ({ ...prev, [termId]: 0 }));
+        termImportance.current[termId] = 0;
         termTimestamps.current[termId] = Date.now();
       } else {
         next.add(termId);
