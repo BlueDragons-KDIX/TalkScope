@@ -8,10 +8,9 @@ interface TermDetailModalProps {
   onClose: () => void;
   onRelatedTermClick: (term: Term) => void;
   darkMode?: boolean;
-  themeColor?: string;
 }
 
-export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose, onRelatedTermClick, darkMode = true, themeColor = 'indigo' }) => {
+export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose, onRelatedTermClick, darkMode = true }) => {
   const [copied, setCopied] = useState<'word' | 'desc' | null>(null);
 
   const copyWord = useCallback(() => {

@@ -155,7 +155,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={`
-          relative overflow-hidden flex items-center justify-center rounded-full border cursor-pointer
+          relative flex items-center justify-center rounded-full border cursor-pointer
           ${colors[term.category]}
           font-bold text-center break-words
           transition-shadow duration-200
@@ -172,7 +172,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 1, ease: "easeInOut" }}
-              className="absolute inset-0 flex items-center justify-center p-3"
+              className="absolute inset-0 flex items-center justify-center p-3 overflow-hidden rounded-full"
               title={term.shortDesc}
             >
               <span className="line-clamp-4 overflow-hidden w-full text-[9px] leading-tight font-medium">
@@ -186,13 +186,14 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 1, ease: "easeInOut" }}
-              className="absolute inset-0 flex items-center justify-center p-2"
+              className="absolute inset-0 flex items-center justify-center p-2 overflow-hidden rounded-full"
             >
               <span className="w-full" style={{ fontSize: Math.max(11, size / 7) }}>
                 {term.word}
               </span>
             </motion.div>
           )}
+
 
         {/* 星ボタン：バブル内に配置して y アニメーションと同期 */}
         <button
@@ -220,7 +221,6 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         </button>
         </AnimatePresence>
       </motion.div>
-
 
       {/* ツールチップ：ポータルで body に描画（枠外にはみ出さないよう position:fixed で配置） */}
       {isHovered && tooltipPos && createPortal(

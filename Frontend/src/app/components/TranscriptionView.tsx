@@ -199,6 +199,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                     >
                       {part.content}
                     </button>
+
                   </span>
                 );
               }
