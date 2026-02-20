@@ -45,9 +45,14 @@ const App: React.FC = () => {
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
   const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo', sensitivity: 50 });
   const [pinnedTermIds, setPinnedTermIds] = useState<Set<string>>(new Set());
+  // 低興味バブルの半透明フィードバック用
+  const [lowInterestIds, setLowInterestIds] = useState<Set<string>>(new Set());
 
-  // バブルの追加時刻を記録（termId → timestamp ms）
+  // ── バブル寿命管理 refs ────────────────────────────────────────
+  // termId → 追加時刻 (ms)
   const termTimestamps = useRef<Record<string, number>>({});
+  // termId → 最後にクリックされた時刻 (ms)
+  const termClickTimestamps = useRef<Record<string, number>>({});
 
   // ── デモ機能（コア機能から独立） ──────────────────────────────
   const demoStream = useDemoStream({
@@ -67,33 +72,83 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!transcript) return;
     const extracted = extractTerms(transcript);
+    const now = Date.now();
     setActiveTerms(prev => {
       const ids = new Set(prev.map(t => t.id));
       const newTerms = extracted.filter(t => !ids.has(t.id));
-      // 新しいバブルの追加時刻を記録
-      const now = Date.now();
+      // 新出バブル: 追加時刻を記録
       newTerms.forEach(t => { termTimestamps.current[t.id] = now; });
+      // 再出現バブル: タイムスタンプをリセットして猶予期間を延命
+      extracted.filter(t => ids.has(t.id)).forEach(t => {
+        termTimestamps.current[t.id] = now;
+      });
       return [...prev, ...newTerms];
     });
   }, [transcript]);
 
-  // 30秒ライフタイム: 1秒ごとに期限切れバブルを除去
+  // ── スマートバブル削除 (2秒ごとにスキャン) ────────────────────
   useEffect(() => {
-    const LIFETIME_MS = 30_000;
+    const GRACE_MS      = 20_000; // 新出バブルの猶予期間
+    const HALF_LIFE_MS  = 5 * 60 * 1000; // 興味スコアの半減期（5分）
+    const SOFT_LIMIT    = 12;    // この数を超えたら低スコア順に削除
+    const HARD_LIMIT    = 20;    // この数を超えたら猶予なしで即削除
+    // 興味スコア: クリック回数 × 時間減衰
+    const interestScore = (termId: string, clicks: number) => {
+      const lastClick = termClickTimestamps.current[termId]
+        ?? termTimestamps.current[termId]
+        ?? 0;
+      const elapsed = Date.now() - lastClick;
+      return clicks * Math.exp(-elapsed / HALF_LIFE_MS);
+    };
+
     const id = setInterval(() => {
       const now = Date.now();
-      setActiveTerms(prev => prev.filter(t => {
-        if (pinnedTermIds.has(t.id)) return true;
-        const ts = termTimestamps.current[t.id];
-        return ts !== undefined && now - ts < LIFETIME_MS;
-      }));
-    }, 1000);
+      setActiveTerms(prev => {
+        if (prev.length <= SOFT_LIMIT) {
+          setLowInterestIds(new Set());
+          return prev;
+        }
+        // 削除候補: ピン済み・猶予期間中を除く
+        const candidates = prev.filter(t =>
+          !pinnedTermIds.has(t.id) &&
+          now - (termTimestamps.current[t.id] ?? 0) > GRACE_MS
+        );
+        // スコア昇順（低スコアが先頭）
+        const sorted = [...candidates].sort((a, b) =>
+          interestScore(a.id, termWeightsRef.current[a.id] || 0) -
+          interestScore(b.id, termWeightsRef.current[b.id] || 0)
+        );
+        // ハード上限超過: 猶予なしで即削除（ピン除く）
+        if (prev.length > HARD_LIMIT) {
+          const removeCount = prev.length - SOFT_LIMIT;
+          const toRemove = new Set(sorted.slice(0, removeCount).map(t => t.id));
+          setLowInterestIds(new Set());
+          return prev.filter(t => !toRemove.has(t.id));
+        }
+        // ソフト上限超過: 最低スコア1件だけ除去
+        const toRemove = new Set([sorted[0]?.id].filter(Boolean));
+        // 次に消えそうなバブル（上位3件）を半透明フィードバック
+        const fadingIds = new Set(sorted.slice(0, 3).map(t => t.id));
+        setLowInterestIds(fadingIds);
+        return prev.filter(t => !toRemove.has(t.id));
+      });
+    }, 2000);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pinnedTermIds]);
+
+  // termWeights を setInterval クロージャから参照するための ref
+  const termWeightsRef = useRef<Record<string, number>>({});
 
   const handleTermClick = useCallback((term: Term) => {
     setSelectedTerm(term);
-    setTermWeights(prev => ({ ...prev, [term.id]: (prev[term.id] || 0) + 1 }));
+    setTermWeights(prev => {
+      const next = { ...prev, [term.id]: (prev[term.id] || 0) + 1 };
+      termWeightsRef.current = next; // ref にも同期
+      return next;
+    });
+    // クリック時刻を記録（時間減衰スコアの基準点）
+    termClickTimestamps.current[term.id] = Date.now();
     setSearchHistory(prev => [term, ...prev.filter(t => t.id !== term.id)].slice(0, 50));
   }, []);
 
@@ -122,7 +177,10 @@ const App: React.FC = () => {
     setTranscript(''); setActiveTerms([]); setTermWeights({});
     setSelectedTerm(null); setCategoryFilter('ALL');
     setPinnedTermIds(new Set());
+    setLowInterestIds(new Set());
     termTimestamps.current = {};
+    termClickTimestamps.current = {};
+    termWeightsRef.current = {};
     toast.info('リセットしました');
   };
 
@@ -154,6 +212,7 @@ const App: React.FC = () => {
         selectedTermId={selectedTerm?.id}
         pinnedTermIds={pinnedTermIds}
         onTogglePin={handleTogglePin}
+        lowInterestIds={lowInterestIds}
       />
     ),
     detail: (
@@ -175,7 +234,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, pinnedTermIds, handleTogglePin]);
+  }), [transcript, isListening, filteredTerms, termWeights, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, pinnedTermIds, handleTogglePin, lowInterestIds]);
 
   return (
     <div
