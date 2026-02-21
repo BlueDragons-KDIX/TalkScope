@@ -196,6 +196,8 @@ const App: React.FC = () => {
         setTermWeights(prev => ({ ...prev, [termId]: 0 }));
         termImportance.current[termId] = 0;
         termTimestamps.current[termId] = Date.now();
+        // 自動ピン済みフラグも解除しないと、再度クリックを重ねても「すでに自動ピン済み」扱いで弾かれる
+        autoPinnedSet.current.delete(termId);
       } else {
         next.add(termId);
       }
