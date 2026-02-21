@@ -5,7 +5,9 @@ from app.services.text_analysis import (
     tfidf_scores,
     top_terms_by_tfidf,
     vectorize_content_tokens,
+    vectorize_sentence,
 )
+import math
 
 
 def test_morphological_analysis_returns_tokens() -> None:
@@ -118,3 +120,47 @@ def test_morphological_analysis_fallback_keeps_auxiliary_token(monkeypatch) -> N
 
     pos_by_surface = {token["surface"]: token["pos"] for token in tokens}
     assert pos_by_surface["です"] == "AUX"
+
+
+def test_vectorize_sentence_returns_single_vector() -> None:
+    result = vectorize_sentence("今日は自然言語処理を勉強して、結果を共有します。")
+
+    assert result["meta"]["vector_dim"] > 0
+    assert len(result["sentence_vector"]) == result["meta"]["vector_dim"]
+    assert result["meta"]["vector_source"] in {
+        "spacy_doc",
+        "spacy_token_avg",
+        "content_token_avg",
+        "hash",
+    }
+
+
+def test_vectorize_sentence_empty_text_returns_empty_vector() -> None:
+    result = vectorize_sentence("", normalize=True)
+
+    assert result["sentence_vector"] == []
+    assert result["meta"]["vector_dim"] == 0
+    assert result["meta"]["vector_source"] == "none"
+
+
+def test_vectorize_sentence_hash_fallback_honors_normalize_flag(monkeypatch) -> None:
+    monkeypatch.setattr(text_analysis, "_get_spacy_ja", lambda: None)
+    monkeypatch.setattr(
+        text_analysis,
+        "vectorize_content_tokens",
+        lambda text, deduplicate=False: {"text": text, "meta": {}, "tokens": []},
+    )
+
+    raw = vectorize_sentence("hash fallback test", normalize=False)
+    normalized = vectorize_sentence("hash fallback test", normalize=True)
+
+    raw_norm = math.sqrt(sum(v * v for v in raw["sentence_vector"]))
+    normalized_norm = math.sqrt(sum(v * v for v in normalized["sentence_vector"]))
+
+    assert raw["meta"]["vector_source"] == "hash"
+    assert normalized["meta"]["vector_source"] == "hash"
+    assert raw["meta"]["normalize"] is False
+    assert normalized["meta"]["normalize"] is True
+    assert raw["sentence_vector"] != normalized["sentence_vector"]
+    assert raw_norm > 1.0
+    assert abs(normalized_norm - 1.0) < 1e-6

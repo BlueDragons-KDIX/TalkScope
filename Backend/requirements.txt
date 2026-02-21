@@ -2,6 +2,7 @@ fastapi
 uvicorn
 pydantic
 python-dotenv
+httpx
 sudachipy
 sudachidict-core
 spacy
