@@ -5,8 +5,7 @@ from app.core.database import tx
 
 def create_dictionary(
     word: str,
-    meaning: str,
-    description: str | None = None,
+    description: str,
     meaning_vector: list[float] | None = None,
 ) -> int:
     """辞書エントリを作成し、生成されたIDを返す。"""
@@ -14,7 +13,6 @@ def create_dictionary(
     def _create(session: Session) -> int:
         entry = Dictionary(
             word=word,
-            meaning=meaning,
             description=description,
             meaning_vector=meaning_vector,
         )
@@ -32,13 +30,12 @@ def read_dictionary_by_word(word: str) -> Dictionary | None:
         return entry
     return tx.run(_read)
 
-def update_dictionary(id: int, word: str, meaning: str, description: str | None = None, meaning_vector: list[float] | None = None) -> None:
+def update_dictionary(id: int, word: str, description: str, meaning_vector: list[float] | None = None) -> None:
     """辞書エントリを更新する。"""
     def _update(session: Session) -> None:
         entry = session.query(Dictionary).filter(Dictionary.id == id).first()
         if entry:
             entry.word = word
-            entry.meaning = meaning
             entry.description = description
             entry.meaning_vector = meaning_vector
     return tx.run(_update)

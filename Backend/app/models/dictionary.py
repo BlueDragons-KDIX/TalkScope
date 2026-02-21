@@ -11,7 +11,6 @@ class Dictionary(Base):
     __tablename__ = 'dictionary'
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     word = Column(String, nullable=False)
-    meaning = Column(String, nullable=False)
     description = Column(String, nullable=False)
     meaning_vector = Column(Vector(300), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

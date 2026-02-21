@@ -89,7 +89,7 @@ async def test_no_nouns():
 
 # ---------------------------------------------------------------------------
 # 3. 単一名詞
-#    理由: 最小ケースで word, meaning, meaning_vector, description, source の
+#    理由: 最小ケースで word, description, meaning_vector, source の
 #          全フィールドが正しく返されることを確認
 # ---------------------------------------------------------------------------
 async def test_single_noun():
@@ -104,8 +104,8 @@ async def test_single_noun():
     assert len(results) >= 1, "❌ 結果が空"
     entry = results[0]
 
-    # 全フィールドの存在確認（description 追加）
-    for key in ("word", "meaning", "meaning_vector", "description", "source"):
+    # 全フィールドの存在確認
+    for key in ("word", "description", "meaning_vector", "source"):
         assert key in entry, f"❌ '{key}' フィールドがない: {entry}"
     print(f"  word='{entry['word']}', source='{entry['source']}'")
     print(f"  description='{entry['description']}'")

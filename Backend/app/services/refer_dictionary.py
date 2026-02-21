@@ -6,7 +6,7 @@
   3. 各単語の処理:
      a. DB検索 → ヒットすればその結果を返す
      b. ミスした場合、ベクトル化と LLM 問い合わせを並列実行する
-     c. 得られた意味・ベクトルを DB に登録して返す
+     c. 得られた説明・ベクトルを DB に登録して返す
 
   テキスト
     │
@@ -61,9 +61,8 @@ def _get_db_sem() -> asyncio.Semaphore:
 # ---------------------------------------------------------------------------
 class DictionaryEntry(TypedDict):
     word: str
-    meaning: str
-    meaning_vector: list[float] | None
     description: str
+    meaning_vector: list[float] | None
     source: str
 
 
@@ -97,16 +96,15 @@ async def _lookup_or_create(
     if entry:
         return DictionaryEntry(
             word=entry.word,
-            meaning=entry.meaning,
-            meaning_vector=entry.meaning_vector,
             description=entry.description,
+            meaning_vector=entry.meaning_vector,
             source="db",
         )
 
     # 2. ベクトル化 + LLM を並列実行（DB を触らないので並列OK）
     vector_task = asyncio.to_thread(vectorize_pretokenized_words, [word_parts])
     llm_task = _call_llm(compound_word)
-    vectors, (meaning, description) = await asyncio.gather(vector_task, llm_task)
+    vectors, description = await asyncio.gather(vector_task, llm_task)
     vector = vectors[0] if vectors else []
 
     # 3. DB登録（直列: 書き込み衝突防止）
@@ -114,16 +112,14 @@ async def _lookup_or_create(
         await asyncio.to_thread(
             create_dictionary,
             word=compound_word,
-            meaning=meaning,
-            meaning_vector=vector,
             description=description,
+            meaning_vector=vector,
         )
 
     return DictionaryEntry(
         word=compound_word,
-        meaning=meaning,
-        meaning_vector=vector,
         description=description,
+        meaning_vector=vector,
         source="llm",
     )
 
@@ -131,18 +127,18 @@ async def _lookup_or_create(
 # ---------------------------------------------------------------------------
 # LLM 呼び出し
 # ---------------------------------------------------------------------------
-async def _call_llm(word: str) -> tuple[str, str]:
-    """LLMに単語の意味を問い合わせる。
+async def _call_llm(word: str) -> str:
+    """LLMに単語の説明を問い合わせる。
 
     TODO: 実際の LLM API（OpenAI 等）に差し替える
     """
     try:
         # TODO: タイムアウト・リトライ・レート制限の処理を追加する
         await asyncio.sleep(0.3)  # 実際は HTTP リクエスト
-        return f"{word}の意味（仮）", "description"
+        return f"{word}の説明（仮）"
     except Exception:
         logger.exception("LLM 呼び出しに失敗しました: %s", word)
-        return f"{word}の意味を取得できませんでした", ""
+        return f"{word}の説明を取得できませんでした"
 
 
 # ---------------------------------------------------------------------------
