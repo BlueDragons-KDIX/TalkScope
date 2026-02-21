@@ -60,8 +60,6 @@ def test_vectorize_content_tokens_filters_particles_and_conjunctions() -> None:
     assert result["meta"]["vector_dim"] > 0
     assert len(result["tokens"]) > 0
     assert all(len(token["vector"]) == token["vector_dim"] for token in result["tokens"])
-
-
 def test_vectorize_content_tokens_excludes_conjunction_in_fallback(monkeypatch) -> None:
     monkeypatch.setattr(text_analysis, "_sudachi_analysis", lambda _text: [])
 
