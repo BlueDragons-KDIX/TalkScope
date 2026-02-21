@@ -43,8 +43,21 @@ export interface WordRow {
   relatedWords: string[];
 }
 
+/** ピン留めした用語（ピン中一覧用）。Term と同型で保存 */
+export interface PinnedTermRow {
+  id: string;
+  word: string;
+  kana: string;
+  shortDesc: string;
+  longDesc: string;
+  category: 'Frontend' | 'Backend' | 'Infra' | 'AI/Data' | 'General';
+  level: number;
+  relatedTerms: string[];
+  externalUrl?: string;
+}
+
 /** DB バージョン（構造変更時に増やす） */
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 /** データベース名 */
 export const DB_NAME = 'lexiflow-db';
@@ -54,4 +67,5 @@ export const STORE_NAMES = {
   presentations: 'presentations',
   history: 'history',
   words: 'words',
+  pinnedTerms: 'pinnedTerms',
 } as const;
