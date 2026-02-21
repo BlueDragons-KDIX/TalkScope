@@ -33,8 +33,6 @@ interface BubbleCloudProps {
   termFrequencies?: Record<string, number>;
   onTermClick: (term: Term) => void;
   darkMode?: boolean;
-  categoryFilter: string;
-  onCategoryFilterChange: (cat: string) => void;
   selectedTermId?: string;
   pinnedTermIds: Set<string>;
   onTogglePin: (termId: string) => void;
@@ -50,8 +48,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   termFrequencies = {},
   onTermClick,
   darkMode = true,
-  categoryFilter,
-  onCategoryFilterChange,
   selectedTermId,
   pinnedTermIds,
   onTogglePin,
@@ -97,14 +93,34 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
 
   /** この半径以上で自動で星（ピン）をつける */
   const AUTO_PIN_RADIUS_THRESHOLD = 55;
+  
+  // コンテナの初期幅を記憶し、それをデフォルトサイズとする
+  const defaultWidthRef = useRef<number | null>(null);
+  
+  // マップのリサイズを検知して再描画をトリガーする用
+  const [mapSize, setMapSize] = useState({ width: 800, height: 500 });
 
   // コンテナの寸法を計測（リサイズ対応）
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([e]) => {
-      engineRef.current.width = e.contentRect.width;
-      engineRef.current.height = e.contentRect.height;
+      const w = e.contentRect.width;
+      const h = e.contentRect.height;
+      if (w > 0 && defaultWidthRef.current === null) {
+        defaultWidthRef.current = w;
+      }
+      
+      // ResizeObserverからの過剰な再レンダリングを防ぐため、10px以上の差がある場合のみ更新
+      setMapSize(prev => {
+        if (Math.abs(prev.width - w) > 10 || Math.abs(prev.height - h) > 10) {
+          return { width: w, height: h };
+        }
+        return prev;
+      });
+
+      engineRef.current.width = w;
+      engineRef.current.height = h;
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -113,6 +129,12 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   // ノードの追加・削除・半径更新（レンダリングのタイミングで同期）
   const activeIds = new Set(activeTerms.map(t => t.id));
   const engineNodes = engineRef.current.nodes;
+  
+  // デフォルト幅を基準にしてスケールダウン（大きくなる時は1.0でストップ）
+  const DEFAULT_WIDTH = defaultWidthRef.current || 800;
+  const currentWidth = mapSize.width;
+  const scaleFactor = Math.min(1, currentWidth / DEFAULT_WIDTH);
+
   for (const id of Array.from(engineNodes.keys())) {
     if (!activeIds.has(id)) engineNodes.delete(id);
   }
@@ -130,9 +152,11 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     const themeScore = similarityToScore(themeSim);   // 0〜1
     const convScore = similarityToScore(convSim);    // 0〜1
     const displayCount = Math.min(freq, 10);        // 表示回数は10回まで反映
-    const BASE_SIZE = 20;
+    const w = pinnedTermIds?.has(term.id) ? 0 : (termWeights[term.id] || 0);
+    // スケールファクターを適用して半径を縮小
+    const baseR = (Math.max(60, 80 + w * 10) + (pinnedTermIds?.has(term.id) ? 20 : 0)) / 2;
     // 基本の大きさ * (1 + 主題類似度) * (1 + 会話類似度) * (1 + 0.1*表示回数)
-    const r = BASE_SIZE
+    const r = baseR * scaleFactor;
       * (1 + themeScore)
       * (1 + convScore)
       * (1 + 0.1 * displayCount);
@@ -147,6 +171,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     if (r >= AUTO_PIN_RADIUS_THRESHOLD && !pinnedTermIds.has(term.id)) {
       autoPinCandidatesRef.current.add(term.id);
     }
+    
     if (!engineNodes.has(term.id)) {
       const cw = engineRef.current.width || 800;
       const ch = engineRef.current.height || 500;
@@ -309,32 +334,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         </span>
       </div>
 
-      {/* Category filter tabs */}
-      <div
-        className={`px-3 py-2 border-b flex gap-1 overflow-x-auto shrink-0 ${dk ? 'border-slate-800/40' : 'border-slate-100'}`}
-        style={{ scrollbarWidth: 'none' }}
-      >
-        {categories.map(cat => {
-          const c = CATEGORY_COLORS[cat];
-          const isActive = categoryFilter === cat;
-          return (
-            <button
-              key={cat}
-              onClick={() => onCategoryFilterChange(cat)}
-              className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                isActive
-                  ? cat === 'ALL'
-                    ? (dk ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-800')
-                    : `${c.bg} ${c.text} border ${c.border}`
-                  : dk ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              {cat === 'ALL' ? 'すべて' : cat}
-            </button>
-          );
-        })}
-      </div>
-
       {/* Bubbles area — 座標固定+上方フロート */}
       <div ref={containerRef} className="relative flex-1 overflow-hidden">
         {dk && (
@@ -359,35 +358,36 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
               const node = engineNodes.get(term.id);
               if (!node) return null;
               return (
-                <div
+                <motion.div
                   key={term.id}
                   ref={el => { bubbleRefs.current[term.id] = el; }}
                   className="absolute left-0 top-0 will-change-transform"
                   style={{ transform: `translate3d(${node.x - node.radius}px, ${node.y - node.radius}px, 0)` }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, transition: { duration: 1.2 } }}
+                  transition={{ duration: 0.4 }}
                 >
                   <motion.div
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0 }}
-                    transition={{
-                      opacity: { duration: 0.4 },
-                      scale:   { type: 'spring', damping: 18, stiffness: 220 },
-                    }}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    exit={{ scale: 0, transition: { duration: 1.2, ease: "easeOut" } }}
+                    transition={{ type: 'spring', damping: 18, stiffness: 220 }}
                   >
                     <TermBubble
-                      term={term}
-                      weight={pinnedTermIds.has(term.id) ? 0 : (termWeights[term.id] || 0)}
-                      onClick={onTermClick}
-                      darkMode={dk}
-                      isActive={selectedTermId === term.id}
-                      isPinned={pinnedTermIds.has(term.id)}
-                      onTogglePin={onTogglePin}
-                      size={node.radius * 2}
-                      mapContainerRef={containerRef}
-                      showDescription={descIds.has(term.id)}
+                        term={term}
+                        weight={pinnedTermIds?.has(term.id) ? 0 : (termWeights[term.id] || 0)}
+                        onClick={onTermClick}
+                        darkMode={dk}
+                        isActive={selectedTermId === term.id}
+                        isPinned={pinnedTermIds?.has(term.id)}
+                        onTogglePin={onTogglePin ? () => onTogglePin(term.id) : undefined}
+                        size={node.radius * 2}
+                        mapContainerRef={containerRef}
+                        showDescription={descIds.has(term.id)}
                     />
                   </motion.div>
-                </div>
+                </motion.div>
               );
             })}
           </AnimatePresence>
