@@ -87,6 +87,27 @@ make up-backend
     }
     ```
 
+- `POST /dictionary/lookup`
+  - 用語の意味を日本語で1〜2文の概要として返す
+  - 現在は単語DB未実装のため、常にGeminiで生成する
+  - リクエスト例:
+    ```json
+    {
+      "term": "RAG",
+      "context": "LLMの会話で出てきた用語"
+    }
+    ```
+  - レスポンス例:
+    ```json
+    {
+      "term": "RAG",
+      "summary": "RAGは、回答生成時に外部知識を検索して根拠を補う手法です。LLMの回答精度を高める目的で使われます。",
+      "source": "gemini",
+      "model": "gemini-1.5-flash",
+      "cached": false
+    }
+    ```
+
 ## ディレクトリ構成
 
 ```txt
@@ -98,12 +119,15 @@ Backend/
     │   ├── __init__.py
     │   └── endpoints/
     │       ├── analysis.py
+    │       ├── dictionary.py
     │       └── hoge.py
     ├── services/
+    │   ├── dictionary.py
     │   ├── text_analysis.py
     │   └── hoge.py
     └── schemas/
         ├── analysis.py
+        ├── dictionary.py
         └── hoge.py
 ```
 
