@@ -261,6 +261,7 @@ def _guess_pos(surface: str) -> str:
         "まで",
         "より",
     }
+
     conjunctions = {
         "そして",
         "しかし",
