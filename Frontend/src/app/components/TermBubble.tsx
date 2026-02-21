@@ -175,7 +175,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
               className="absolute inset-0 flex items-center justify-center p-3 overflow-hidden rounded-full"
               title={term.shortDesc}
             >
-              <span className="line-clamp-4 overflow-hidden w-full text-[9px] leading-tight font-medium">
+              <span className="line-clamp-4 overflow-hidden w-full leading-tight font-medium" style={{ fontSize: Math.min(10, Math.max(6, size * 0.13)) }}>
                 {term.shortDesc}
               </span>
             </motion.div>
@@ -188,7 +188,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
               transition={{ duration: 1, ease: "easeInOut" }}
               className="absolute inset-0 flex items-center justify-center p-2 overflow-hidden rounded-full"
             >
-              <span className="w-full" style={{ fontSize: Math.max(11, size / 7) }}>
+              <span className="w-full" style={{ fontSize: Math.min(14, Math.max(7, size * 0.18)) }}>
                 {term.word}
               </span>
             </motion.div>
