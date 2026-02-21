@@ -15,7 +15,7 @@ interface TranscriptionViewProps {
   onClearTranscript?: () => void;
   onTermClick: (term: Term) => void;
   onTermHover: (term: Term | null) => void;
-  pinnedTermIds?: Set<string>;
+  isPinned?: Set<string>;
   onTogglePin?: (termId: string) => void;
   onLoadDemo?: () => void;
   /** 非同期ストリーミングデモの制御オブジェクト（コア機能とは独立） */
@@ -30,7 +30,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   onClearTranscript,
   onTermClick,
   onTermHover,
-  pinnedTermIds = new Set(),
+  isPinned = new Set(),
   onTogglePin,
   onLoadDemo,
   demoStream,
@@ -103,7 +103,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   return (
     <div className={`flex flex-col h-full transition-colors ${dk ? 'bg-[#0d0e1a]' : 'bg-white'}`}>
       {/* Header */}
-      <div className={`flex items-center justify-between px-4 py-2.5 border-b flex-shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50/80'}`}>
+      <div className={`flex items-center justify-between px-4 py-2.5 border-b shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50/80'}`}>
         <div className="flex items-center gap-2">
           <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
             isStreaming ? (dk ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-50 text-purple-600') :
@@ -124,7 +124,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
 
       {/* Streaming progress bar */}
       {(isStreaming || isPaused || isDone) && (
-        <div className={`h-0.5 w-full ${dk ? 'bg-slate-800' : 'bg-slate-100'} flex-shrink-0`}>
+        <div className={`h-0.5 w-full ${dk ? 'bg-slate-800' : 'bg-slate-100'} shrink-0`}>
           <motion.div
             className={`h-full ${isDone ? 'bg-emerald-500' : 'bg-purple-500'}`}
             initial={{ width: 0 }}
@@ -228,7 +228,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
             className={`fixed w-52 p-3 rounded-xl shadow-2xl z-9999 pointer-events-none border ${dk ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-900 border-slate-800 text-white'}`}
             style={{ left: tooltipPos.left, top: tooltipPos.top }}
           >
-            {pinnedTermIds.has(hoveredTerm.id) && (
+            {isPinned.has(hoveredTerm.id) && (
               <div className="absolute top-2 right-2 text-yellow-400">
                 <Star size={12} fill="currentColor" />
               </div>
@@ -252,7 +252,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
       })()}
 
       {/* Footer: Big round recording buttons */}
-      <div className={`px-5 py-4 border-t flex-shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/20' : 'border-slate-100 bg-slate-50/80'}`}>
+      <div className={`px-5 py-4 border-t shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/20' : 'border-slate-100 bg-slate-50/80'}`}>
         <div className="flex items-center justify-center gap-5">
 
           {/* リセットボタン */}

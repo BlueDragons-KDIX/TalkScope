@@ -11,11 +11,11 @@
 
 ## ストア構成（画像どおり）
 
-| ストア | 主キー (keyPath) | 説明 |
-|--------|------------------|------|
-| **presentations**（すべての発表） | `presentationId` (string) | 発表id, 会話の全文, 会話のベクトル, 主題のベクトル, 発表名=主題 |
-| **history**（履歴・辞書で使う） | `historyId` (number, autoIncrement) | 履歴id, 発表id, 単語id, ピン留めしたか。発表⇔単語の紐付け。 |
-| **words**（すべての単語情報・辞書で使う） | `wordId` (string) | 単語id, 単語, 解説, ベクトル, 完全に理解した, 関連ワード |
+| ストア                                    | 主キー (keyPath)                    | 説明                                                            |
+| ----------------------------------------- | ----------------------------------- | --------------------------------------------------------------- |
+| **presentations**（すべての発表）         | `presentationId` (string)           | 発表id, 会話の全文, 会話のベクトル, 主題のベクトル, 発表名=主題 |
+| **history**（履歴・辞書で使う）           | `historyId` (number, autoIncrement) | 履歴id, 発表id, 単語id, ピン留めしたか。発表⇔単語の紐付け。     |
+| **words**（すべての単語情報・辞書で使う） | `wordId` (string)                   | 単語id, 単語, 解説, ベクトル, 完全に理解した, 関連ワード        |
 
 ## リレーション（画像どおり）
 
@@ -41,11 +41,11 @@ import {
   getWord,
   setHistoryPinned,
   getPinnedWordIdsByPresentation,
-} from '@/app/db';
+} from "@/app/db";
 ```
 
 - 発表の保存: `putPresentation({ presentationId, fullText, conversationVector, themeVector, themeText })`
-- 単語情報の保存: `putWord({ wordId, word, explanation, vector, fullyUnderstood, relatedWords })`
+- 単語情報の保存: `putWord({ wordId, word, explanation, vector, isUnderstood, relatedWords })`
 - ピン留めの反映: `setHistoryPinned(presentationId, wordId, true)`
 - この発表のピン一覧: `getPinnedWordIdsByPresentation(presentationId)`
 

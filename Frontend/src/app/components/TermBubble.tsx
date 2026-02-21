@@ -15,9 +15,10 @@ interface TermBubbleProps {
   isPinned?: boolean;
   onTogglePin?: (termId: string) => void;
   size?: number;
+  isAutoPlay?: boolean;
+  intervalSec?: number;
   /** 用語マップコンテナの参照（ツールチップを枠内に収めるため） */
   mapContainerRef?: React.RefObject<HTMLDivElement | null>;
-  showDescription?: boolean;
 }
 
 export const TermBubble: React.FC<TermBubbleProps> = ({
@@ -29,14 +30,30 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   isPinned = false,
   onTogglePin,
   size: explicitSize,
+  isAutoPlay = false,
+  intervalSec = 5,
   mapContainerRef,
-  showDescription = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isShowingDesc, setIsShowingDesc] = useState(false);
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; showBelow: boolean } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const bubbleElementRef = useRef<HTMLDivElement>(null);
 
+  React.useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval>;
+    if (isAutoPlay) {
+      intervalId = setInterval(() => {
+        setIsShowingDesc((prev) => !prev);
+      }, intervalSec * 1000);
+    } else {
+      setIsShowingDesc(false);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isAutoPlay, intervalSec]);
 
 
   // 重要度とピンの有無によってサイズ（半径×2）を変える
@@ -165,7 +182,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         style={{ width: size, height: size }}
       >
         <AnimatePresence>
-          {showDescription ? (
+          {isShowingDesc ? (
             <motion.div
               key="desc"
               initial={{ opacity: 0 }}
@@ -193,8 +210,6 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
               </span>
             </motion.div>
           )}
-
-
         {/* 星ボタン：バブル内に配置して y アニメーションと同期 */}
         <button
           onClick={(e) => {

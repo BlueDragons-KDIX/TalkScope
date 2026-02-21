@@ -1,6 +1,6 @@
-# フロント向け API 仕様（`/analysis/vectorize`）
+# フロント向け API 仕様（ベクトル化）
 
-このドキュメントは、Frontend メンバーが `POST /analysis/vectorize` を利用するための実装向け仕様です。  
+このドキュメントは、Frontend メンバーがベクトル化APIを利用するための実装向け仕様です。  
 バックエンド内部の実装詳細は以下を参照してください。
 
 - `/Users/honmayuudai/MyHobby/hackson/KC3Hack2026/doc/text-analysis-methods.md`
@@ -14,9 +14,11 @@
 
 ## 2. エンドポイント
 
-- Method: `POST`
-- Path: `/analysis/vectorize`
-- Content-Type: `application/json`
+- `POST /analysis/vectorize`
+  - 単語（内容語）ベクトルを返す
+- `POST /analysis/vectorize/sentence`
+  - 文章全体の単一ベクトルを返す
+- 共通: `Content-Type: application/json`
 
 ## 3. リクエスト
 
@@ -31,13 +33,13 @@
 
 ### 3.2 フィールド
 
-| 項目 | 型 | 必須 | 既定値 | 説明 |
-|---|---|---|---|---|
-| `text` | `string` | 必須 | - | 解析対象テキスト（1文字以上） |
-| `include_pos` | `string[] \| null` | 任意 | `null` | ベクトル化対象に含める品詞 |
-| `exclude_pos` | `string[] \| null` | 任意 | `null` | ベクトル化対象から除外する品詞 |
-| `min_length` | `number` | 任意 | `1` | 語長の最小値 |
-| `deduplicate` | `boolean` | 任意 | `false` | 同一基本形を1件に集約するか |
+| 項目          | 型                 | 必須 | 既定値  | 説明                           |
+| ------------- | ------------------ | ---- | ------- | ------------------------------ |
+| `text`        | `string`           | 必須 | -       | 解析対象テキスト（1文字以上）  |
+| `include_pos` | `string[] \| null` | 任意 | `null`  | ベクトル化対象に含める品詞     |
+| `exclude_pos` | `string[] \| null` | 任意 | `null`  | ベクトル化対象から除外する品詞 |
+| `min_length`  | `number`           | 任意 | `1`     | 語長の最小値                   |
+| `deduplicate` | `boolean`          | 任意 | `false` | 同一基本形を1件に集約するか    |
 
 補足:
 
@@ -78,24 +80,24 @@
 
 ### 4.2 フィールド
 
-| 項目 | 型 | 説明 | フロントでの主な用途 |
-|---|---|---|---|
-| `text` | `string` | 入力された元テキスト（そのまま返却） | 画面表示時の原文保持、オフセット基準 |
-| `meta` | `object` | 解析全体のメタ情報 | 状態表示、デバッグ表示 |
-| `meta.model` | `string` | 利用モデル名（例: `ginza`） | 環境差異の把握、ログ表示 |
-| `meta.vector_dim` | `number` | レスポンス全体のベクトル次元 | ベクトル処理前の次元チェック |
-| `meta.input_token_count` | `number` | 形態素解析後トークン数（除外前） | 解析量の可視化 |
-| `meta.output_token_count` | `number` | ベクトル化して返したトークン数（除外後） | 抽出件数表示、空結果判定 |
-| `meta.vector_source_counts` | `object` | `spacy` / `hash` など取得元ごとの件数 | 品質監視（フォールバック率確認） |
-| `tokens` | `array` | ベクトル化したトークン一覧 | バブルUIやリスト表示のデータ本体 |
-| `tokens[].surface` | `string` | 表層形 | 表示テキスト |
-| `tokens[].base_form` | `string` | 基本形 | 重複統合・索引用キー |
-| `tokens[].pos` | `string` | 品詞 | 色分け、品詞フィルタUI |
-| `tokens[].start` | `number` | 原文中の開始位置 | ハイライト開始位置 |
-| `tokens[].end` | `number` | 原文中の終了位置 | ハイライト終了位置 |
-| `tokens[].vector` | `number[]` | ベクトル値本体 | 類似度計算、クラスタリング |
-| `tokens[].vector_dim` | `number` | トークンベクトルの次元 | 配列長検証 |
-| `tokens[].vector_source` | `string` | ベクトル取得元（`spacy` / `hash`） | フォールバック判定 |
+| 項目                        | 型         | 説明                                     | フロントでの主な用途                 |
+| --------------------------- | ---------- | ---------------------------------------- | ------------------------------------ |
+| `text`                      | `string`   | 入力された元テキスト（そのまま返却）     | 画面表示時の原文保持、オフセット基準 |
+| `meta`                      | `object`   | 解析全体のメタ情報                       | 状態表示、デバッグ表示               |
+| `meta.model`                | `string`   | 利用モデル名（例: `ginza`）              | 環境差異の把握、ログ表示             |
+| `meta.vector_dim`           | `number`   | レスポンス全体のベクトル次元             | ベクトル処理前の次元チェック         |
+| `meta.input_token_count`    | `number`   | 形態素解析後トークン数（除外前）         | 解析量の可視化                       |
+| `meta.output_token_count`   | `number`   | ベクトル化して返したトークン数（除外後） | 抽出件数表示、空結果判定             |
+| `meta.vector_source_counts` | `object`   | `spacy` / `hash` など取得元ごとの件数    | 品質監視（フォールバック率確認）     |
+| `tokens`                    | `array`    | ベクトル化したトークン一覧               | バブルUIやリスト表示のデータ本体     |
+| `tokens[].surface`          | `string`   | 表層形                                   | 表示テキスト                         |
+| `tokens[].base_form`        | `string`   | 基本形                                   | 重複統合・索引用キー                 |
+| `tokens[].pos`              | `string`   | 品詞                                     | 色分け、品詞フィルタUI               |
+| `tokens[].start`            | `number`   | 原文中の開始位置                         | ハイライト開始位置                   |
+| `tokens[].end`              | `number`   | 原文中の終了位置                         | ハイライト終了位置                   |
+| `tokens[].vector`           | `number[]` | ベクトル値本体                           | 類似度計算、クラスタリング           |
+| `tokens[].vector_dim`       | `number`   | トークンベクトルの次元                   | 配列長検証                           |
+| `tokens[].vector_source`    | `string`   | ベクトル取得元（`spacy` / `hash`）       | フォールバック判定                   |
 
 補足:
 
@@ -153,5 +155,76 @@ export type VectorizeResponse = {
     vector_source_counts: Record<string, number>;
   };
   tokens: VectorizedToken[];
+};
+```
+
+## 7. 文章ベクトルAPI（`/analysis/vectorize/sentence`）
+
+### 7.1 リクエスト
+
+```json
+{
+  "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+  "normalize": true
+}
+```
+
+| 項目        | 型        | 必須 | 既定値 | 説明                                    |
+| ----------- | --------- | ---- | ------ | --------------------------------------- |
+| `text`      | `string`  | 必須 | -      | 文章ベクトル化対象テキスト（1文字以上） |
+| `normalize` | `boolean` | 任意 | `true` | 返却ベクトルにL2正規化を適用するか      |
+
+### 7.2 レスポンス
+
+```jsonc
+{
+  "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+  "meta": {
+    "model": "ginza",
+    "vector_dim": 300,
+    "vector_source": "spacy_doc",
+    "normalize": true,
+    "input_token_count": 13,
+    "content_token_count": 6
+  },
+  "sentence_vector": [0.0312, -0.0124, 0.2011, -0.0942, ...]
+}
+```
+
+| 項目                       | 型         | 説明                                                                             |
+| -------------------------- | ---------- | -------------------------------------------------------------------------------- |
+| `text`                     | `string`   | 入力テキスト（そのまま返却）                                                     |
+| `meta.model`               | `string`   | 利用モデル名（例: `ginza`）                                                      |
+| `meta.vector_dim`          | `number`   | 文章ベクトルの次元数                                                             |
+| `meta.vector_source`       | `string`   | ベクトル取得元（`spacy_doc` / `spacy_token_avg` / `content_token_avg` / `hash`） |
+| `meta.normalize`           | `boolean`  | 正規化を適用したか                                                               |
+| `meta.input_token_count`   | `number`   | 形態素解析後トークン数                                                           |
+| `meta.content_token_count` | `number`   | 内容語として採用されたトークン数                                                 |
+| `sentence_vector`          | `number[]` | 文章ベクトル本体（`meta.vector_dim` 個）                                         |
+
+### 7.3 TypeScript 型サンプル
+
+```ts
+export type SentenceVectorizeRequest = {
+  text: string;
+  normalize?: boolean;
+};
+
+export type SentenceVectorizeResponse = {
+  text: string;
+  meta: {
+    model: string;
+    vector_dim: number;
+    vector_source:
+      | "spacy_doc"
+      | "spacy_token_avg"
+      | "content_token_avg"
+      | "hash"
+      | string;
+    normalize: boolean;
+    input_token_count: number;
+    content_token_count: number;
+  };
+  sentence_vector: number[];
 };
 ```

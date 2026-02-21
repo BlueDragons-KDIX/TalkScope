@@ -261,7 +261,6 @@ def _guess_pos(surface: str) -> str:
         "まで",
         "より",
     }
-
     conjunctions = {
         "そして",
         "しかし",
@@ -397,7 +396,7 @@ def dependency_parse(text: str) -> list[dict[str, Any]]:
 
 # 外部モデルが使えない場合の最終フォールバック。
 # 語から決定的に同じベクトルを生成する（疑似埋め込み）。
-def _build_hashed_vector(term: str, dim: int) -> list[float]:
+def _build_hashed_vector(term: str, dim: int, *, normalize: bool = True) -> list[float]:
     seed = hashlib.sha256(term.encode("utf-8")).digest()
     values: list[float] = []
     counter = 0
@@ -410,6 +409,9 @@ def _build_hashed_vector(term: str, dim: int) -> list[float]:
             raw = int.from_bytes(block[i : i + 4], "little", signed=False)
             values.append((raw / 4294967295.0) * 2.0 - 1.0)
         counter += 1
+
+    if not normalize:
+        return values
 
     norm = math.sqrt(sum(v * v for v in values))
     if norm <= 0.0:
@@ -428,6 +430,15 @@ def _average_vectors(vectors: list[list[float]]) -> list[float]:
             totals[i] += float(value)
     count = len(vectors)
     return [v / count for v in totals]
+
+
+def _l2_normalize(vector: list[float]) -> list[float]:
+    if not vector:
+        return []
+    norm = math.sqrt(sum(v * v for v in vector))
+    if norm <= 0.0:
+        return vector
+    return [v / norm for v in vector]
 
 
 # ベクトル次元はモデル語彙 -> token vector -> ハッシュ既定値の順で決定する。
@@ -600,6 +611,90 @@ def vectorize_content_tokens(
     }
 
 
+def vectorize_sentence(text: str, normalize: bool = True) -> dict[str, Any]:
+    """Vectorize the whole sentence and return one vector."""
+    if not text.strip():
+        return {
+            "text": text,
+            "meta": {
+                "model": "none",
+                "vector_dim": 0,
+                "vector_source": "none",
+                "normalize": normalize,
+                "input_token_count": 0,
+                "content_token_count": 0,
+            },
+            "sentence_vector": [],
+        }
+
+    tokens = morphological_analysis(text)
+    nlp = _get_spacy_ja()
+    doc = nlp(text) if nlp else None
+    vector_source = "hash"
+    sentence_vector: list[float] = []
+    content_token_count = 0
+
+    if doc is not None and doc.has_vector and float(doc.vector_norm) > 0.0:
+        sentence_vector = [float(v) for v in doc.vector]
+        vector_source = "spacy_doc"
+
+    if not sentence_vector and doc is not None:
+        token_vectors = [
+            [float(v) for v in token.vector]
+            for token in doc
+            if (not token.is_space) and token.has_vector and float(token.vector_norm) > 0.0
+        ]
+        if token_vectors:
+            sentence_vector = _average_vectors(token_vectors)
+            vector_source = "spacy_token_avg"
+
+    if not sentence_vector:
+        content = vectorize_content_tokens(text=text, deduplicate=False)
+        content_vectors = [token["vector"] for token in content["tokens"] if token.get("vector")]
+        content_token_count = len(content_vectors)
+        if content_vectors:
+            sentence_vector = _average_vectors(content_vectors)
+            vector_source = "content_token_avg"
+
+    if not sentence_vector:
+        dim = _resolve_vector_dim(nlp, doc)
+        # normalize=False のときは生ベクトルを返すため、ここでは未正規化で生成する。
+        sentence_vector = _build_hashed_vector(text, dim, normalize=False)
+        vector_source = "hash"
+
+    if normalize:
+        sentence_vector = _l2_normalize(sentence_vector)
+
+    vector_dim = len(sentence_vector)
+    model_name = "hash-fallback"
+    if nlp is not None:
+        model_name = str(nlp.meta.get("name", "ja_ginza"))
+
+    if content_token_count == 0:
+        content_token_count = len(
+            [
+                token
+                for token in tokens
+                if _should_vectorize_pos(
+                    token["pos"], _DEFAULT_VECTOR_INCLUDE_POS, _DEFAULT_VECTOR_EXCLUDE_POS
+                )
+            ]
+        )
+
+    return {
+        "text": text,
+        "meta": {
+            "model": model_name,
+            "vector_dim": vector_dim,
+            "vector_source": vector_source,
+            "normalize": normalize,
+            "input_token_count": len(tokens),
+            "content_token_count": content_token_count,
+        },
+        "sentence_vector": [round(float(v), 6) for v in sentence_vector],
+    }
+
+
 def _terms_for_tfidf(text: str) -> list[str]:
     terms = []
     for token in morphological_analysis(text):
@@ -666,3 +761,88 @@ def top_terms_by_tfidf(corpus: list[str], top_k: int = 10) -> list[list[dict[str
         )
 
     return top_terms
+
+
+# --- refer_dictionary 向け: 形態素解析済みトークンから直接ベクトルを算出する ---
+# morphological_analysis を再度呼ばずに済むため、
+# スレッドセーフ問題を回避しつつパフォーマンスも改善できる。
+
+def vectorize_pretokenized_words(
+    words: list[tuple[str, ...]],
+    target_dim: int = 300,
+) -> list[list[float]]:
+    """形態素解析済みの単語タプルのリストからベクトルを算出する。
+
+    Parameters
+    ----------
+    words : list[tuple[str, ...]]
+        形態素解析済みの単語タプルのリスト。
+    target_dim : int, optional
+        出力ベクトルの次元数。DB の VECTOR カラムと一致させること。
+        デフォルトは 300（DB の VECTOR(300) に対応）。
+
+    Returns
+    -------
+    list[list[float]]
+        各単語のベクトル。全て target_dim 次元で統一される。
+    """
+    if not words:
+        return []
+
+    nlp = _get_spacy_ja()
+
+    # spaCy の語彙ベクトル次元を確認
+    spacy_dim = 0
+    if nlp is not None:
+        spacy_dim = int(getattr(nlp.vocab, "vectors_length", 0) or 0)
+
+    results: list[list[float]] = []
+
+    for word_parts in words:
+        # タプルを結合して1つの単語にする（例: ("機械", "学習") → "機械学習"）
+        compound_word = "".join(word_parts)
+
+        # 各形態素のベクトルを集めて平均する
+        part_vectors: list[list[float]] = []
+
+        for part in word_parts:
+            vec = _get_vocab_vector(nlp, part)
+            if vec:
+                part_vectors.append(vec)
+
+        if part_vectors:
+            # 形態素ベクトルの平均で複合語ベクトルを算出
+            avg = _average_vectors(part_vectors)
+            # spaCy の次元が target_dim と異なる場合はパディング/切り詰め
+            if len(avg) != target_dim:
+                avg = _resize_vector(avg, target_dim)
+            results.append(avg)
+        else:
+            # spaCy で取れなければハッシュベクトルにフォールバック
+            # target_dim で生成するので DB と次元が一致する
+            results.append(_build_hashed_vector(compound_word, target_dim))
+
+    return results
+
+
+def _resize_vector(vec: list[float], target_dim: int) -> list[float]:
+    """ベクトルを target_dim に合わせてパディングまたは切り詰める。"""
+    if len(vec) >= target_dim:
+        return vec[:target_dim]
+    return vec + [0.0] * (target_dim - len(vec))
+
+
+def _get_vocab_vector(nlp: Any | None, word: str) -> list[float]:
+    """spaCy の語彙からベクトルを取得する。トークナイザーは使わない。
+
+    語彙辞書への直接アクセスのみを行うため、スレッドセーフ。
+    """
+    if nlp is None:
+        return []
+
+    lexeme = nlp.vocab[word]
+    if lexeme.has_vector and float(lexeme.vector_norm) > 0.0:
+        return [float(v) for v in lexeme.vector]
+
+    return []
+

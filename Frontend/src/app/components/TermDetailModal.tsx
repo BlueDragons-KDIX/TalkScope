@@ -28,7 +28,6 @@ export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose,
       setTimeout(() => setCopied(null), 1500);
     });
   }, [term?.longDesc]);
-
   if (!term) return null;
 
   const dk = darkMode;

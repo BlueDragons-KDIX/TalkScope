@@ -61,7 +61,7 @@ export const DbTestPanel: React.FC<{ darkMode?: boolean }> = ({ darkMode: dk = t
         word: 'テスト単語',
         explanation: 'テスト用の解説です。',
         vector: [0.7, 0.8, 0.9],
-        fullyUnderstood: false,
+        isUnderstood: false,
         relatedWords: ['関連1', '関連2'],
       });
       logs.push('putWord: OK');
@@ -79,7 +79,7 @@ export const DbTestPanel: React.FC<{ darkMode?: boolean }> = ({ darkMode: dk = t
 
       // 7. 履歴を発表id+単語idで取得
       const hist = await getHistoryByPresentationAndWord(TEST_PRESENTATION_ID, TEST_WORD_ID);
-      if (!hist || !hist.pinned) {
+      if (!hist || !hist.isPinned) {
         throw new Error('getHistoryByPresentationAndWord の結果が一致しません');
       }
       logs.push('getHistoryByPresentationAndWord: OK');

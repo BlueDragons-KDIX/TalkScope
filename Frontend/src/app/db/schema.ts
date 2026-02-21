@@ -25,7 +25,7 @@ export interface HistoryRow {
   /** 単語id（FK → words） */
   wordId: string;
   /** ピン留めしたか */
-  pinned: boolean;
+  isPinned: boolean;
 }
 
 /** すべての単語情報（words）: 単語, 解説, ベクトル, 完全に理解した, 関連ワード。辞書で使う */
@@ -38,7 +38,7 @@ export interface WordRow {
   /** ベクトル (number[]) */
   vector: number[];
   /** 完全に理解した */
-  fullyUnderstood: boolean;
+  isUnderstood: boolean;
   /** 関連ワード */
   relatedWords: string[];
 }

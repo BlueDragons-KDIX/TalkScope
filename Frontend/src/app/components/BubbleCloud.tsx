@@ -34,7 +34,7 @@ interface BubbleCloudProps {
   onTermClick: (term: Term) => void;
   darkMode?: boolean;
   selectedTermId?: string;
-  pinnedTermIds: Set<string>;
+  isPinned: Set<string>;
   onTogglePin: (termId: string) => void;
   /** 主題ベクトル（あればバブルサイズの主題類似度に利用） */
   themeVector?: ThemeVectorResult | null;
@@ -53,7 +53,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   onTermClick,
   darkMode = true,
   selectedTermId,
-  pinnedTermIds,
+  isPinned,
   onTogglePin,
   themeVector,
   themeText = '',
@@ -79,11 +79,10 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const [isAutoPlay, setIsAutoPlay] = useState(false);
   const [intervalSec, setIntervalSec] = useState(4);
   const [showSlider, setShowSlider] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeTermsRef = useRef(activeTerms);
 
   // 用語⇔説明の反転状態を管理するIDセット（Auto-Play ONのときのみ使用）
-  const [descIds, setDescIds] = useState<Set<string>>(new Set());
+
 
   // ── バブル物理エンジン ──────────────────────────────────────
   const engineRef = useRef<{
@@ -158,9 +157,9 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     const themeScore = similarityToScore(themeSim);   // 0〜1
     const convScore = similarityToScore(convSim);    // 0〜1
     const displayCount = Math.min(freq, 10);        // 表示回数は10回まで反映
-    const w = pinnedTermIds?.has(term.id) ? 0 : (termWeights[term.id] || 0);
+    const w = isPinned?.has(term.id) ? 0 : (termWeights[term.id] || 0);
     // スケールファクターを適用して半径を縮小
-    const baseR = (Math.min(Math.max(40, w * 10), 50) + (pinnedTermIds?.has(term.id) ? 20 : 0)) / 2;
+    const baseR = (Math.min(Math.max(40, w * 10), 50) + (isPinned?.has(term.id) ? 20 : 0)) / 2;
     // 基本の大きさ * (1 + 主題類似度) * (1 + 会話類似度) * (1 + 0.1*表示回数)
     const r = baseR * scaleFactor  * (1 + themeScore)
       * (1 + convScore)
@@ -173,7 +172,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         radius: Math.round(r * 10) / 10,
       });
     }
-    if (r >= AUTO_PIN_RADIUS_THRESHOLD && !pinnedTermIds.has(term.id)) {
+    if (r >= AUTO_PIN_RADIUS_THRESHOLD && !isPinned.has(term.id)) {
       autoPinCandidatesRef.current.add(term.id);
     }
     
@@ -271,50 +270,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   }, [activeTerms]);
 
   useEffect(() => {
-    if (isAutoPlay) {
-      // 最初のON時に即座に半数を「説明」にする
-      const initToggle = () => {
-        const terms = activeTermsRef.current;
-        if (terms.length === 0) return;
-        
-        // シャッフルして約半分のIDを取得
-        const shuffled = [...terms].sort(() => 0.5 - Math.random());
-        const halfCount = Math.ceil(terms.length / 2);
-        const nextDescIds = new Set(shuffled.slice(0, halfCount).map(t => t.id));
-        setDescIds(nextDescIds);
-      };
-      initToggle();
-
-      const tick = () => {
-        const terms = activeTermsRef.current;
-        if (terms.length === 0) return;
-        
-        // 現在「説明」になっているものを「用語」に戻し、「用語」になっているものを「説明」にする（完全反転）
-        setDescIds(prev => {
-          const next = new Set<string>();
-          terms.forEach(t => {
-            if (!prev.has(t.id)) {
-              next.add(t.id);
-            }
-          });
-          return next;
-        });
-      };
-      intervalRef.current = setInterval(tick, intervalSec * 1000);
-    } else {
-      // OFFにした瞬間すべて「用語」表示に戻す
-      setDescIds(new Set());
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    }
-    return () => {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
+    // 従来の AutoPlay 処理は削除し、各 TermBubble 内で setInterval を個別処理させるように変更した
   }, [isAutoPlay, intervalSec]);
 
   useEffect(() => {
@@ -391,16 +347,17 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                     transition={{ type: 'spring', damping: 18, stiffness: 220 }}
                   >
                     <TermBubble
-                        term={term}
-                        weight={pinnedTermIds?.has(term.id) ? 0 : (termWeights[term.id] || 0)}
-                        onClick={onTermClick}
-                        darkMode={dk}
-                        isActive={selectedTermId === term.id}
-                        isPinned={pinnedTermIds?.has(term.id)}
-                        onTogglePin={onTogglePin ? () => onTogglePin(term.id) : undefined}
-                        size={node.radius * 2}
-                        mapContainerRef={containerRef}
-                        showDescription={descIds.has(term.id)}
+                      term={term}
+                      weight={isPinned.has(term.id) ? 0 : (termWeights[term.id] || 0)}
+                      onClick={onTermClick}
+                      darkMode={dk}
+                      isActive={selectedTermId === term.id}
+                      isPinned={isPinned.has(term.id)}
+                      onTogglePin={onTogglePin}
+                      size={node.radius * 2}
+                      isAutoPlay={isAutoPlay}
+                      intervalSec={intervalSec}
+                      mapContainerRef={containerRef}
                     />
                   </motion.div>
                 </motion.div>
