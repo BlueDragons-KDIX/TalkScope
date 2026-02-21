@@ -1,10 +1,8 @@
 import fastapi
-from app.api.endpoints import analysis, dictionary, hoge
+from app.api.endpoints import hoge
 
 router = fastapi.APIRouter()
 
-router.include_router(analysis.router, prefix="/analysis", tags=["analysis"])
-router.include_router(dictionary.router, prefix="/dictionary", tags=["dictionary"])
 router.include_router(hoge.router, prefix="/hoge", tags=["hoge"])
 
 # 新しくエンドポイントを追加するときは、
