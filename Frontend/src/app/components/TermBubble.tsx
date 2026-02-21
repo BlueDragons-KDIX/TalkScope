@@ -37,6 +37,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const bubbleElementRef = useRef<HTMLDivElement>(null);
 
+
   // 重要度とピンの有無によってサイズ（半径×2）を変える
   const defaultSize = Math.max(60, 80 + weight * 10) + (isPinned ? 20 : 0);
   const size = explicitSize ?? defaultSize;
@@ -158,18 +159,18 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
           transition-shadow duration-200
           ${isActive ? 'ring-2 ring-white/30 scale-110 shadow-lg' : ''}
           ${isHovered && dk ? 'shadow-lg shadow-indigo-500/10' : ''}
-          ${showDescription ? 'text-[9px] leading-tight font-medium p-3' : ''}
+          ${isShowingDesc ? 'text-[9px] leading-tight font-medium p-3' : ''}
         `}
-        style={{ width: size, height: size, fontSize: showDescription ? undefined : Math.max(11, size / 7) }}
+        style={{ width: size, height: size, fontSize: isShowingDesc ? undefined : Math.max(11, size / 7) }}
       >
         <AnimatePresence mode="wait">
-          {showDescription ? (
+          {isShowingDesc ? (
           <motion.div
             key="desc"
-            initial={{ opacity: 0, scale: 0.8, rotateY: 90 }}
-            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-            exit={{ opacity: 0, scale: 0.8, rotateY: -90 }}
-            transition={{ duration: 0.25, ease: "backOut" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
             className="line-clamp-4 overflow-hidden"
             title={term.shortDesc}
           >
@@ -178,10 +179,10 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         ) : (
           <motion.div
             key="word"
-            initial={{ opacity: 0, scale: 0.8, rotateY: -90 }}
-            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-            exit={{ opacity: 0, scale: 0.8, rotateY: 90 }}
-            transition={{ duration: 0.25, ease: "backOut" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
           >
             {term.word}
           </motion.div>
