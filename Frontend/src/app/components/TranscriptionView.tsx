@@ -21,6 +21,8 @@ interface TranscriptionViewProps {
   /** 非同期ストリーミングデモの制御オブジェクト（コア機能とは独立） */
   demoStream?: UseDemoStreamReturn;
   darkMode?: boolean;
+  /** API で発見された動的用語（ハイライト対象に含める） */
+  apiTerms?: Term[];
 }
 
 export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
@@ -35,6 +37,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   onLoadDemo,
   demoStream,
   darkMode = true,
+  apiTerms = [],
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const termButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
@@ -92,7 +95,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
     }
   }, [transcript]);
 
-  const parts = highlightTerms(transcript);
+  const parts = highlightTerms(transcript, apiTerms);
   const dk = darkMode;
 
   const isStreaming = demoStream?.status === 'playing';

@@ -40,6 +40,8 @@ interface BubbleCloudProps {
   themeVector?: ThemeVectorResult | null;
   /** 主題テキスト（用語がこれと一致するとき主題との類似度を 1 とする） */
   themeText?: string;
+  /** API から取得した用語の意味ベクトル（termId → vector）。あればモックの代わりに使用 */
+  termVectors?: Record<string, number[]>;
   /** カテゴリフィルター（'ALL' または category 名） */
   categoryFilter?: string;
   /** カテゴリフィルター変更 */
@@ -57,6 +59,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   onTogglePin,
   themeVector,
   themeText = '',
+  termVectors = {},
   categoryFilter = 'ALL',
   onCategoryFilterChange,
 }) => {
@@ -148,10 +151,13 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const themeTextTrimmed = themeText.trim();
   for (const term of activeTerms) {
     const freq = termFrequencies[term.id] ?? 0;
-    // 主題と同じ単語なら用語ベクトルに主題ベクトルを使う → 計算で自然に類似度 1 になる
+    // 優先順: 1) 主題と同じ単語→主題ベクトル  2) APIの実ベクトル  3) モックベクトル
+    const apiVec = termVectors[term.id];
     const termVec = (themeTextTrimmed && term.word === themeTextTrimmed)
       ? themeVec
-      : getMockTermVector(term.id, dim);
+      : apiVec && apiVec.length > 0
+        ? apiVec
+        : getMockTermVector(term.id, dim);
     const themeSim = cosineSimilarity(termVec, themeVec);
     const convSim = cosineSimilarity(termVec, conversationVec);
     const themeScore = similarityToScore(themeSim);   // 0〜1

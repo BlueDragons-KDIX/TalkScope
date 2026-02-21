@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 import { useDemoStream } from './hooks/useDemoStream';
 import { useVectorSend } from '@/app/hooks/useVectorSend';
+import { useReferDict, type DictTermResult } from '@/app/hooks/useReferDict';
 import type { VectorPayload } from '@/app/utils/vectorSendWithOverlap';
 import { fetchThemeVector, type ThemeVectorResult } from '@/app/utils/themeVectorApi';
 import { DEMO_TEXT_INSTANT } from './demo/demo';
@@ -54,6 +55,10 @@ const App: React.FC = () => {
   const [themeText, setThemeText] = useState('');
   /** 主題テキストをAPIでベクトル化した結果（類似度計算用） */
   const [themeVector, setThemeVector] = useState<ThemeVectorResult | null>(null);
+  /** API (refer_dictionary) で取得した動的用語一覧 */
+  const [apiTerms, setApiTerms] = useState<Term[]>([]);
+  /** API 用語の意味ベクトル (termId → vector)。バブルサイズ計算用 */
+  const [termVectors, setTermVectors] = useState<Record<string, number[]>>({});
 
   // ── バブル寿命管理 refs ────────────────────────────────────────
   const termTimestamps    = useRef<Record<string, number>>({});       // termId → 追加時刻
@@ -78,6 +83,30 @@ const App: React.FC = () => {
       if (import.meta.env.DEV) console.log('[vector] payload', payload.sentences.length, result);
     },
     onError: (err: unknown) => console.warn('[vector] send error', err),
+  });
+
+  // ── refer_dictionary API（1文ずつ送信し用語・意味・ベクトルを取得） ──
+  const handleDictResults = useCallback((results: DictTermResult[]) => {
+    const newTerms: Term[] = [];
+    const newVectors: Record<string, number[]> = {};
+    for (const r of results) {
+      newTerms.push(r.term);
+      if (r.meaningVector && r.meaningVector.length > 0) {
+        newVectors[r.term.id] = r.meaningVector;
+      }
+    }
+    if (newTerms.length > 0) {
+      setApiTerms(prev => [...prev, ...newTerms]);
+      setTermVectors(prev => ({ ...prev, ...newVectors }));
+    }
+  }, []);
+
+  useReferDict(transcript, {
+    baseUrl: (import.meta.env.VITE_BACKEND_URL ?? '').trim(),
+    intervalSec: 5,            // 5秒ごとのフォールバック送信
+    trailingDebounceMs: 3000,  // 入力が3秒止まったら末尾の未完了文も送信
+    onResults: handleDictResults,
+    onError: (err: unknown) => console.warn('[referDict] send error', err),
   });
 
   // 主題テキストをデバウンスしてAPIでベクトル化し、類似度計算用に保持
@@ -117,7 +146,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!transcript) return;
-    const extracted = extractTerms(transcript);
+    const extracted = extractTerms(transcript, apiTerms);
     const now = Date.now();
     
     // まだ一度も画面に出ていない完全に新規の用語だけをフィルタリング
@@ -130,7 +159,7 @@ const App: React.FC = () => {
     });
 
     setActiveTerms(prev => [...prev, ...completelyNewTerms]);
-  }, [transcript]);
+  }, [transcript, apiTerms]);
 
   // ── バブル削除アルゴリズム (1秒ごとに実行) ───────────────────
   useEffect(() => {
@@ -247,6 +276,8 @@ const App: React.FC = () => {
     setTranscript(''); setActiveTerms([]); setTermWeights({});
     setSelectedTerm(null);
     setIsPinned(new Set());
+    setApiTerms([]);
+    setTermVectors({});
     termTimestamps.current = {};
     deathRowRef.current = {};
     historicalTermIdsRef.current = new Set();
@@ -271,6 +302,7 @@ const App: React.FC = () => {
         onLoadDemo={loadDemo}
         demoStream={demoStream}
         darkMode={dk}
+        apiTerms={apiTerms}
       />
     ),
     bubbleCloud: (
@@ -285,6 +317,7 @@ const App: React.FC = () => {
         onTogglePin={handleTogglePin}
         themeVector={themeVector}
         themeText={themeText}
+        termVectors={termVectors}
         categoryFilter={categoryFilter}
         onCategoryFilterChange={setCategoryFilter}
       />
@@ -308,7 +341,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText]);
+  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms]);
 
   return (
     <div
