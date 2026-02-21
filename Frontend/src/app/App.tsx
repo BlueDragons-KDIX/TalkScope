@@ -105,8 +105,8 @@ const App: React.FC = () => {
   useEffect(() => {
     const id = setInterval(() => {
       const current = activeTermsRef.current;
-      if (current.length <= 15) {
-        deathRowRef.current = {}; // 15個以下なら削除待機リストをリセット
+      if (current.length <= 25) {
+        deathRowRef.current = {}; // 25個以下なら削除待機リストをリセット
         return;
       }
 
@@ -119,16 +119,16 @@ const App: React.FC = () => {
       let terms = [...current];
       terms.sort((a, b) => (ts[a.id] ?? 0) - (ts[b.id] ?? 0));
 
-      // 1. 20個を超過している分は即座に削除（もっとも古いもの）
-      if (terms.length > 20) {
-        const excess = terms.length - 20;
+      // 1. 30個を超過している分は即座に削除（もっとも古いもの）
+      if (terms.length > 30) {
+        const excess = terms.length - 30;
         const toRemove = terms.splice(0, excess);
         toRemove.forEach(t => delete deathRow[t.id]);
       }
 
-      // 2. 15個〜20個の間のバブルにライフタイムを設定・判定
-      if (terms.length > 15) {
-        const excess = terms.length - 15;
+      // 2. 25個〜30個の間のバブルにライフタイムを設定・判定
+      if (terms.length > 25) {
+        const excess = terms.length - 25;
         // 先頭（最も古いバブル）からの `excess` 個が削除対象
         const oldestExcess = terms.slice(0, excess);
         const survivors = terms.slice(excess);
@@ -141,7 +141,7 @@ const App: React.FC = () => {
 
         oldestExcess.forEach(t => {
           if (!deathRow[t.id]) {
-            deathRow[t.id] = now; // 初めて15個を超過した枠に入った時の時刻
+            deathRow[t.id] = now; // 初めて25個を超過した枠に入った時の時刻
           }
 
           const elapsed = now - deathRow[t.id];
