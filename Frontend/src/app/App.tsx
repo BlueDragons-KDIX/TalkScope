@@ -10,7 +10,7 @@ import { TermDetailPanel } from './components/TermDetailPanel';
 import { HistoryPanel } from './components/HistoryPanel';
 import { Term } from './data/terms';
 import { extractTerms } from './utils/termDetection';
-import { Book, LayoutGrid, Settings } from 'lucide-react';
+import { Book, LayoutGrid, Settings, Target } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
 import { VectorApiCheckButton } from './components/VectorApiCheckButton';
 import { Toaster, toast } from 'sonner';
@@ -36,6 +36,7 @@ const PRESETS = [
 ] as const;
 
 const App: React.FC = () => {
+  if (import.meta.env.DEV) console.log('[LexiFlow] App.tsx 読み込み（主題入力あり）');
   const { transcript, setTranscript, isListening, startListening, stopListening, error } = useSpeechRecognition();
 
   const [activeTerms, setActiveTerms] = useState<Term[]>([]);
@@ -48,6 +49,8 @@ const App: React.FC = () => {
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
   const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo', sensitivity: 50 });
   const [pinnedTermIds, setPinnedTermIds] = useState<Set<string>>(new Set());
+  /** バブルサイズ計算用：主題（ベクトル類似度の基準） */
+  const [themeText, setThemeText] = useState('');
 
   // ── バブル寿命管理 refs ────────────────────────────────────────
   const termTimestamps    = useRef<Record<string, number>>({});       // termId → 追加時刻
@@ -290,9 +293,9 @@ const App: React.FC = () => {
 
       {/* Header */}
       <header className={`border-b sticky top-0 z-40 transition-colors ${dk ? 'bg-[#0d0e1a]/90 backdrop-blur-xl border-slate-800/60' : 'bg-white/90 backdrop-blur-xl border-slate-200'}`}>
-        <div className="w-full px-4 h-14 flex items-center justify-between gap-4">
+        <div className="w-full min-w-0 px-4 h-14 flex items-center justify-between gap-4">
           {/* Logo */}
-          <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <div className="bg-indigo-600 p-1.5 rounded-xl text-white shadow-lg shadow-indigo-600/30">
               <Book size={18} />
             </div>
@@ -300,8 +303,25 @@ const App: React.FC = () => {
             <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-[0.2em] hidden sm:inline">Pro</span>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Actions（右詰め）: 主題 → レイアウト → API確認 → 設定 */}
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            {/* 主題入力（非ホバー: アイコンのみ / ホバー: 横に伸びてテキスト表示） */}
+            <label
+              id="lexiflow-theme-input"
+              className={`flex items-center overflow-hidden rounded-lg border shrink-0 py-2 transition-[width] duration-200 ease-out w-9 hover:w-64 focus-within:w-60 ${dk ? 'bg-slate-900/50 border-slate-800/60 hover:border-slate-700/60' : 'bg-slate-50 border-slate-100 hover:border-slate-200'}`}
+            >
+              <span className="flex shrink-0 items-center justify-center w-9 h-6">
+                <Target size={12} className={dk ? 'text-slate-600' : 'text-slate-400'} aria-hidden />
+              </span>
+              <input
+                type="text"
+                value={themeText}
+                onChange={(e) => setThemeText(e.target.value)}
+                placeholder="ハイライトしたいキーワードを入力"
+                className={`bg-transparent border-none outline-none text-xs flex-1 min-w-0 px-0 py-0 ${dk ? 'text-slate-300 placeholder-slate-600' : 'text-slate-600 placeholder-slate-400'}`}
+                aria-label="主題"
+              />
+            </label>
             {/* レイアウトプリセットメニュー */}
             <div className="relative">
               <button
