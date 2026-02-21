@@ -41,14 +41,34 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   }>({ nodes: new Map(), width: 800, height: 500, rafId: null });
   const containerRef = useRef<HTMLDivElement>(null);
   const bubbleRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  
+  // コンテナの初期幅を記憶し、それをデフォルトサイズとする
+  const defaultWidthRef = useRef<number | null>(null);
+  
+  // マップのリサイズを検知して再描画をトリガーする用
+  const [mapSize, setMapSize] = useState({ width: 800, height: 500 });
 
   // コンテナの寸法を計測（リサイズ対応）
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([e]) => {
-      engineRef.current.width = e.contentRect.width;
-      engineRef.current.height = e.contentRect.height;
+      const w = e.contentRect.width;
+      const h = e.contentRect.height;
+      if (w > 0 && defaultWidthRef.current === null) {
+        defaultWidthRef.current = w;
+      }
+      
+      // ResizeObserverからの過剰な再レンダリングを防ぐため、10px以上の差がある場合のみ更新
+      setMapSize(prev => {
+        if (Math.abs(prev.width - w) > 10 || Math.abs(prev.height - h) > 10) {
+          return { width: w, height: h };
+        }
+        return prev;
+      });
+
+      engineRef.current.width = w;
+      engineRef.current.height = h;
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -57,12 +77,21 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   // ノードの追加・削除・半径更新（レンダリングのタイミングで同期）
   const activeIds = new Set(activeTerms.map(t => t.id));
   const engineNodes = engineRef.current.nodes;
+  
+  // デフォルト幅を基準にしてスケールダウン（大きくなる時は1.0でストップ）
+  const DEFAULT_WIDTH = defaultWidthRef.current || 800;
+  const currentWidth = mapSize.width;
+  const scaleFactor = Math.min(1, currentWidth / DEFAULT_WIDTH);
+
   for (const id of Array.from(engineNodes.keys())) {
     if (!activeIds.has(id)) engineNodes.delete(id);
   }
   for (const term of activeTerms) {
     const w = pinnedTermIds?.has(term.id) ? 0 : (termWeights[term.id] || 0);
-    const r = (Math.max(60, 80 + w * 10) + (pinnedTermIds?.has(term.id) ? 20 : 0)) / 2;
+    // スケールファクターを適用して半径を縮小
+    const baseR = (Math.max(60, 80 + w * 10) + (pinnedTermIds?.has(term.id) ? 20 : 0)) / 2;
+    const r = baseR * scaleFactor;
+
     if (!engineNodes.has(term.id)) {
       const cw = engineRef.current.width || 800;
       const ch = engineRef.current.height || 500;
