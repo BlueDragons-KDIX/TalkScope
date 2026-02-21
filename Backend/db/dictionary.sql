@@ -9,4 +9,4 @@ CREATE TABLE dictionary (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_dictionary_word ON dictionary (word);
+CREATE UNIQUE INDEX idx_dictionary_word ON dictionary (word);

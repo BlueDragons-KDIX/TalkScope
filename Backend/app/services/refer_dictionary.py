@@ -108,13 +108,27 @@ async def _lookup_or_create(
     vector = vectors[0] if vectors else []
 
     # 3. DB登録（直列: 書き込み衝突防止）
+    #    UNIQUE 制約違反は並列処理で同じ単語が同時に miss した場合に発生する。
+    #    その場合は既存エントリを返す。
     async with _get_db_sem():
-        await asyncio.to_thread(
-            create_dictionary,
-            word=compound_word,
-            description=description,
-            meaning_vector=vector,
-        )
+        try:
+            await asyncio.to_thread(
+                create_dictionary,
+                word=compound_word,
+                description=description,
+                meaning_vector=vector,
+            )
+        except Exception:
+            # UNIQUE 違反 → 既に他のタスクが登録済み
+            logger.info("重複登録をスキップ: %s", compound_word)
+            entry = await asyncio.to_thread(read_dictionary_by_word, compound_word)
+            if entry:
+                return DictionaryEntry(
+                    word=entry.word,
+                    description=entry.description,
+                    meaning_vector=entry.meaning_vector,
+                    source="db",
+                )
 
     return DictionaryEntry(
         word=compound_word,
