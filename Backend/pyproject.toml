@@ -9,6 +9,7 @@ dependencies = [
     "uvicorn>=0.30.0",
     "pydantic>=2.7.0",
     "python-dotenv>=1.0.0",
+    "httpx>=0.27.0",
     "sudachipy>=0.6.10",
     "sudachidict-core>=20240109",
     "spacy>=3.7.0",
@@ -22,6 +23,5 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "httpx>=0.27.0",
     "pytest>=8.2.0",
 ]

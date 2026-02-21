@@ -6,6 +6,7 @@ psycopg2-binary
 sqlalchemy
 sqlalchemy-cockroachdb
 pgvector
+httpx
 sudachipy
 sudachidict-core
 spacy

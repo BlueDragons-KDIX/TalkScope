@@ -16,6 +16,7 @@ cd Backend
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
 ```
 
 ## 起動
@@ -27,6 +28,19 @@ uvicorn main:app --reload
 - API ベース URL: `http://127.0.0.1:8000`
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
+
+## Docker で起動
+
+ルートディレクトリ（`/Users/honmayuudai/MyHobby/hackson/KC3Hack2026`）で実行してください。
+ARM64 などで `sudachipy` の Linux wheel が無い場合でもビルドできるよう、Dockerfile には Rust ツールチェーンを含めています（初回ビルドは時間がかかる可能性があります）。
+
+```bash
+make up-backend
+```
+
+- API ベース URL: `http://localhost:8000`
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
 ## 現在の API
 
@@ -53,6 +67,30 @@ uvicorn main:app --reload
       "deduplicate": false
     }
     ```
+
+- `POST /analysis/vectorize/sentence`
+  - テキスト全体を1つの文章ベクトルに変換して返す
+  - ベクトル取得優先順: `spacy_doc` → `spacy_token_avg` → `content_token_avg` → `hash`
+  - リクエスト例:
+    ```json
+    {
+      "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+      "normalize": true
+    }
+    ```
+  - レスポンス例（抜粋）:
+    ```json
+    {
+      "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+      "meta": {
+        "model": "ginza",
+        "vector_dim": 300,
+        "vector_source": "spacy_doc",
+        "normalize": true
+      },
+      "sentence_vector": [0.0312, -0.0124, 0.2011, -0.0942]
+    }
+    ```
   - レスポンス例（抜粋）:
     ```json
     {
@@ -74,6 +112,56 @@ uvicorn main:app --reload
     }
     ```
 
+- `POST /dictionary/lookup`
+  - 用語の意味を日本語で1〜2文の概要として返す
+  - 現在は単語DB未実装のため、常にGeminiで生成する
+  - `terms` 指定時は、単語ごとに Gemini を非同期並列で呼び出す
+  - リクエスト例（単体）:
+    ```json
+    {
+      "term": "RAG",
+      "context": "LLMの会話で出てきた用語"
+    }
+    ```
+  - リクエスト例（複数）:
+    ```json
+    {
+      "terms": ["RAG", "MCP"],
+      "context": "技術会話で出た用語"
+    }
+    ```
+  - レスポンス例（単体）:
+    ```json
+    {
+      "term": "RAG",
+      "summary": "RAGは、回答生成時に外部知識を検索して根拠を補う手法です。LLMの回答精度を高める目的で使われます。",
+      "source": "gemini",
+      "model": "gemini-1.5-flash",
+      "cached": false
+    }
+    ```
+  - レスポンス例（複数）:
+    ```json
+    {
+      "results": [
+        {
+          "term": "RAG",
+          "summary": "RAGは、回答生成時に外部知識を検索して根拠を補う手法です。",
+          "source": "gemini",
+          "model": "gemini-1.5-flash",
+          "cached": false
+        },
+        {
+          "term": "MCP",
+          "summary": "MCPは、AIが外部ツールやデータに接続するための標準プロトコルです。",
+          "source": "gemini",
+          "model": "gemini-1.5-flash",
+          "cached": false
+        }
+      ]
+    }
+    ```
+
 ## ディレクトリ構成
 
 ```txt
@@ -85,12 +173,15 @@ Backend/
     │   ├── __init__.py
     │   └── endpoints/
     │       ├── analysis.py
+    │       ├── dictionary.py
     │       └── hoge.py
     ├── services/
+    │   ├── dictionary.py
     │   ├── text_analysis.py
     │   └── hoge.py
     └── schemas/
         ├── analysis.py
+        ├── dictionary.py
         └── hoge.py
 ```
 

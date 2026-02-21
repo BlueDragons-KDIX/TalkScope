@@ -1,6 +1,6 @@
-# フロント向け API 仕様（`/analysis/vectorize`）
+# フロント向け API 仕様（ベクトル化）
 
-このドキュメントは、Frontend メンバーが `POST /analysis/vectorize` を利用するための実装向け仕様です。  
+このドキュメントは、Frontend メンバーがベクトル化APIを利用するための実装向け仕様です。  
 バックエンド内部の実装詳細は以下を参照してください。
 
 - `/Users/honmayuudai/MyHobby/hackson/KC3Hack2026/doc/text-analysis-methods.md`
@@ -14,9 +14,11 @@
 
 ## 2. エンドポイント
 
-- Method: `POST`
-- Path: `/analysis/vectorize`
-- Content-Type: `application/json`
+- `POST /analysis/vectorize`
+  - 単語（内容語）ベクトルを返す
+- `POST /analysis/vectorize/sentence`
+  - 文章全体の単一ベクトルを返す
+- 共通: `Content-Type: application/json`
 
 ## 3. リクエスト
 
@@ -153,5 +155,71 @@ export type VectorizeResponse = {
     vector_source_counts: Record<string, number>;
   };
   tokens: VectorizedToken[];
+};
+```
+
+## 7. 文章ベクトルAPI（`/analysis/vectorize/sentence`）
+
+### 7.1 リクエスト
+
+```json
+{
+  "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+  "normalize": true
+}
+```
+
+| 項目 | 型 | 必須 | 既定値 | 説明 |
+|---|---|---|---|---|
+| `text` | `string` | 必須 | - | 文章ベクトル化対象テキスト（1文字以上） |
+| `normalize` | `boolean` | 任意 | `true` | 返却ベクトルにL2正規化を適用するか |
+
+### 7.2 レスポンス
+
+```jsonc
+{
+  "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+  "meta": {
+    "model": "ginza",
+    "vector_dim": 300,
+    "vector_source": "spacy_doc",
+    "normalize": true,
+    "input_token_count": 13,
+    "content_token_count": 6
+  },
+  "sentence_vector": [0.0312, -0.0124, 0.2011, -0.0942, ...]
+}
+```
+
+| 項目 | 型 | 説明 |
+|---|---|---|
+| `text` | `string` | 入力テキスト（そのまま返却） |
+| `meta.model` | `string` | 利用モデル名（例: `ginza`） |
+| `meta.vector_dim` | `number` | 文章ベクトルの次元数 |
+| `meta.vector_source` | `string` | ベクトル取得元（`spacy_doc` / `spacy_token_avg` / `content_token_avg` / `hash`） |
+| `meta.normalize` | `boolean` | 正規化を適用したか |
+| `meta.input_token_count` | `number` | 形態素解析後トークン数 |
+| `meta.content_token_count` | `number` | 内容語として採用されたトークン数 |
+| `sentence_vector` | `number[]` | 文章ベクトル本体（`meta.vector_dim` 個） |
+
+### 7.3 TypeScript 型サンプル
+
+```ts
+export type SentenceVectorizeRequest = {
+  text: string;
+  normalize?: boolean;
+};
+
+export type SentenceVectorizeResponse = {
+  text: string;
+  meta: {
+    model: string;
+    vector_dim: number;
+    vector_source: "spacy_doc" | "spacy_token_avg" | "content_token_avg" | "hash" | string;
+    normalize: boolean;
+    input_token_count: number;
+    content_token_count: number;
+  };
+  sentence_vector: number[];
 };
 ```

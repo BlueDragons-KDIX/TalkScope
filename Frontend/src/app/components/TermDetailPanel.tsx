@@ -1,15 +1,24 @@
 import React from 'react';
 import { Term, IT_TERMS } from '../data/terms';
-import { X, ExternalLink, Hash, BookOpen, Layers } from 'lucide-react';
+import { X, ExternalLink, Hash, BookOpen, Layers, Star } from 'lucide-react';
 
 interface TermDetailPanelProps {
   term: Term | null;
   onClose: () => void;
   onRelatedTermClick: (term: Term) => void;
   darkMode?: boolean;
+  isPinned?: boolean;
+  onTogglePin?: () => void;
 }
 
-export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({ term, onClose, onRelatedTermClick, darkMode = true }) => {
+export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
+  term,
+  onClose,
+  onRelatedTermClick,
+  darkMode = true,
+  isPinned = false,
+  onTogglePin,
+}) => {
   const dk = darkMode;
 
   if (!term) {
@@ -50,12 +59,37 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({ term, onClose,
             <h2 className="text-2xl font-black">{term.word}</h2>
             <p className={`text-sm mt-0.5 ${dk ? 'text-slate-500' : 'text-slate-400'}`}>{term.kana}</p>
           </div>
-          <button
-            onClick={onClose}
-            className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-600 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* 星ボタン */}
+            {onTogglePin && (
+              <button
+                onClick={onTogglePin}
+                title={isPinned ? 'ピン解除' : 'ピン留め（30秒で消えなくなります）'}
+                className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  isPinned
+                    ? 'text-yellow-400 bg-yellow-400/10 border border-yellow-400/30'
+                    : dk
+                    ? 'text-slate-500 hover:text-yellow-400 hover:bg-yellow-400/10 border border-transparent hover:border-yellow-400/20'
+                    : 'text-slate-400 hover:text-yellow-500 hover:bg-yellow-50 border border-transparent'
+                }`}
+              >
+                <Star
+                  size={13}
+                  fill={isPinned ? 'currentColor' : 'none'}
+                  className={`transition-all duration-200 ${
+                    isPinned ? 'drop-shadow-[0_0_4px_rgba(250,204,21,0.8)]' : ''
+                  }`}
+                />
+                <span className="text-[10px]">{isPinned ? 'ピン中' : 'ピン'}</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-600 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
       </div>
 

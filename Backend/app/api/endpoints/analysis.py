@@ -1,7 +1,12 @@
 import fastapi
 
-from app.schemas.analysis import VectorizeRequest, VectorizeResponse
-from app.services.text_analysis import vectorize_content_tokens
+from app.schemas.analysis import (
+    SentenceVectorizeRequest,
+    SentenceVectorizeResponse,
+    VectorizeRequest,
+    VectorizeResponse,
+)
+from app.services.text_analysis import vectorize_content_tokens, vectorize_sentence
 
 router = fastapi.APIRouter()
 
@@ -52,3 +57,35 @@ def vectorize(
         deduplicate=body.deduplicate,
     )
     return VectorizeResponse(**result)
+
+
+@router.post(
+    "/vectorize/sentence",
+    response_model=SentenceVectorizeResponse,
+    summary="文章全体を1つのベクトルに変換する",
+    description=(
+        "入力テキストを文章単位でベクトル化します。"
+        " 取得優先順は spacy doc -> spacy token平均 -> 内容語平均 -> hash です。"
+    ),
+    response_description="文章ベクトル化結果（meta と sentence_vector）",
+    responses={
+        200: {"description": "解析成功"},
+        422: {"description": "入力バリデーションエラー（text が空など）"},
+    },
+)
+def vectorize_sentence_endpoint(
+    body: SentenceVectorizeRequest = fastapi.Body(
+        ...,
+        examples={
+            "default": {
+                "summary": "文章ベクトル（正規化あり）",
+                "value": {
+                    "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+                    "normalize": True,
+                },
+            }
+        },
+    )
+) -> SentenceVectorizeResponse:
+    result = vectorize_sentence(text=body.text, normalize=body.normalize)
+    return SentenceVectorizeResponse(**result)
