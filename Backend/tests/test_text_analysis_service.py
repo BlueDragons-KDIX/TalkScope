@@ -83,3 +83,38 @@ def test_create_sudachi_tokenizer_returns_none_on_init_error(monkeypatch) -> Non
 
     monkeypatch.setattr(text_analysis, "sudachi_dictionary", _BrokenSudachiDictionaryModule)
     assert text_analysis._create_sudachi_tokenizer() is None
+
+
+def test_get_spacy_ja_memoizes_failed_load(monkeypatch) -> None:
+    class _BrokenSpacy:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def load(self, model_name: str):
+            self.calls.append(model_name)
+            raise OSError("model not found")
+
+    broken_spacy = _BrokenSpacy()
+    monkeypatch.setattr(text_analysis, "spacy", broken_spacy)
+    monkeypatch.setattr(text_analysis, "_SPACY_NLP", text_analysis._SPACY_NLP_UNSET)
+
+    first = text_analysis._get_spacy_ja()
+    second = text_analysis._get_spacy_ja()
+
+    assert first is None
+    assert second is None
+    assert broken_spacy.calls == ["ja_ginza", "ja_ginza_electra"]
+
+
+def test_morphological_analysis_fallback_keeps_auxiliary_token(monkeypatch) -> None:
+    monkeypatch.setattr(text_analysis, "_sudachi_analysis", lambda _text: [])
+
+    tokens = morphological_analysis("これはテストです")
+    surfaces = [token["surface"] for token in tokens]
+
+    assert "です" in surfaces
+    assert "で" not in surfaces
+    assert "す" not in surfaces
+
+    pos_by_surface = {token["surface"]: token["pos"] for token in tokens}
+    assert pos_by_surface["です"] == "AUX"

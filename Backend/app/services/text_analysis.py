@@ -42,16 +42,18 @@ def _create_sudachi_tokenizer() -> Any | None:
 
 _SUDACHI_TOKENIZER = _create_sudachi_tokenizer()
 _SUDACHI_MODE = sudachi_tokenizer.Tokenizer.SplitMode.C if sudachi_tokenizer else None
-_SPACY_NLP = None
+_SPACY_NLP_UNSET = object()
+_SPACY_NLP: Any | None | object = _SPACY_NLP_UNSET
 
 
 def _get_spacy_ja() -> Any | None:
     """Lazy-load spaCy Japanese model (GiNZA) if available."""
     global _SPACY_NLP
-    if _SPACY_NLP is not None:
+    if _SPACY_NLP is not _SPACY_NLP_UNSET:
         return _SPACY_NLP
 
     if spacy is None:
+        _SPACY_NLP = None
         return None
 
     try:
@@ -166,6 +168,8 @@ _PARTICLE_CANDIDATES = [
     "の",
     "も",
 ]
+_AUXILIARY_CANDIDATES = ["られる", "れる", "ない", "たい", "ます", "です", "だ"]
+_AUXILIARY_SET = set(_AUXILIARY_CANDIDATES)
 
 
 def _split_japanese_chunk(chunk: str, chunk_start: int) -> list[tuple[str, int, int]]:
@@ -175,6 +179,23 @@ def _split_japanese_chunk(chunk: str, chunk_start: int) -> list[tuple[str, int, 
     buffer_start = 0
 
     while i < len(chunk):
+        matched_auxiliary = None
+        for auxiliary in _AUXILIARY_CANDIDATES:
+            if chunk.startswith(auxiliary, i):
+                matched_auxiliary = auxiliary
+                break
+
+        if matched_auxiliary is not None:
+            if buffer_start < i:
+                token = chunk[buffer_start:i]
+                tokens.append((token, chunk_start + buffer_start, chunk_start + i))
+
+            a_end = i + len(matched_auxiliary)
+            tokens.append((matched_auxiliary, chunk_start + i, chunk_start + a_end))
+            i = a_end
+            buffer_start = a_end
+            continue
+
         matched = None
         for particle in _PARTICLE_CANDIDATES:
             if chunk.startswith(particle, i):
@@ -233,7 +254,6 @@ def _guess_pos(surface: str) -> str:
         "まで",
         "より",
     }
-    auxiliaries = {"です", "ます", "だ", "ない", "たい", "れる", "られる"}
     conjunctions = {
         "そして",
         "しかし",
@@ -251,7 +271,7 @@ def _guess_pos(surface: str) -> str:
 
     if surface in particles:
         return "PART"
-    if surface in auxiliaries:
+    if surface in _AUXILIARY_SET:
         return "AUX"
     if surface in conjunctions:
         return "CONJ"
