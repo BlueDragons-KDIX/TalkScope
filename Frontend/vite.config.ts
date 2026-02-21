@@ -29,6 +29,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
+      strictPort: true, // 5173 が使えない場合は別ポートにせずエラーにする
       proxy,
     },
   }

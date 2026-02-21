@@ -3,13 +3,14 @@ import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 import { useDemoStream } from './hooks/useDemoStream';
 import { useVectorSend } from '@/app/hooks/useVectorSend';
 import type { VectorPayload } from '@/app/utils/vectorSendWithOverlap';
+import { fetchThemeVector, type ThemeVectorResult } from '@/app/utils/themeVectorApi';
 import { DEMO_TEXT_INSTANT } from './demo/demo';
 import { TranscriptionView } from './components/TranscriptionView';
 import { BubbleCloud } from './components/BubbleCloud';
 import { TermDetailPanel } from './components/TermDetailPanel';
 import { HistoryPanel } from './components/HistoryPanel';
 import { Term } from './data/terms';
-import { extractTerms } from './utils/termDetection';
+import { extractTerms, countTermFrequencies } from './utils/termDetection';
 import { Book, LayoutGrid, Settings, Target } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
 import { VectorApiCheckButton } from './components/VectorApiCheckButton';
@@ -51,6 +52,8 @@ const App: React.FC = () => {
   const [pinnedTermIds, setPinnedTermIds] = useState<Set<string>>(new Set());
   /** バブルサイズ計算用：主題（ベクトル類似度の基準） */
   const [themeText, setThemeText] = useState('');
+  /** 主題テキストをAPIでベクトル化した結果（類似度計算用） */
+  const [themeVector, setThemeVector] = useState<ThemeVectorResult | null>(null);
 
   // ── バブル寿命管理 refs ────────────────────────────────────────
   const termTimestamps    = useRef<Record<string, number>>({});       // termId → 追加時刻
@@ -67,6 +70,7 @@ const App: React.FC = () => {
   // ──────────────────────────────────────────────────────────────
 
   useVectorSend(transcript, {
+    baseUrl: (import.meta.env.VITE_BACKEND_URL ?? '').trim() || (import.meta.env.VITE_VECTOR_API_URL ?? '').trim(),
     overlapSentences: Number(import.meta.env.VITE_VECTOR_OVERLAP_SENTENCES) || 5,
     sendEveryNSentences: Number(import.meta.env.VITE_VECTOR_SEND_EVERY_N_SENTENCES) || 5,
     intervalSec: Number(import.meta.env.VITE_VECTOR_SEND_INTERVAL_SEC) || 0,
@@ -75,6 +79,29 @@ const App: React.FC = () => {
     },
     onError: (err: unknown) => console.warn('[vector] send error', err),
   });
+
+  // 主題テキストをデバウンスしてAPIでベクトル化し、類似度計算用に保持
+  useEffect(() => {
+    if (!themeText.trim()) {
+      setThemeVector(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      let cancelled = false;
+      fetchThemeVector(themeText)
+        .then((result) => {
+          if (!cancelled) setThemeVector(result);
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setThemeVector(null);
+            if (import.meta.env.DEV) console.warn('[themeVector]', err);
+          }
+        });
+      return () => { cancelled = true; };
+    }, 500);
+    return () => clearTimeout(t);
+  }, [themeText]);
 
   const dk = settings.darkMode;
 
@@ -225,6 +252,7 @@ const App: React.FC = () => {
   };
 
   const filteredTerms = categoryFilter === 'ALL' ? activeTerms : activeTerms.filter(t => t.category === categoryFilter);
+  const termFrequencies = useMemo(() => countTermFrequencies(transcript, activeTerms), [transcript, activeTerms]);
 
   // パネルコンテンツ（useMemo で過剰な再生成を抑制）
   const panels: Record<PanelId, React.ReactNode> = useMemo(() => ({
@@ -247,6 +275,7 @@ const App: React.FC = () => {
       <BubbleCloud
         activeTerms={filteredTerms}
         termWeights={termWeights}
+        termFrequencies={termFrequencies}
         onTermClick={handleTermClick}
         darkMode={dk}
         categoryFilter={categoryFilter}
@@ -254,6 +283,8 @@ const App: React.FC = () => {
         selectedTermId={selectedTerm?.id}
         pinnedTermIds={pinnedTermIds}
         onTogglePin={handleTogglePin}
+        themeVector={themeVector}
+        themeText={themeText}
       />
     ),
     detail: (
@@ -275,7 +306,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, pinnedTermIds, handleTogglePin]);
+  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, pinnedTermIds, handleTogglePin, themeVector, themeText]);
 
   return (
     <div
@@ -317,6 +348,9 @@ const App: React.FC = () => {
                 type="text"
                 value={themeText}
                 onChange={(e) => setThemeText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                }}
                 placeholder="ハイライトしたいキーワードを入力"
                 className={`bg-transparent border-none outline-none text-xs flex-1 min-w-0 px-0 py-0 ${dk ? 'text-slate-300 placeholder-slate-600' : 'text-slate-600 placeholder-slate-400'}`}
                 aria-label="主題"

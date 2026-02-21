@@ -23,5 +23,8 @@ export async function checkVectorApi(): Promise<VectorApiCheckResult> {
 }
 
 function getVectorApiBaseUrl(): string {
-  return '';
+  const back = import.meta.env.VITE_BACKEND_URL;
+  const vec = import.meta.env.VITE_VECTOR_API_URL;
+  const url = (typeof back === 'string' ? back.trim() : '') || (typeof vec === 'string' ? vec.trim() : '');
+  return url || '';
 }
