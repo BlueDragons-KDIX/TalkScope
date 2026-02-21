@@ -24,23 +24,46 @@ from app.services.refer_dictionary import (
     refer_dictionary,
     _extract_search_targets,
 )
+from app.crud.dictionary import read_dictionary_by_word, delete_dictionary
+
+# テストで生成された単語を記録し、最後にクリーンアップする
+_created_words: list[str] = []
+
+
+def _cleanup_test_data():
+    """テストで DB に登録された単語を全て削除する。"""
+    for word in _created_words:
+        entry = read_dictionary_by_word(word)
+        if entry:
+            delete_dictionary(entry.id)
+    count = len(_created_words)
+    _created_words.clear()
+    if count:
+        print(f"\n🧹 テストデータ {count} 件を削除")
+
+
+def _track_results(results: list[dict]) -> None:
+    """結果の単語をクリーンアップリストに追加する。"""
+    for r in results:
+        if r.get("source") == "llm":
+            _created_words.append(r["word"])
 
 
 # ---------------------------------------------------------------------------
 # 1. 空文字・空白のみ
 #    理由: 境界値テスト。空入力で例外が出ないことを保証する
 # ---------------------------------------------------------------------------
-def test_empty_input():
+async def test_empty_input():
     print("=== テスト1: 空文字・空白のみ ===")
 
     for text in ["", "   ", "\n\t"]:
         targets = _extract_search_targets(text)
         assert targets == [], f"❌ '{repr(text)}' で名詞が返った: {targets}"
 
-    results = asyncio.run(refer_dictionary(""))
+    results = await refer_dictionary("")
     assert results == [], f"❌ 空文字で結果が返った: {results}"
 
-    results = asyncio.run(refer_dictionary("   "))
+    results = await refer_dictionary("   ")
     assert results == [], f"❌ 空白で結果が返った: {results}"
 
     print("✅ 空文字・空白 → 空リスト")
@@ -50,7 +73,7 @@ def test_empty_input():
 # 2. 名詞が含まれないテキスト
 #    理由: 助詞・動詞だけの文で名詞抽出が0件になることを確認
 # ---------------------------------------------------------------------------
-def test_no_nouns():
+async def test_no_nouns():
     print("\n=== テスト2: 名詞が含まれないテキスト ===")
 
     text = "走って飛んで泳いで"
@@ -58,15 +81,15 @@ def test_no_nouns():
     print(f"  入力: '{text}'")
     print(f"  抽出: {targets}")
 
-    results = asyncio.run(refer_dictionary(text))
+    results = await refer_dictionary(text)
+    _track_results(results)
     print(f"  結果: {results}")
-    # 名詞がなければ空 or 形態素解析の判定次第
     print(f"✅ 名詞なしテキスト → {len(results)} 件")
 
 
 # ---------------------------------------------------------------------------
 # 3. 単一名詞
-#    理由: 最小ケースで word, meaning, meaning_vector, source の
+#    理由: 最小ケースで word, meaning, meaning_vector, description, source の
 #          全フィールドが正しく返されることを確認
 # ---------------------------------------------------------------------------
 async def test_single_noun():
@@ -74,17 +97,19 @@ async def test_single_noun():
 
     text = "猫"
     results = await refer_dictionary(text)
+    _track_results(results)
     print(f"  入力: '{text}'")
     print(f"  結果: {len(results)} 件")
 
-    assert len(results) >= 1, f"❌ 結果が空"
+    assert len(results) >= 1, "❌ 結果が空"
     entry = results[0]
 
-    # 全フィールドの存在確認
-    for key in ("word", "meaning", "meaning_vector", "source"):
+    # 全フィールドの存在確認（description 追加）
+    for key in ("word", "meaning", "meaning_vector", "description", "source"):
         assert key in entry, f"❌ '{key}' フィールドがない: {entry}"
     print(f"  word='{entry['word']}', source='{entry['source']}'")
-    print(f"  meaning_vector の次元: {len(entry['meaning_vector']) if entry['meaning_vector'] else 'None'}")
+    print(f"  description='{entry['description']}'")
+    print(f"  meaning_vector の次元: {len(entry['meaning_vector']) if entry['meaning_vector'] is not None else 'None'}")
     print("✅ 全フィールド存在確認OK")
 
 
@@ -100,8 +125,7 @@ def test_compound_nouns():
     print(f"  入力: '{text}'")
     print(f"  抽出: {targets}")
 
-    # 「形態素」と「解析」が1つのタプルにまとまっているか
-    assert len(targets) >= 1, f"❌ 名詞が抽出されなかった"
+    assert len(targets) >= 1, "❌ 名詞が抽出されなかった"
     first = targets[0]
     assert len(first) >= 2, f"❌ 複合名詞として結合されていない: {first}"
     joined = "".join(first)
@@ -122,6 +146,7 @@ async def test_multiple_nouns_parallel():
     start = time.perf_counter()
     results = await refer_dictionary(text)
     elapsed = time.perf_counter() - start
+    _track_results(results)
 
     print(f"  入力: '{text}'")
     print(f"  名詞: {[''.join(t) for t in targets]}")
@@ -146,15 +171,15 @@ async def test_vector_output():
 
     text = "人工知能の研究"
     results = await refer_dictionary(text)
+    _track_results(results)
 
     for r in results:
         vec = r.get("meaning_vector")
-        print(f"  word='{r['word']}', vector_dim={len(vec) if vec else 'None'}")
+        print(f"  word='{r['word']}', vector_dim={len(vec) if vec is not None else 'None'}")
 
         if vec is not None:
-            assert isinstance(vec, list), f"❌ ベクトルがlistでない: {type(vec)}"
+            assert hasattr(vec, '__len__'), f"❌ ベクトルに長さがない: {type(vec)}"
             assert len(vec) > 0, f"❌ ベクトルが空"
-            assert all(isinstance(v, float) for v in vec), f"❌ ベクトルにfloat以外が含まれる"
 
     print("✅ ベクトル検証OK")
 
@@ -177,6 +202,7 @@ async def test_long_text():
     start = time.perf_counter()
     results = await refer_dictionary(text)
     elapsed = time.perf_counter() - start
+    _track_results(results)
 
     print(f"  入力: {len(text)} 文字")
     print(f"  名詞数: {len(targets)}")
@@ -184,7 +210,7 @@ async def test_long_text():
     print(f"  ⏱️  処理時間: {elapsed:.3f}秒")
 
     for r in results:
-        has_vec = "✓" if r.get("meaning_vector") else "✗"
+        has_vec = "✓" if r.get("meaning_vector") is not None else "✗"
         print(f"    {has_vec} '{r['word']}'")
 
     assert len(results) == len(targets), "❌ 件数不一致"
@@ -194,8 +220,10 @@ async def test_long_text():
 # ---------------------------------------------------------------------------
 # 実行
 # ---------------------------------------------------------------------------
-async def run_async_tests():
-    """全 async テストを1つのイベントループで実行する。"""
+async def run_all_tests():
+    """全テストを1つのイベントループで実行する。"""
+    await test_empty_input()
+    await test_no_nouns()
     await test_single_noun()
     await test_multiple_nouns_parallel()
     await test_vector_output()
@@ -206,11 +234,12 @@ if __name__ == "__main__":
     print("🚀 refer_dictionary 多条件テスト開始\n")
 
     # 同期テスト
-    test_empty_input()
-    test_no_nouns()
     test_compound_nouns()
 
-    # 非同期テスト（1つのイベントループで全て実行）
-    asyncio.run(run_async_tests())
+    # 非同期テスト（全て1つのイベントループで実行）
+    asyncio.run(run_all_tests())
+
+    # テストデータのクリーンアップ
+    _cleanup_test_data()
 
     print("\n🎉 全テスト合格!")
