@@ -49,6 +49,7 @@ const App: React.FC = () => {
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
   const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo', sensitivity: 50 });
   const [pinnedTermIds, setPinnedTermIds] = useState<Set<string>>(new Set());
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   /** バブルサイズ計算用：主題（ベクトル類似度の基準） */
   const [themeText, setThemeText] = useState('');
   /** 主題テキストをAPIでベクトル化した結果（類似度計算用） */
@@ -275,7 +276,7 @@ const App: React.FC = () => {
     ),
     bubbleCloud: (
       <BubbleCloud
-        activeTerms={activeTerms}
+        activeTerms={filteredTerms}
         termWeights={termWeights}
         termFrequencies={termFrequencies}
         onTermClick={handleTermClick}
@@ -285,6 +286,8 @@ const App: React.FC = () => {
         onTogglePin={handleTogglePin}
         themeVector={themeVector}
         themeText={themeText}
+        categoryFilter={categoryFilter}
+        onCategoryFilterChange={setCategoryFilter}
       />
     ),
     detail: (

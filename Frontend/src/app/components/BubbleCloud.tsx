@@ -40,6 +40,10 @@ interface BubbleCloudProps {
   themeVector?: ThemeVectorResult | null;
   /** 主題テキスト（用語がこれと一致するとき主題との類似度を 1 とする） */
   themeText?: string;
+  /** カテゴリフィルター（'ALL' または category 名） */
+  categoryFilter?: string;
+  /** カテゴリフィルター変更 */
+  onCategoryFilterChange?: (category: string) => void;
 }
 
 export const BubbleCloud: React.FC<BubbleCloudProps> = ({
@@ -53,6 +57,8 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   onTogglePin,
   themeVector,
   themeText = '',
+  categoryFilter = 'ALL',
+  onCategoryFilterChange,
 }) => {
   const dk = darkMode;
   const categories = ['ALL', ...Object.keys(CATEGORY_COLORS)];
@@ -154,10 +160,9 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     const displayCount = Math.min(freq, 10);        // 表示回数は10回まで反映
     const w = pinnedTermIds?.has(term.id) ? 0 : (termWeights[term.id] || 0);
     // スケールファクターを適用して半径を縮小
-    const baseR = (Math.max(60, 80 + w * 10) + (pinnedTermIds?.has(term.id) ? 20 : 0)) / 2;
+    const baseR = (Math.min(Math.max(40, w * 10), 50) + (pinnedTermIds?.has(term.id) ? 20 : 0)) / 2;
     // 基本の大きさ * (1 + 主題類似度) * (1 + 会話類似度) * (1 + 0.1*表示回数)
-    const r = baseR * scaleFactor;
-      * (1 + themeScore)
+    const r = baseR * scaleFactor  * (1 + themeScore)
       * (1 + convScore)
       * (1 + 0.1 * displayCount);
     if (isDev && activeTerms.indexOf(term) <= 4) {
@@ -328,6 +333,17 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         <div className="flex items-center gap-2">
           <Hexagon size={13} className={dk ? 'text-slate-600' : 'text-slate-300'} />
           <span className={`text-xs font-bold ${dk ? 'text-slate-300' : 'text-slate-600'}`}>用語マップ</span>
+          {onCategoryFilterChange && (
+            <select
+              value={categoryFilter}
+              onChange={(e) => onCategoryFilterChange(e.target.value)}
+              className={`text-[10px] py-1 px-2 rounded border ${dk ? 'bg-slate-800/50 border-slate-700/50 text-slate-300' : 'bg-white border-slate-200 text-slate-700'}`}
+            >
+              {categories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          )}
         </div>
         <span className={`text-[10px] font-mono border px-1.5 py-0.5 rounded ${dk ? 'bg-slate-800/50 border-slate-700/50 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
           {activeTerms.length} terms
