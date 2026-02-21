@@ -1,12 +1,16 @@
 import fastapi
 
 from app.schemas.analysis import (
+    ReferDictionaryRequest,
+    ReferDictionaryResponse,
+    ReferDictionaryEntry,
     SentenceVectorizeRequest,
     SentenceVectorizeResponse,
     VectorizeRequest,
     VectorizeResponse,
 )
 from app.services.text_analysis import vectorize_content_tokens, vectorize_sentence
+from app.services.refer_dictionary import refer_dictionary
 
 router = fastapi.APIRouter()
 
@@ -89,3 +93,26 @@ def vectorize_sentence_endpoint(
 ) -> SentenceVectorizeResponse:
     result = vectorize_sentence(text=body.text, normalize=body.normalize)
     return SentenceVectorizeResponse(**result)
+
+
+@router.post(
+    "/refer_dictionary",
+    response_model=ReferDictionaryResponse,
+    summary="テキスト中の名詞を辞書検索し、意味を取得する",
+    description=(
+        "入力テキストを形態素解析して名詞を抽出し、各名詞の意味をDB またはLLM から取得します。"
+        " DB にキャッシュがあればそちらを返し、なければ LLM で生成して DB に登録します。"
+    ),
+    responses={
+        200: {"description": "辞書検索成功"},
+        422: {"description": "入力バリデーションエラー（text が空など）"},
+    },
+)
+async def refer_dictionary_endpoint(
+    body: ReferDictionaryRequest,
+) -> ReferDictionaryResponse:
+    entries = await refer_dictionary(body.text)
+    return ReferDictionaryResponse(
+        text=body.text,
+        entries=[ReferDictionaryEntry(**e) for e in entries],
+    )

@@ -21,9 +21,9 @@ def lookup_term_summary(term: str, context: str | None = None) -> dict[str, Any]
     normalized_term = term.strip()
 
     # 将来の辞書DB接続を想定した優先参照ポイント。
-    db_result = _lookup_term_from_db(normalized_term)
-    if db_result is not None:
-        return db_result
+    # db_result = _lookup_term_from_db(normalized_term)
+    # if db_result is not None:
+    #     return db_result
 
     # DB未ヒット時はプロンプトを作ってGeminiを呼ぶ。
     prompt = _build_prompt(normalized_term, context)

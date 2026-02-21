@@ -181,3 +181,42 @@ class SentenceVectorizeResponse(BaseModel):
             ]
         }
     }
+
+
+class ReferDictionaryRequest(BaseModel):
+    text: str = Field(
+        min_length=1,
+        description="辞書検索対象のテキスト。名詞を自動抽出し辞書検索する",
+        examples=["人工知能と機械学習を学ぶ"],
+    )
+
+    @field_validator("text")
+    @classmethod
+    def validate_text_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("text must not be blank")
+        return value
+
+
+class ReferDictionaryEntry(BaseModel):
+    term: str = Field(description="辞書検索した用語", examples=["人工知能"])
+    description: str = Field(
+        description="用語の説明",
+        examples=["人間の知能を模倣するコンピュータシステムの総称です。"],
+    )
+    meaning_vector: list[float] | None = Field(
+        default=None,
+        description="用語の意味ベクトル（300次元）",
+    )
+    source: str = Field(
+        description="取得元（db: DB キャッシュ / llm: LLM生成）",
+        examples=["llm"],
+    )
+
+
+class ReferDictionaryResponse(BaseModel):
+    text: str = Field(description="入力テキスト（そのまま返却）")
+    entries: list[ReferDictionaryEntry] = Field(
+        description="辞書検索結果の一覧",
+    )
+

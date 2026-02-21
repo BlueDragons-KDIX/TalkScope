@@ -4,7 +4,7 @@ from app.core.database import tx
 
 
 def create_dictionary(
-    word: str,
+    term: str,
     description: str,
     meaning_vector: list[float] | None = None,
 ) -> int:
@@ -12,7 +12,7 @@ def create_dictionary(
 
     def _create(session: Session) -> int:
         entry = Dictionary(
-            word=word,
+            term=term,
             description=description,
             meaning_vector=meaning_vector,
         )
@@ -21,21 +21,21 @@ def create_dictionary(
         return entry.id
     return tx.run(_create)
 
-def read_dictionary_by_word(word: str) -> Dictionary | None:
-    """単語で辞書エントリを検索し、見つかったエントリを返す。"""
+def read_dictionary_by_term(term: str) -> Dictionary | None:
+    """用語で辞書エントリを検索し、見つかったエントリを返す。"""
     def _read(session: Session) -> Dictionary | None:
-        entry = session.query(Dictionary).filter(Dictionary.word == word).first()
+        entry = session.query(Dictionary).filter(Dictionary.term == term).first()
         if entry:
             session.expunge(entry)  # セッションから切り離し、属性を保持
         return entry
     return tx.run(_read)
 
-def update_dictionary(id: int, word: str, description: str, meaning_vector: list[float] | None = None) -> None:
+def update_dictionary(id: int, term: str, description: str, meaning_vector: list[float] | None = None) -> None:
     """辞書エントリを更新する。"""
     def _update(session: Session) -> None:
         entry = session.query(Dictionary).filter(Dictionary.id == id).first()
         if entry:
-            entry.word = word
+            entry.term = term
             entry.description = description
             entry.meaning_vector = meaning_vector
     return tx.run(_update)
