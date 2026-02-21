@@ -1,9 +1,6 @@
 import fastapi
-from app.api.endpoints import hoge
 
 router = fastapi.APIRouter()
-
-router.include_router(hoge.router, prefix="/hoge", tags=["hoge"])
 
 # 新しくエンドポイントを追加するときは、
 # 1. app/api/endpoints/new_endpoint.pyを作成する
