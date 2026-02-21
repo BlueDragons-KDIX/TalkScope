@@ -35,10 +35,8 @@ bun run dev
 
 ```bash
 cd Backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --reload
+uv sync
+uv run uvicorn main:app --reload
 ```
 
 ## 実装方針（初期）
