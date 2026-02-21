@@ -60,3 +60,8 @@ def test_vectorize_sentence_endpoint_returns_vector() -> None:
 def test_vectorize_sentence_endpoint_validates_empty_text() -> None:
     res = client.post("/analysis/vectorize/sentence", json={"text": ""})
     assert res.status_code == 422
+
+
+def test_vectorize_sentence_endpoint_validates_whitespace_only_text() -> None:
+    res = client.post("/analysis/vectorize/sentence", json={"text": "   "})
+    assert res.status_code == 422

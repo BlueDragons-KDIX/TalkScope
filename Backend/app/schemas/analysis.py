@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class VectorizeRequest(BaseModel):
@@ -134,6 +134,13 @@ class SentenceVectorizeRequest(BaseModel):
             ]
         }
     }
+
+    @field_validator("text")
+    @classmethod
+    def validate_text_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("text must not be blank")
+        return value
 
 
 class SentenceVectorizeMeta(BaseModel):

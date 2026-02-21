@@ -396,7 +396,7 @@ def dependency_parse(text: str) -> list[dict[str, Any]]:
 
 # 外部モデルが使えない場合の最終フォールバック。
 # 語から決定的に同じベクトルを生成する（疑似埋め込み）。
-def _build_hashed_vector(term: str, dim: int) -> list[float]:
+def _build_hashed_vector(term: str, dim: int, *, normalize: bool = True) -> list[float]:
     seed = hashlib.sha256(term.encode("utf-8")).digest()
     values: list[float] = []
     counter = 0
@@ -409,6 +409,9 @@ def _build_hashed_vector(term: str, dim: int) -> list[float]:
             raw = int.from_bytes(block[i : i + 4], "little", signed=False)
             values.append((raw / 4294967295.0) * 2.0 - 1.0)
         counter += 1
+
+    if not normalize:
+        return values
 
     norm = math.sqrt(sum(v * v for v in values))
     if norm <= 0.0:
@@ -655,7 +658,8 @@ def vectorize_sentence(text: str, normalize: bool = True) -> dict[str, Any]:
 
     if not sentence_vector:
         dim = _resolve_vector_dim(nlp, doc)
-        sentence_vector = _build_hashed_vector(text, dim)
+        # normalize=False のときは生ベクトルを返すため、ここでは未正規化で生成する。
+        sentence_vector = _build_hashed_vector(text, dim, normalize=False)
         vector_source = "hash"
 
     if normalize:
