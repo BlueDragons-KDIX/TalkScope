@@ -21,9 +21,9 @@ def lookup_term_summary(term: str, context: str | None = None) -> dict[str, Any]
     normalized_term = term.strip()
 
     # 将来の辞書DB接続を想定した優先参照ポイント。
-    db_result = _lookup_term_from_db(normalized_term)
-    if db_result is not None:
-        return db_result
+    # db_result = _lookup_term_from_db(normalized_term)
+    # if db_result is not None:
+    #     return db_result
 
     # DB未ヒット時はプロンプトを作ってGeminiを呼ぶ。
     prompt = _build_prompt(normalized_term, context)
@@ -131,7 +131,6 @@ def _call_gemini(prompt: str) -> tuple[str, str]:
         ],
         "generationConfig": {
             "temperature": 0.2,
-            "maxOutputTokens": 120,
             "topP": 0.9,
         },
     }
@@ -147,9 +146,11 @@ def _call_gemini(prompt: str) -> tuple[str, str]:
         response.raise_for_status()
         payload_json = response.json()
     except httpx.TimeoutException as exc:
-        raise fastapi.HTTPException(status_code=504, detail="Gemini API request timed out") from exc
+        raise fastapi.HTTPException(status_code=504, detail=f"Gemini API request timed out: {exc}") from exc
+    except httpx.HTTPStatusError as exc:
+        raise fastapi.HTTPException(status_code=502, detail=f"Gemini API returned {exc.response.status_code}: {exc.response.text}") from exc
     except httpx.HTTPError as exc:
-        raise fastapi.HTTPException(status_code=502, detail="Failed to call Gemini API") from exc
+        raise fastapi.HTTPException(status_code=502, detail=f"Failed to call Gemini API: {exc}") from exc
     except ValueError as exc:
         raise fastapi.HTTPException(
             status_code=502,
@@ -179,7 +180,6 @@ async def _call_gemini_async(
         ],
         "generationConfig": {
             "temperature": 0.2,
-            "maxOutputTokens": 120,
             "topP": 0.9,
         },
     }
@@ -195,9 +195,11 @@ async def _call_gemini_async(
         response.raise_for_status()
         payload_json = response.json()
     except httpx.TimeoutException as exc:
-        raise fastapi.HTTPException(status_code=504, detail="Gemini API request timed out") from exc
+        raise fastapi.HTTPException(status_code=504, detail=f"Gemini API request timed out: {exc}") from exc
+    except httpx.HTTPStatusError as exc:
+        raise fastapi.HTTPException(status_code=502, detail=f"Gemini API returned {exc.response.status_code}: {exc.response.text}") from exc
     except httpx.HTTPError as exc:
-        raise fastapi.HTTPException(status_code=502, detail="Failed to call Gemini API") from exc
+        raise fastapi.HTTPException(status_code=502, detail=f"Failed to call Gemini API: {exc}") from exc
     except ValueError as exc:
         raise fastapi.HTTPException(
             status_code=502,

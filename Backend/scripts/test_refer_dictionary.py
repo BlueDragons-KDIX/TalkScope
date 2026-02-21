@@ -24,29 +24,29 @@ from app.services.refer_dictionary import (
     refer_dictionary,
     _extract_search_targets,
 )
-from app.crud.dictionary import read_dictionary_by_word, delete_dictionary
+from app.crud.dictionary import read_dictionary_by_term, delete_dictionary
 
-# テストで生成された単語を記録し、最後にクリーンアップする
-_created_words: list[str] = []
+# テストで生成された用語を記録し、最後にクリーンアップする
+_created_terms: list[str] = []
 
 
 def _cleanup_test_data():
-    """テストで DB に登録された単語を全て削除する。"""
-    for word in _created_words:
-        entry = read_dictionary_by_word(word)
+    """テストで DB に登録された用語を全て削除する。"""
+    for term in _created_terms:
+        entry = read_dictionary_by_term(term)
         if entry:
             delete_dictionary(entry.id)
-    count = len(_created_words)
-    _created_words.clear()
+    count = len(_created_terms)
+    _created_terms.clear()
     if count:
         print(f"\n🧹 テストデータ {count} 件を削除")
 
 
 def _track_results(results: list[dict]) -> None:
-    """結果の単語をクリーンアップリストに追加する。"""
+    """結果の用語をクリーンアップリストに追加する。"""
     for r in results:
         if r.get("source") == "llm":
-            _created_words.append(r["word"])
+            _created_terms.append(r["term"])
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +89,7 @@ async def test_no_nouns():
 
 # ---------------------------------------------------------------------------
 # 3. 単一名詞
-#    理由: 最小ケースで word, description, meaning_vector, source の
+#    理由: 最小ケースで term, description, meaning_vector, source の
 #          全フィールドが正しく返されることを確認
 # ---------------------------------------------------------------------------
 async def test_single_noun():
@@ -105,9 +105,9 @@ async def test_single_noun():
     entry = results[0]
 
     # 全フィールドの存在確認
-    for key in ("word", "description", "meaning_vector", "source"):
+    for key in ("term", "description", "meaning_vector", "source"):
         assert key in entry, f"❌ '{key}' フィールドがない: {entry}"
-    print(f"  word='{entry['word']}', source='{entry['source']}'")
+    print(f"  term='{entry['term']}', source='{entry['source']}'")
     print(f"  description='{entry['description']}'")
     print(f"  meaning_vector の次元: {len(entry['meaning_vector']) if entry['meaning_vector'] is not None else 'None'}")
     print("✅ 全フィールド存在確認OK")
@@ -157,8 +157,8 @@ async def test_multiple_nouns_parallel():
         f"❌ 名詞数({len(targets)}) と結果数({len(results)}) が不一致"
     )
 
-    words = [r["word"] for r in results]
-    print(f"  返却順: {words}")
+    terms = [r["term"] for r in results]
+    print(f"  返却順: {terms}")
     print("✅ 件数一致 & 並列処理完了")
 
 
@@ -175,7 +175,7 @@ async def test_vector_output():
 
     for r in results:
         vec = r.get("meaning_vector")
-        print(f"  word='{r['word']}', vector_dim={len(vec) if vec is not None else 'None'}")
+        print(f"  term='{r['term']}', vector_dim={len(vec) if vec is not None else 'None'}")
 
         if vec is not None:
             assert hasattr(vec, '__len__'), f"❌ ベクトルに長さがない: {type(vec)}"
@@ -211,7 +211,7 @@ async def test_long_text():
 
     for r in results:
         has_vec = "✓" if r.get("meaning_vector") is not None else "✗"
-        print(f"    {has_vec} '{r['word']}'")
+        print(f"    {has_vec} '{r['term']}'")
 
     assert len(results) == len(targets), "❌ 件数不一致"
     print("✅ 長文テスト完了")

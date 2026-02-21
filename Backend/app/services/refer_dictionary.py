@@ -22,7 +22,7 @@
                               │
                               ├─ ベクトル化 (vectorize_pretokenized_words)  ┐
                               │                                             ├─ 並列
-                              └─ LLM問い合わせ (_call_llm)                  ┘
+                              └─ LLM問い合わせ (lookup_term_summary)        ┘
                                           │
                                           ▼
                                    DB登録 (Semaphore で直列化)
@@ -38,7 +38,9 @@ import logging
 from typing import Any, TypedDict
 
 from app.services.text_analysis import morphological_analysis, vectorize_pretokenized_words
-from app.crud.dictionary import read_dictionary_by_word, create_dictionary
+from app.services.dictionary import lookup_term_summary
+from app.crud.dictionary import read_dictionary_by_term, create_dictionary
+from app.core.database import db
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +62,7 @@ def _get_db_sem() -> asyncio.Semaphore:
 # 戻り値の型定義
 # ---------------------------------------------------------------------------
 class DictionaryEntry(TypedDict):
-    word: str
+    term: str
     description: str
     meaning_vector: list[float] | None
     source: str
@@ -75,7 +77,7 @@ async def refer_dictionary(text: str) -> list[DictionaryEntry]:
     if not search_targets:
         return []
 
-    tasks = [_lookup_or_create(word_parts) for word_parts in search_targets]
+    tasks = [_lookup_or_create(term_parts) for term_parts in search_targets]
     results = await asyncio.gather(*tasks)
 
     return [r for r in results if r is not None]
@@ -85,74 +87,61 @@ async def refer_dictionary(text: str) -> list[DictionaryEntry]:
 # 単語ごとの処理
 # ---------------------------------------------------------------------------
 async def _lookup_or_create(
-    word_parts: tuple[str, ...],
+    term_parts: tuple[str, ...],
 ) -> DictionaryEntry | None:
     """1単語の処理: DB検索 → [ベクトル化 + LLM] → DB登録"""
-    compound_word = "".join(word_parts)
+    compound_term = "".join(term_parts)
 
     # 1. DB検索
-    entry = await asyncio.to_thread(read_dictionary_by_word, compound_word)
+    entry = None
+    if db.is_available:
+        entry = await asyncio.to_thread(read_dictionary_by_term, compound_term)
 
     if entry:
         return DictionaryEntry(
-            word=entry.word,
+            term=entry.term,
             description=entry.description,
             meaning_vector=entry.meaning_vector,
             source="db",
         )
 
     # 2. ベクトル化 + LLM を並列実行（DB を触らないので並列OK）
-    vector_task = asyncio.to_thread(vectorize_pretokenized_words, [word_parts])
-    llm_task = _call_llm(compound_word)
-    vectors, description = await asyncio.gather(vector_task, llm_task)
+    vector_task = asyncio.to_thread(vectorize_pretokenized_words, [term_parts])
+    llm_task = asyncio.to_thread(lookup_term_summary, compound_term)
+    vectors, llm_result = await asyncio.gather(vector_task, llm_task)
     vector = vectors[0] if vectors else []
+    description = llm_result["summary"]
 
     # 3. DB登録（直列: 書き込み衝突防止）
     #    UNIQUE 制約違反は並列処理で同じ単語が同時に miss した場合に発生する。
     #    その場合は既存エントリを返す。
-    async with _get_db_sem():
-        try:
-            await asyncio.to_thread(
-                create_dictionary,
-                word=compound_word,
-                description=description,
-                meaning_vector=vector,
-            )
-        except Exception:
-            # UNIQUE 違反 → 既に他のタスクが登録済み
-            logger.info("重複登録をスキップ: %s", compound_word)
-            entry = await asyncio.to_thread(read_dictionary_by_word, compound_word)
-            if entry:
-                return DictionaryEntry(
-                    word=entry.word,
-                    description=entry.description,
-                    meaning_vector=entry.meaning_vector,
-                    source="db",
+    if db.is_available:
+        async with _get_db_sem():
+            try:
+                await asyncio.to_thread(
+                    create_dictionary,
+                    term=compound_term,
+                    description=description,
+                    meaning_vector=vector,
                 )
+            except Exception:
+                # UNIQUE 違反 → 既に他のタスクが登録済み
+                logger.info("重複登録をスキップ: %s", compound_term)
+                entry = await asyncio.to_thread(read_dictionary_by_term, compound_term)
+                if entry:
+                    return DictionaryEntry(
+                        term=entry.term,
+                        description=entry.description,
+                        meaning_vector=entry.meaning_vector,
+                        source="db",
+                    )
 
     return DictionaryEntry(
-        word=compound_word,
+        term=compound_term,
         description=description,
         meaning_vector=vector,
         source="llm",
     )
-
-
-# ---------------------------------------------------------------------------
-# LLM 呼び出し
-# ---------------------------------------------------------------------------
-async def _call_llm(word: str) -> str:
-    """LLMに単語の説明を問い合わせる。
-
-    TODO: 実際の LLM API（OpenAI 等）に差し替える
-    """
-    try:
-        # TODO: タイムアウト・リトライ・レート制限の処理を追加する
-        await asyncio.sleep(0.3)  # 実際は HTTP リクエスト
-        return f"{word}の説明（仮）"
-    except Exception:
-        logger.exception("LLM 呼び出しに失敗しました: %s", word)
-        return f"{word}の説明を取得できませんでした"
 
 
 # ---------------------------------------------------------------------------
