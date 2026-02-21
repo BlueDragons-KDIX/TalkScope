@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 import { useDemoStream } from './hooks/useDemoStream';
 import { useVectorSend } from '@/app/hooks/useVectorSend';
+import { useReferDict, type DictTermResult } from '@/app/hooks/useReferDict';
 import type { VectorPayload } from '@/app/utils/vectorSendWithOverlap';
 import { fetchThemeVector, type ThemeVectorResult } from '@/app/utils/themeVectorApi';
 import { DEMO_TEXT_INSTANT } from './demo/demo';
@@ -10,6 +11,7 @@ import { BubbleCloud } from './components/BubbleCloud';
 import { TermDetailPanel } from './components/TermDetailPanel';
 import { HistoryPanel } from './components/HistoryPanel';
 import { Term } from './data/terms';
+import { getAllPinnedTerms, addPinnedTerm, removePinnedTerm } from './db';
 import { extractTerms, countTermFrequencies } from './utils/termDetection';
 import { Book, LayoutGrid, Settings, Target } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
@@ -49,11 +51,17 @@ const App: React.FC = () => {
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
   const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo', sensitivity: 50 });
   const [isPinned, setIsPinned] = useState<Set<string>>(new Set());
+  /** ピン留めした用語一覧（IndexedDB と同期・ピン中タブで表示） */
+  const [pinnedTermsList, setPinnedTermsList] = useState<Term[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   /** バブルサイズ計算用：主題（ベクトル類似度の基準） */
   const [themeText, setThemeText] = useState('');
   /** 主題テキストをAPIでベクトル化した結果（類似度計算用） */
   const [themeVector, setThemeVector] = useState<ThemeVectorResult | null>(null);
+  /** API (refer_dictionary) で取得した動的用語一覧 */
+  const [apiTerms, setApiTerms] = useState<Term[]>([]);
+  /** API 用語の意味ベクトル (termId → vector)。バブルサイズ計算用 */
+  const [termVectors, setTermVectors] = useState<Record<string, number[]>>({});
 
   // ── バブル寿命管理 refs ────────────────────────────────────────
   const termTimestamps    = useRef<Record<string, number>>({});       // termId → 追加時刻
@@ -61,6 +69,22 @@ const App: React.FC = () => {
   const isPinnedRef  = useRef<Set<string>>(new Set());           // isPinned の ref ミラー
   const activeTermsRef    = useRef<Term[]>([]);                       // activeTerms の ref ミラー
   const historicalTermIdsRef = useRef<Set<string>>(new Set());        // これまでに抽出・生成された全用語ID（ゾンビ復活防止用）
+
+  // 起動時に IndexedDB からピン留め一覧を復元
+  useEffect(() => {
+    getAllPinnedTerms()
+      .then((list) => {
+        setPinnedTermsList(list);
+        setIsPinned((prev) => {
+          const next = new Set(prev);
+          list.forEach((t) => next.add(t.id));
+          return next;
+        });
+      })
+      .catch((err) => {
+        if (import.meta.env.DEV) console.warn('[pinnedTerms] load failed', err);
+      });
+  }, []);
 
   // ── デモ機能（コア機能から独立） ──────────────────────────────
   const demoStream = useDemoStream({
@@ -78,6 +102,30 @@ const App: React.FC = () => {
       if (import.meta.env.DEV) console.log('[vector] payload', payload.sentences.length, result);
     },
     onError: (err: unknown) => console.warn('[vector] send error', err),
+  });
+
+  // ── refer_dictionary API（1文ずつ送信し用語・意味・ベクトルを取得） ──
+  const handleDictResults = useCallback((results: DictTermResult[]) => {
+    const newTerms: Term[] = [];
+    const newVectors: Record<string, number[]> = {};
+    for (const r of results) {
+      newTerms.push(r.term);
+      if (r.meaningVector && r.meaningVector.length > 0) {
+        newVectors[r.term.id] = r.meaningVector;
+      }
+    }
+    if (newTerms.length > 0) {
+      setApiTerms(prev => [...prev, ...newTerms]);
+      setTermVectors(prev => ({ ...prev, ...newVectors }));
+    }
+  }, []);
+
+  useReferDict(transcript, {
+    baseUrl: (import.meta.env.VITE_BACKEND_URL ?? '').trim(),
+    intervalSec: 5,            // 5秒ごとのフォールバック送信
+    trailingDebounceMs: 1000,  // 入力が1秒止まったら末尾の未完了文も送信
+    onResults: handleDictResults,
+    onError: (err: unknown) => console.warn('[referDict] send error', err),
   });
 
   // 主題テキストをデバウンスしてAPIでベクトル化し、類似度計算用に保持
@@ -117,7 +165,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!transcript) return;
-    const extracted = extractTerms(transcript);
+    const extracted = extractTerms(transcript, apiTerms);
     const now = Date.now();
     
     // まだ一度も画面に出ていない完全に新規の用語だけをフィルタリング
@@ -130,7 +178,7 @@ const App: React.FC = () => {
     });
 
     setActiveTerms(prev => [...prev, ...completelyNewTerms]);
-  }, [transcript]);
+  }, [transcript, apiTerms]);
 
   // ── バブル削除アルゴリズム (1秒ごとに実行) ───────────────────
   useEffect(() => {
@@ -141,7 +189,6 @@ const App: React.FC = () => {
         return;
       }
 
-      const pinned = isPinnedRef.current;
       const ts = termTimestamps.current;
       const deathRow = deathRowRef.current;
       const now = Date.now();
@@ -176,7 +223,7 @@ const App: React.FC = () => {
           }
 
           const elapsed = now - deathRow[t.id];
-          const lifetime = pinned.has(t.id) ? 10000 : 5000; // ピン留めは10秒、未ピンは5秒
+          const lifetime = 5000; // スターの有無に関係なく同じライフタイムで削除
 
           if (elapsed >= lifetime) {
             delete deathRow[t.id];
@@ -223,15 +270,21 @@ const App: React.FC = () => {
   }, []);
 
   const handleTogglePin = useCallback((termId: string) => {
-    setIsPinned(prev => {
+    setIsPinned((prev) => {
       const next = new Set(prev);
       if (next.has(termId)) {
-        // ピン解除: weightをリセット→生成直後と同じ状態に戻す
         next.delete(termId);
-        setTermWeights(prev => ({ ...prev, [termId]: 0 }));
+        setTermWeights((p) => ({ ...p, [termId]: 0 }));
         termTimestamps.current[termId] = Date.now();
+        setPinnedTermsList((p) => p.filter((t) => t.id !== termId));
+        removePinnedTerm(termId).catch((err) => import.meta.env.DEV && console.warn('[pinnedTerms] remove failed', err));
       } else {
         next.add(termId);
+        const term = activeTermsRef.current.find((t) => t.id === termId);
+        if (term) {
+          setPinnedTermsList((p) => (p.some((t) => t.id === termId) ? p : [...p, term]));
+          addPinnedTerm(term).catch((err) => import.meta.env.DEV && console.warn('[pinnedTerms] add failed', err));
+        }
       }
       return next;
     });
@@ -248,13 +301,20 @@ const App: React.FC = () => {
     setTranscript(''); setActiveTerms([]); setTermWeights({});
     setSelectedTerm(null);
     setIsPinned(new Set());
+    setApiTerms([]);
+    setTermVectors({});
     termTimestamps.current = {};
     deathRowRef.current = {};
     historicalTermIdsRef.current = new Set();
     toast.info('リセットしました');
   };
 
-  const filteredTerms = categoryFilter === 'ALL' ? activeTerms : activeTerms.filter(t => t.category === categoryFilter);
+  const filteredTerms =
+    categoryFilter === 'ALL'
+      ? activeTerms
+      : categoryFilter === 'ピン中'
+        ? pinnedTermsList
+        : activeTerms.filter(t => t.category === categoryFilter);
   const termFrequencies = useMemo(() => countTermFrequencies(transcript, activeTerms), [transcript, activeTerms]);
 
   // パネルコンテンツ（useMemo で過剰な再生成を抑制）
@@ -272,6 +332,7 @@ const App: React.FC = () => {
         onLoadDemo={loadDemo}
         demoStream={demoStream}
         darkMode={dk}
+        apiTerms={apiTerms}
       />
     ),
     bubbleCloud: (
@@ -286,6 +347,7 @@ const App: React.FC = () => {
         onTogglePin={handleTogglePin}
         themeVector={themeVector}
         themeText={themeText}
+        termVectors={termVectors}
         categoryFilter={categoryFilter}
         onCategoryFilterChange={setCategoryFilter}
       />
@@ -309,7 +371,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText]);
+  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms]);
 
   return (
     <div
