@@ -105,8 +105,8 @@ const App: React.FC = () => {
   useEffect(() => {
     const id = setInterval(() => {
       const current = activeTermsRef.current;
-      if (current.length <= 25) {
-        deathRowRef.current = {}; // 25個以下なら削除待機リストをリセット
+      if (current.length <= 20) {
+        deathRowRef.current = {}; // 20個以下なら削除待機リストをリセット
         return;
       }
 
@@ -126,9 +126,9 @@ const App: React.FC = () => {
         toRemove.forEach(t => delete deathRow[t.id]);
       }
 
-      // 2. 25個〜30個の間のバブルにライフタイムを設定・判定
-      if (terms.length > 25) {
-        const excess = terms.length - 25;
+      // 2. 20個〜30個の間のバブルにライフタイムを設定・判定
+      if (terms.length > 20) {
+        const excess = terms.length - 20;
         // 先頭（最も古いバブル）からの `excess` 個が削除対象
         const oldestExcess = terms.slice(0, excess);
         const survivors = terms.slice(excess);
@@ -141,7 +141,7 @@ const App: React.FC = () => {
 
         oldestExcess.forEach(t => {
           if (!deathRow[t.id]) {
-            deathRow[t.id] = now; // 初めて25個を超過した枠に入った時の時刻
+            deathRow[t.id] = now; // 初めて20個を超過した枠に入った時の時刻
           }
 
           const elapsed = now - deathRow[t.id];
@@ -175,8 +175,19 @@ const App: React.FC = () => {
     setSelectedTerm(term);
     // ピン済みのバブルはクリックしても大きさ・重要度が変化しない
     if (pinnedTermIdsRef.current.has(term.id)) return;
-    // click count (バブルサイズに使用)
-    setTermWeights(prev => ({ ...prev, [term.id]: (prev[term.id] || 0) + 1 }));
+    
+    setTermWeights(prev => {
+      const newWeight = (prev[term.id] || 0) + 1;
+      
+      // クリック回数が5回に達したら自動でピン留め
+      if (newWeight === 5 && !pinnedTermIdsRef.current.has(term.id)) {
+        setPinnedTermIds(p => new Set(p).add(term.id));
+        toast.success(`「${term.word}」が重要ワードとしてピン留めされました`);
+      }
+      
+      return { ...prev, [term.id]: newWeight };
+    });
+    
     setSearchHistory(prev => [term, ...prev.filter(t => t.id !== term.id)].slice(0, 50));
   }, []);
 
