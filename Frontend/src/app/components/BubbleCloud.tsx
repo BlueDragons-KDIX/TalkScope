@@ -96,12 +96,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   }>({ nodes: new Map(), width: 800, height: 500, rafId: null });
   const containerRef = useRef<HTMLDivElement>(null);
   const bubbleRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  /** 一定以上の大きさで自動ピンする候補（render で貯め、effect で適用） */
-  const autoPinCandidatesRef = useRef<Set<string>>(new Set());
 
-  /** この半径以上で自動で星（ピン）をつける */
-  const AUTO_PIN_RADIUS_THRESHOLD = 55;
-  
   // コンテナの初期幅を記憶し、それをデフォルトサイズとする
   const defaultWidthRef = useRef<number | null>(null);
   
@@ -155,7 +150,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     if (!activeIds.has(id)) engineNodes.delete(id);
   }
   const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
-  autoPinCandidatesRef.current.clear();
   const themeTextTrimmed = themeText.trim();
   for (const term of activeTerms) {
     const freq = termFrequencies[term.id] ?? 0;
@@ -186,9 +180,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         radius: Math.round(r * 10) / 10,
       });
     }
-    if (r >= AUTO_PIN_RADIUS_THRESHOLD && !isPinned.has(term.id)) {
-      autoPinCandidatesRef.current.add(term.id);
-    }
     
     if (!engineNodes.has(term.id)) {
       const cw = engineRef.current.width || 800;
@@ -201,14 +192,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     }
   }
   }
-
-  // 一定以上の大きさになった用語を自動でピン（星）する
-  useEffect(() => {
-    const toPin = autoPinCandidatesRef.current;
-    if (toPin.size === 0) return;
-    toPin.forEach((id) => onTogglePin(id));
-    toPin.clear();
-  }, [activeTerms, termFrequencies, themeVector, onTogglePin]);
 
   // 物理シミュレーションループ
   useEffect(() => {
