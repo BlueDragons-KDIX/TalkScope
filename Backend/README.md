@@ -67,6 +67,30 @@ make up-backend
       "deduplicate": false
     }
     ```
+
+- `POST /analysis/vectorize/sentence`
+  - テキスト全体を1つの文章ベクトルに変換して返す
+  - ベクトル取得優先順: `spacy_doc` → `spacy_token_avg` → `content_token_avg` → `hash`
+  - リクエスト例:
+    ```json
+    {
+      "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+      "normalize": true
+    }
+    ```
+  - レスポンス例（抜粋）:
+    ```json
+    {
+      "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+      "meta": {
+        "model": "ginza",
+        "vector_dim": 300,
+        "vector_source": "spacy_doc",
+        "normalize": true
+      },
+      "sentence_vector": [0.0312, -0.0124, 0.2011, -0.0942]
+    }
+    ```
   - レスポンス例（抜粋）:
     ```json
     {

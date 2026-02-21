@@ -5,6 +5,7 @@ from app.services.text_analysis import (
     tfidf_scores,
     top_terms_by_tfidf,
     vectorize_content_tokens,
+    vectorize_sentence,
 )
 
 
@@ -118,3 +119,24 @@ def test_morphological_analysis_fallback_keeps_auxiliary_token(monkeypatch) -> N
 
     pos_by_surface = {token["surface"]: token["pos"] for token in tokens}
     assert pos_by_surface["です"] == "AUX"
+
+
+def test_vectorize_sentence_returns_single_vector() -> None:
+    result = vectorize_sentence("今日は自然言語処理を勉強して、結果を共有します。")
+
+    assert result["meta"]["vector_dim"] > 0
+    assert len(result["sentence_vector"]) == result["meta"]["vector_dim"]
+    assert result["meta"]["vector_source"] in {
+        "spacy_doc",
+        "spacy_token_avg",
+        "content_token_avg",
+        "hash",
+    }
+
+
+def test_vectorize_sentence_empty_text_returns_empty_vector() -> None:
+    result = vectorize_sentence("", normalize=True)
+
+    assert result["sentence_vector"] == []
+    assert result["meta"]["vector_dim"] == 0
+    assert result["meta"]["vector_source"] == "none"

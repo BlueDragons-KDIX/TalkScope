@@ -429,6 +429,15 @@ def _average_vectors(vectors: list[list[float]]) -> list[float]:
     return [v / count for v in totals]
 
 
+def _l2_normalize(vector: list[float]) -> list[float]:
+    if not vector:
+        return []
+    norm = math.sqrt(sum(v * v for v in vector))
+    if norm <= 0.0:
+        return vector
+    return [v / norm for v in vector]
+
+
 # ベクトル次元はモデル語彙 -> token vector -> ハッシュ既定値の順で決定する。
 def _resolve_vector_dim(nlp: Any | None, doc: Any | None) -> int:
     if nlp is not None:
@@ -596,6 +605,89 @@ def vectorize_content_tokens(
             "vector_source_counts": dict(source_map),
         },
         "tokens": results,
+    }
+
+
+def vectorize_sentence(text: str, normalize: bool = True) -> dict[str, Any]:
+    """Vectorize the whole sentence and return one vector."""
+    if not text.strip():
+        return {
+            "text": text,
+            "meta": {
+                "model": "none",
+                "vector_dim": 0,
+                "vector_source": "none",
+                "normalize": normalize,
+                "input_token_count": 0,
+                "content_token_count": 0,
+            },
+            "sentence_vector": [],
+        }
+
+    tokens = morphological_analysis(text)
+    nlp = _get_spacy_ja()
+    doc = nlp(text) if nlp else None
+    vector_source = "hash"
+    sentence_vector: list[float] = []
+    content_token_count = 0
+
+    if doc is not None and doc.has_vector and float(doc.vector_norm) > 0.0:
+        sentence_vector = [float(v) for v in doc.vector]
+        vector_source = "spacy_doc"
+
+    if not sentence_vector and doc is not None:
+        token_vectors = [
+            [float(v) for v in token.vector]
+            for token in doc
+            if (not token.is_space) and token.has_vector and float(token.vector_norm) > 0.0
+        ]
+        if token_vectors:
+            sentence_vector = _average_vectors(token_vectors)
+            vector_source = "spacy_token_avg"
+
+    if not sentence_vector:
+        content = vectorize_content_tokens(text=text, deduplicate=False)
+        content_vectors = [token["vector"] for token in content["tokens"] if token.get("vector")]
+        content_token_count = len(content_vectors)
+        if content_vectors:
+            sentence_vector = _average_vectors(content_vectors)
+            vector_source = "content_token_avg"
+
+    if not sentence_vector:
+        dim = _resolve_vector_dim(nlp, doc)
+        sentence_vector = _build_hashed_vector(text, dim)
+        vector_source = "hash"
+
+    if normalize:
+        sentence_vector = _l2_normalize(sentence_vector)
+
+    vector_dim = len(sentence_vector)
+    model_name = "hash-fallback"
+    if nlp is not None:
+        model_name = str(nlp.meta.get("name", "ja_ginza"))
+
+    if content_token_count == 0:
+        content_token_count = len(
+            [
+                token
+                for token in tokens
+                if _should_vectorize_pos(
+                    token["pos"], _DEFAULT_VECTOR_INCLUDE_POS, _DEFAULT_VECTOR_EXCLUDE_POS
+                )
+            ]
+        )
+
+    return {
+        "text": text,
+        "meta": {
+            "model": model_name,
+            "vector_dim": vector_dim,
+            "vector_source": vector_source,
+            "normalize": normalize,
+            "input_token_count": len(tokens),
+            "content_token_count": content_token_count,
+        },
+        "sentence_vector": [round(float(v), 6) for v in sentence_vector],
     }
 
 
