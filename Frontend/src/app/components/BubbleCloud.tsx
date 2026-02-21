@@ -4,24 +4,14 @@ import { Term } from '../data/terms';
 import { TermBubble } from './TermBubble';
 import { Hexagon, Shuffle, Pause, ChevronUp, ChevronDown } from 'lucide-react';
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
-  Frontend: { bg: 'bg-blue-500/20',    text: 'text-blue-300',    border: 'border-blue-500/30',    dot: '#60a5fa' },
-  Backend:  { bg: 'bg-emerald-500/20', text: 'text-emerald-300', border: 'border-emerald-500/30', dot: '#34d399' },
-  Infra:    { bg: 'bg-violet-500/20',  text: 'text-violet-300',  border: 'border-violet-500/30',  dot: '#a78bfa' },
-  'AI/Data':{ bg: 'bg-amber-500/20',   text: 'text-amber-300',   border: 'border-amber-500/30',   dot: '#fbbf24' },
-  General:  { bg: 'bg-slate-500/20',   text: 'text-slate-300',   border: 'border-slate-500/30',   dot: '#94a3b8' },
-};
-
 interface BubbleCloudProps {
   activeTerms: Term[];
   termWeights: Record<string, number>;
   onTermClick: (term: Term) => void;
   darkMode?: boolean;
-  categoryFilter: string;
-  onCategoryFilterChange: (cat: string) => void;
   selectedTermId?: string;
-  pinnedTermIds: Set<string>;
-  onTogglePin: (termId: string) => void;
+  pinnedTermIds?: Set<string>;
+  onTogglePin?: (id: string) => void;
 }
 
 export const BubbleCloud: React.FC<BubbleCloudProps> = ({
@@ -29,16 +19,11 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   termWeights,
   onTermClick,
   darkMode = true,
-  categoryFilter,
-  onCategoryFilterChange,
   selectedTermId,
   pinnedTermIds,
   onTogglePin,
 }) => {
-  const dk = darkMode;
-  const categories = ['ALL', ...Object.keys(CATEGORY_COLORS)];
-
-  const [isAutoPlay, setIsAutoPlay] = useState(false);
+  const dk = darkMode;  const [isAutoPlay, setIsAutoPlay] = useState(false);
   const [intervalSec, setIntervalSec] = useState(4);
   const [showSlider, setShowSlider] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -76,8 +61,8 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     if (!activeIds.has(id)) engineNodes.delete(id);
   }
   for (const term of activeTerms) {
-    const w = pinnedTermIds.has(term.id) ? 0 : (termWeights[term.id] || 0);
-    const r = (Math.max(60, 80 + w * 10) + (pinnedTermIds.has(term.id) ? 20 : 0)) / 2;
+    const w = pinnedTermIds?.has(term.id) ? 0 : (termWeights[term.id] || 0);
+    const r = (Math.max(60, 80 + w * 10) + (pinnedTermIds?.has(term.id) ? 20 : 0)) / 2;
     if (!engineNodes.has(term.id)) {
       const cw = engineRef.current.width || 800;
       const ch = engineRef.current.height || 500;
@@ -232,32 +217,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         </span>
       </div>
 
-      {/* Category filter tabs */}
-      <div
-        className={`px-3 py-2 border-b flex gap-1 overflow-x-auto shrink-0 ${dk ? 'border-slate-800/40' : 'border-slate-100'}`}
-        style={{ scrollbarWidth: 'none' }}
-      >
-        {categories.map(cat => {
-          const c = CATEGORY_COLORS[cat];
-          const isActive = categoryFilter === cat;
-          return (
-            <button
-              key={cat}
-              onClick={() => onCategoryFilterChange(cat)}
-              className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                isActive
-                  ? cat === 'ALL'
-                    ? (dk ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-800')
-                    : `${c.bg} ${c.text} border ${c.border}`
-                  : dk ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              {cat === 'ALL' ? 'すべて' : cat}
-            </button>
-          );
-        })}
-      </div>
-
       {/* Bubbles area — 座標固定+上方フロート */}
       <div ref={containerRef} className="relative flex-1 overflow-hidden">
         {dk && (
@@ -299,12 +258,12 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                   >
                     <TermBubble
                       term={term}
-                      weight={pinnedTermIds.has(term.id) ? 0 : (termWeights[term.id] || 0)}
+                      weight={pinnedTermIds?.has(term.id) ? 0 : (termWeights[term.id] || 0)}
                       onClick={onTermClick}
                       darkMode={dk}
                       isActive={selectedTermId === term.id}
-                      isPinned={pinnedTermIds.has(term.id)}
-                      onTogglePin={onTogglePin}
+                      isPinned={pinnedTermIds?.has(term.id)}
+                      onTogglePin={onTogglePin ? () => onTogglePin(term.id) : undefined}
                       size={node.radius * 2}
                       mapContainerRef={containerRef}
                       showDescription={descIds.has(term.id)}

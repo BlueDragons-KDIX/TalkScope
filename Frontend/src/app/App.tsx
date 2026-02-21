@@ -41,7 +41,6 @@ const App: React.FC = () => {
   const [activeTerms, setActiveTerms] = useState<Term[]>([]);
   const [selectedTerm, setSelectedTerm] = useState<Term | null>(null);
   const [termWeights, setTermWeights] = useState<Record<string, number>>({});
-  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [searchHistory, setSearchHistory] = useState<Term[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
@@ -213,15 +212,13 @@ const App: React.FC = () => {
     if (isListening) stopListening();
     demoStream.stopStream();
     setTranscript(''); setActiveTerms([]); setTermWeights({});
-    setSelectedTerm(null); setCategoryFilter('ALL');
+    setSelectedTerm(null);
     setPinnedTermIds(new Set());
     termTimestamps.current = {};
     termImportance.current = {};
     autoPinnedSet.current = new Set();
     toast.info('リセットしました');
   };
-
-  const filteredTerms = categoryFilter === 'ALL' ? activeTerms : activeTerms.filter(t => t.category === categoryFilter);
 
   // パネルコンテンツ（useMemo で過剰な再生成を抑制）
   const panels: Record<PanelId, React.ReactNode> = useMemo(() => ({
@@ -242,12 +239,10 @@ const App: React.FC = () => {
     ),
     bubbleCloud: (
       <BubbleCloud
-        activeTerms={filteredTerms}
+        activeTerms={activeTerms}
         termWeights={termWeights}
         onTermClick={handleTermClick}
         darkMode={dk}
-        categoryFilter={categoryFilter}
-        onCategoryFilterChange={setCategoryFilter}
         selectedTermId={selectedTerm?.id}
         pinnedTermIds={pinnedTermIds}
         onTogglePin={handleTogglePin}
@@ -272,7 +267,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, pinnedTermIds, handleTogglePin]);
+  }), [transcript, isListening, activeTerms, termWeights, selectedTerm, searchHistory, dk, handleTermClick, pinnedTermIds, handleTogglePin]);
 
   return (
     <div

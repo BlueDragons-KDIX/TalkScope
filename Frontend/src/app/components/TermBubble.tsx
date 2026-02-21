@@ -13,7 +13,7 @@ interface TermBubbleProps {
   darkMode?: boolean;
   isActive?: boolean;
   isPinned?: boolean;
-  onTogglePin: (termId: string) => void;
+  onTogglePin?: (termId: string) => void;
   size?: number;
   /** 用語マップコンテナの参照（ツールチップを枠内に収めるため） */
   mapContainerRef?: React.RefObject<HTMLDivElement | null>;
@@ -150,7 +150,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         // 右クリックでバブルに星をつける
         onContextMenu={(e) => {
           e.preventDefault();
-          onTogglePin(term.id);
+          onTogglePin?.(term.id);
         }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -199,7 +199,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onTogglePin(term.id);
+            onTogglePin?.(term.id);
           }}
           title={isPinned ? 'ピン解除' : 'ピン留め（消えなくなります）'}
           className={`
