@@ -1,3 +1,4 @@
+import app.services.text_analysis as text_analysis
 from app.services.text_analysis import (
     dependency_parse,
     morphological_analysis,
@@ -59,3 +60,26 @@ def test_vectorize_content_tokens_filters_particles_and_conjunctions() -> None:
     assert result["meta"]["vector_dim"] > 0
     assert len(result["tokens"]) > 0
     assert all(len(token["vector"]) == token["vector_dim"] for token in result["tokens"])
+
+
+def test_vectorize_content_tokens_excludes_conjunction_in_fallback(monkeypatch) -> None:
+    monkeypatch.setattr(text_analysis, "_sudachi_analysis", lambda _text: [])
+
+    result = vectorize_content_tokens("そして、結果を共有する", deduplicate=False)
+    surfaces = [token["surface"] for token in result["tokens"]]
+
+    assert "そして" not in surfaces
+
+
+def test_create_sudachi_tokenizer_returns_none_on_init_error(monkeypatch) -> None:
+    class _BrokenDictionary:
+        def create(self):
+            raise RuntimeError("dictionary resource missing")
+
+    class _BrokenSudachiDictionaryModule:
+        @staticmethod
+        def Dictionary():
+            return _BrokenDictionary()
+
+    monkeypatch.setattr(text_analysis, "sudachi_dictionary", _BrokenSudachiDictionaryModule)
+    assert text_analysis._create_sudachi_tokenizer() is None

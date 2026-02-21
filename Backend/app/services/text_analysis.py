@@ -31,9 +31,16 @@ except Exception:  # pragma: no cover - optional dependency
     ginza = None
 
 
-_SUDACHI_TOKENIZER = (
-    sudachi_dictionary.Dictionary().create() if sudachi_dictionary else None
-)
+def _create_sudachi_tokenizer() -> Any | None:
+    if sudachi_dictionary is None:
+        return None
+    try:
+        return sudachi_dictionary.Dictionary().create()
+    except Exception:  # pragma: no cover - optional dictionary resource
+        return None
+
+
+_SUDACHI_TOKENIZER = _create_sudachi_tokenizer()
 _SUDACHI_MODE = sudachi_tokenizer.Tokenizer.SplitMode.C if sudachi_tokenizer else None
 _SPACY_NLP = None
 
@@ -227,11 +234,27 @@ def _guess_pos(surface: str) -> str:
         "より",
     }
     auxiliaries = {"です", "ます", "だ", "ない", "たい", "れる", "られる"}
+    conjunctions = {
+        "そして",
+        "しかし",
+        "また",
+        "または",
+        "あるいは",
+        "ただし",
+        "つまり",
+        "なお",
+        "一方",
+        "だから",
+        "なので",
+        "それで",
+    }
 
     if surface in particles:
         return "PART"
     if surface in auxiliaries:
         return "AUX"
+    if surface in conjunctions:
+        return "CONJ"
     if re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", surface):
         return "NUM"
     if re.fullmatch(r"[A-Za-z]+(?:'[A-Za-z]+)?", surface):
