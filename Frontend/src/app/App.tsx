@@ -48,7 +48,7 @@ const App: React.FC = () => {
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
   const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo', sensitivity: 50 });
-  const [pinnedTermIds, setPinnedTermIds] = useState<Set<string>>(new Set());
+  const [isPinned, setIsPinned] = useState<Set<string>>(new Set());
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   /** バブルサイズ計算用：主題（ベクトル類似度の基準） */
   const [themeText, setThemeText] = useState('');
@@ -58,7 +58,7 @@ const App: React.FC = () => {
   // ── バブル寿命管理 refs ────────────────────────────────────────
   const termTimestamps    = useRef<Record<string, number>>({});       // termId → 追加時刻
   const deathRowRef       = useRef<Record<string, number>>({});       // termId → 削除待機リストに入った時刻
-  const pinnedTermIdsRef  = useRef<Set<string>>(new Set());           // pinnedTermIds の ref ミラー
+  const isPinnedRef  = useRef<Set<string>>(new Set());           // isPinned の ref ミラー
   const activeTermsRef    = useRef<Term[]>([]);                       // activeTerms の ref ミラー
   const historicalTermIdsRef = useRef<Set<string>>(new Set());        // これまでに抽出・生成された全用語ID（ゾンビ復活防止用）
 
@@ -112,7 +112,7 @@ const App: React.FC = () => {
   useEffect(() => { if (error) toast.error(error); }, [error]);
 
   // refs の同期
-  useEffect(() => { pinnedTermIdsRef.current = pinnedTermIds; }, [pinnedTermIds]);
+  useEffect(() => { isPinnedRef.current = isPinned; }, [isPinned]);
   useEffect(() => { activeTermsRef.current = activeTerms; }, [activeTerms]);
 
   useEffect(() => {
@@ -141,7 +141,7 @@ const App: React.FC = () => {
         return;
       }
 
-      const pinned = pinnedTermIdsRef.current;
+      const pinned = isPinnedRef.current;
       const ts = termTimestamps.current;
       const deathRow = deathRowRef.current;
       const now = Date.now();
@@ -205,14 +205,14 @@ const App: React.FC = () => {
   const handleTermClick = useCallback((term: Term) => {
     setSelectedTerm(term);
     // ピン済みのバブルはクリックしても大きさ・重要度が変化しない
-    if (pinnedTermIdsRef.current.has(term.id)) return;
+    if (isPinnedRef.current.has(term.id)) return;
     
     setTermWeights(prev => {
       const newWeight = (prev[term.id] || 0) + 1;
       
       // クリック回数が5回に達したら自動でピン留め
-      if (newWeight === 5 && !pinnedTermIdsRef.current.has(term.id)) {
-        setPinnedTermIds(p => new Set(p).add(term.id));
+      if (newWeight === 5 && !isPinnedRef.current.has(term.id)) {
+        setIsPinned(p => new Set(p).add(term.id));
         toast.success(`「${term.word}」が重要ワードとしてピン留めされました`);
       }
       
@@ -223,7 +223,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleTogglePin = useCallback((termId: string) => {
-    setPinnedTermIds(prev => {
+    setIsPinned(prev => {
       const next = new Set(prev);
       if (next.has(termId)) {
         // ピン解除: weightをリセット→生成直後と同じ状態に戻す
@@ -247,7 +247,7 @@ const App: React.FC = () => {
     demoStream.stopStream();
     setTranscript(''); setActiveTerms([]); setTermWeights({});
     setSelectedTerm(null);
-    setPinnedTermIds(new Set());
+    setIsPinned(new Set());
     termTimestamps.current = {};
     deathRowRef.current = {};
     historicalTermIdsRef.current = new Set();
@@ -267,7 +267,7 @@ const App: React.FC = () => {
         onClearTranscript={clearAll}
         onTermClick={handleTermClick}
         onTermHover={() => { }}
-        pinnedTermIds={pinnedTermIds}
+        isPinned={isPinned}
         onTogglePin={handleTogglePin}
         onLoadDemo={loadDemo}
         demoStream={demoStream}
@@ -282,7 +282,7 @@ const App: React.FC = () => {
         onTermClick={handleTermClick}
         darkMode={dk}
         selectedTermId={selectedTerm?.id}
-        pinnedTermIds={pinnedTermIds}
+        isPinned={isPinned}
         onTogglePin={handleTogglePin}
         themeVector={themeVector}
         themeText={themeText}
@@ -296,7 +296,7 @@ const App: React.FC = () => {
         onClose={() => setSelectedTerm(null)}
         onRelatedTermClick={handleTermClick}
         darkMode={dk}
-        isPinned={selectedTerm ? pinnedTermIds.has(selectedTerm.id) : false}
+        isPinned={selectedTerm ? isPinned.has(selectedTerm.id) : false}
         onTogglePin={() => selectedTerm && handleTogglePin(selectedTerm.id)}
       />
     ),
@@ -309,7 +309,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, pinnedTermIds, handleTogglePin, themeVector, themeText]);
+  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText]);
 
   return (
     <div

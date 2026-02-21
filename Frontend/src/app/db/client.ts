@@ -104,25 +104,25 @@ export async function getPinnedWordIdsByPresentation(presentationId: string): Pr
   const index = tx.objectStore(STORE_NAMES.history).index('byPresentationId');
   const list = await index.getAll(presentationId);
   await tx.done;
-  return list.filter((h) => h.pinned).map((h) => h.wordId);
+  return list.filter((h) => h.isPinned).map((h) => h.wordId);
 }
 
 /** 履歴の upsert: 発表id+単語id が既にあれば更新、なければ追加。ピン留めフラグを設定。 */
 export async function setHistoryPinned(
   presentationId: string,
   wordId: string,
-  pinned: boolean
+  isPinned: boolean
 ): Promise<void> {
   const existing = await getHistoryByPresentationAndWord(presentationId, wordId);
   if (existing?.historyId != null) {
     await (async () => {
       const db = await getDB();
       const tx = db.transaction(STORE_NAMES.history, 'readwrite');
-      await tx.objectStore(STORE_NAMES.history).put({ ...existing, pinned });
+      await tx.objectStore(STORE_NAMES.history).put({ ...existing, isPinned });
       await tx.done;
     })();
   } else {
-    await putHistory({ presentationId, wordId, pinned });
+    await putHistory({ presentationId, wordId, isPinned });
   }
 }
 

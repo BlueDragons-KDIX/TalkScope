@@ -34,7 +34,7 @@ interface BubbleCloudProps {
   onTermClick: (term: Term) => void;
   darkMode?: boolean;
   selectedTermId?: string;
-  pinnedTermIds: Set<string>;
+  isPinned: Set<string>;
   onTogglePin: (termId: string) => void;
   /** 主題ベクトル（あればバブルサイズの主題類似度に利用） */
   themeVector?: ThemeVectorResult | null;
@@ -53,7 +53,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   onTermClick,
   darkMode = true,
   selectedTermId,
-  pinnedTermIds,
+  isPinned,
   onTogglePin,
   themeVector,
   themeText = '',
@@ -82,7 +82,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const activeTermsRef = useRef(activeTerms);
 
   // 用語⇔説明の反転状態を管理するIDセット（Auto-Play ONのときのみ使用）
-  const [descIds, setDescIds] = useState<Set<string>>(new Set());
+
 
   // ── バブル物理エンジン ──────────────────────────────────────
   const engineRef = useRef<{
@@ -157,9 +157,9 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     const themeScore = similarityToScore(themeSim);   // 0〜1
     const convScore = similarityToScore(convSim);    // 0〜1
     const displayCount = Math.min(freq, 10);        // 表示回数は10回まで反映
-    const w = pinnedTermIds?.has(term.id) ? 0 : (termWeights[term.id] || 0);
+    const w = isPinned?.has(term.id) ? 0 : (termWeights[term.id] || 0);
     // スケールファクターを適用して半径を縮小
-    const baseR = (Math.min(Math.max(40, w * 10), 50) + (pinnedTermIds?.has(term.id) ? 20 : 0)) / 2;
+    const baseR = (Math.min(Math.max(40, w * 10), 50) + (isPinned?.has(term.id) ? 20 : 0)) / 2;
     // 基本の大きさ * (1 + 主題類似度) * (1 + 会話類似度) * (1 + 0.1*表示回数)
     const r = baseR * scaleFactor  * (1 + themeScore)
       * (1 + convScore)
@@ -172,7 +172,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         radius: Math.round(r * 10) / 10,
       });
     }
-    if (r >= AUTO_PIN_RADIUS_THRESHOLD && !pinnedTermIds.has(term.id)) {
+    if (r >= AUTO_PIN_RADIUS_THRESHOLD && !isPinned.has(term.id)) {
       autoPinCandidatesRef.current.add(term.id);
     }
     
@@ -348,11 +348,11 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                   >
                     <TermBubble
                       term={term}
-                      weight={pinnedTermIds.has(term.id) ? 0 : (termWeights[term.id] || 0)}
+                      weight={isPinned.has(term.id) ? 0 : (termWeights[term.id] || 0)}
                       onClick={onTermClick}
                       darkMode={dk}
                       isActive={selectedTermId === term.id}
-                      isPinned={pinnedTermIds.has(term.id)}
+                      isPinned={isPinned.has(term.id)}
                       onTogglePin={onTogglePin}
                       size={node.radius * 2}
                       isAutoPlay={isAutoPlay}
