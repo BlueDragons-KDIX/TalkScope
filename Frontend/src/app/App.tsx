@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
 import { useDemoStream } from './hooks/useDemoStream';
+import { useVectorSend } from '@/app/hooks/useVectorSend';
+import type { VectorPayload } from '@/app/utils/vectorSendWithOverlap';
 import { DEMO_TEXT_INSTANT } from './demo/demo';
 import { TranscriptionView } from './components/TranscriptionView';
 import { BubbleCloud } from './components/BubbleCloud';
@@ -10,6 +12,7 @@ import { Term } from './data/terms';
 import { extractTerms } from './utils/termDetection';
 import { Book, LayoutGrid, Settings } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
+import { VectorApiCheckButton } from './components/VectorApiCheckButton';
 import { Toaster, toast } from 'sonner';
 import { LayoutEngine } from './layout/LayoutEngine';
 import { LayoutNode, PanelId } from './layout/types';
@@ -59,6 +62,16 @@ const App: React.FC = () => {
     intervalMs: 220,
   });
   // ──────────────────────────────────────────────────────────────
+
+  useVectorSend(transcript, {
+    overlapSentences: Number(import.meta.env.VITE_VECTOR_OVERLAP_SENTENCES) || 5,
+    sendEveryNSentences: Number(import.meta.env.VITE_VECTOR_SEND_EVERY_N_SENTENCES) || 5,
+    intervalSec: Number(import.meta.env.VITE_VECTOR_SEND_INTERVAL_SEC) || 0,
+    onSent: (payload: VectorPayload, result?: unknown) => {
+      if (import.meta.env.DEV) console.log('[vector] payload', payload.sentences.length, result);
+    },
+    onError: (err: unknown) => console.warn('[vector] send error', err),
+  });
 
   const dk = settings.darkMode;
 
@@ -316,6 +329,7 @@ const App: React.FC = () => {
             </div>
 
 
+            <VectorApiCheckButton darkMode={dk} />
             <button onClick={() => setIsSettingsOpen(true)} className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}>
               <Settings size={18} />
             </button>
