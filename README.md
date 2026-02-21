@@ -55,6 +55,39 @@ uv run uvicorn main:app --reload
 
 3. `http://localhost:5173` にアクセスして利用
 
+### Docker 実行手順
+
+ルートディレクトリ（`/Users/honmayuudai/MyHobby/hackson/KC3Hack2026`）で実行します。
+`Backend` は ARM64 環境でも動作するように Rust ビルド対応しているため、初回ビルドに時間がかかる場合があります。
+
+1. Frontend + Backend を同時起動
+
+```bash
+make up
+```
+
+2. Frontend のみ起動
+
+```bash
+make up-frontend
+```
+
+3. Backend のみ起動
+
+```bash
+make up-backend
+```
+
+4. 停止
+
+```bash
+make down
+```
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:8000`
+- Swagger UI: `http://localhost:8000/docs`
+
 ### 基本操作
 
 - 録音開始で文字起こしを開始
