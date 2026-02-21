@@ -12,6 +12,8 @@ from app.services.dictionary import lookup_term_summary, lookup_terms_summaries
 router = fastapi.APIRouter()
 
 
+# 辞書検索API本体。
+# term(単体)とterms(複数)のどちらでも受け付ける。
 @router.post(
     "/lookup",
     response_model=DictionaryLookupResponse | DictionaryLookupBatchResponse,
@@ -25,11 +27,13 @@ router = fastapi.APIRouter()
 def lookup(
     body: DictionaryLookupRequest,
 ) -> DictionaryLookupResponse | DictionaryLookupBatchResponse:
+    # 複数検索時はサービス層で並列処理し、results配列で返す。
     if body.terms is not None:
         results = lookup_terms_summaries(terms=body.terms, context=body.context)
         return DictionaryLookupBatchResponse(
             results=[DictionaryLookupResponse(**result) for result in results]
         )
 
+    # 単体検索時は従来フォーマットのレスポンスを返す。
     result = lookup_term_summary(term=body.term or "", context=body.context)
     return DictionaryLookupResponse(**result)

@@ -3,6 +3,8 @@ from __future__ import annotations
 from pydantic import BaseModel, Field, model_validator
 
 
+# 辞書検索リクエスト。
+# term(単体)かterms(複数)のどちらか一方を受け付ける。
 class DictionaryLookupRequest(BaseModel):
     term: str | None = Field(
         default=None,
@@ -24,6 +26,7 @@ class DictionaryLookupRequest(BaseModel):
 
     @model_validator(mode="after")
     def normalize_and_validate(self) -> "DictionaryLookupRequest":
+        # 受け取った文字列を正規化する（前後空白を除去）。
         normalized_term = self.term.strip() if isinstance(self.term, str) else None
         normalized_terms: list[str] | None = None
         if self.terms is not None:
@@ -31,6 +34,7 @@ class DictionaryLookupRequest(BaseModel):
 
         normalized_context = self.context.strip() if isinstance(self.context, str) else self.context
 
+        # term/terms の指定ルールを検証する。
         has_single = bool(normalized_term)
         has_multi = bool(normalized_terms)
         if has_single and has_multi:
@@ -38,6 +42,7 @@ class DictionaryLookupRequest(BaseModel):
         if not has_single and not has_multi:
             raise ValueError("Either term or terms is required")
 
+        # 文字数・空文字の制約を検証する。
         if normalized_term is not None and len(normalized_term) > 128:
             raise ValueError("term must be at most 128 characters")
         if normalized_terms is not None:
@@ -47,12 +52,14 @@ class DictionaryLookupRequest(BaseModel):
                 if len(term) > 128:
                     raise ValueError("each term in terms must be at most 128 characters")
 
+        # 正規化済みの値をモデルに反映する。
         self.term = normalized_term
         self.terms = normalized_terms
         self.context = normalized_context or None
         return self
 
 
+# 単語1件分の辞書検索レスポンス。
 class DictionaryLookupResponse(BaseModel):
     term: str = Field(description="正規化後の検索語", examples=["RAG"])
     summary: str = Field(
@@ -64,6 +71,7 @@ class DictionaryLookupResponse(BaseModel):
     cached: bool = Field(description="キャッシュ利用有無（現時点は常にfalse）", examples=[False])
 
 
+# 複数単語検索時のレスポンス。
 class DictionaryLookupBatchResponse(BaseModel):
     results: list[DictionaryLookupResponse] = Field(
         default_factory=list,
