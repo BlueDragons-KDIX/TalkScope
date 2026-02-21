@@ -6,3 +6,8 @@ psycopg2-binary
 sqlalchemy
 sqlalchemy-cockroachdb
 pgvector
+sudachipy
+sudachidict-core
+spacy
+ginza
+ja-ginza

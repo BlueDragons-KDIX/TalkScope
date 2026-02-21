@@ -1,138 +1,101 @@
 # Backend
 
-FastAPI を使用したバックエンドサーバーです。
+LexiFlow のバックエンドです。FastAPI で API を提供し、将来的に NLP の重い解析処理を担います。
+
+## 技術スタック
+
+- Python
+- FastAPI
+- Uvicorn
+- Pydantic
 
 ## セットアップ
 
-### 1. 仮想環境の作成・有効化
-
 ```bash
-# 仮想環境の作成（初回のみ）
+cd Backend
 python -m venv venv
-
-# 有効化
 source venv/bin/activate
-```
-
-### 2. パッケージのインストール
-
-```bash
 pip install -r requirements.txt
 ```
 
-## サーバーの起動
+## 起動
 
 ```bash
 uvicorn main:app --reload
 ```
 
-- デフォルトで `http://127.0.0.1:8000` で起動します
-- `--reload` を付けるとコード変更時に自動リロードされます
+- API ベース URL: `http://127.0.0.1:8000`
+- Swagger UI: `http://127.0.0.1:8000/docs`
+- ReDoc: `http://127.0.0.1:8000/redoc`
 
-## API ドキュメント
+## 現在の API
 
-サーバー起動後、以下の URL で自動生成されたドキュメントを確認できます。
+- `GET /`
+  - 疎通確認用
+  - レスポンス例: `{"Hello": "World"}`
 
-- Swagger UI: http://127.0.0.1:8000/docs
-- ReDoc: http://127.0.0.1:8000/redoc
+- `GET /hoge/`
+  - サンプルエンドポイント
+  - レスポンス例: `{"Hello": "Hoge"}`
+
+- `POST /hoge/`
+  - サンプル入力を受け取るエンドポイント
+  - リクエスト例: `{"message": "test"}`
+  - レスポンス例: `{"Hello": "test"}`
+
+- `POST /analysis/vectorize`
+  - テキストを形態素解析し、品詞フィルタ後の語をベクトル化して返す
+  - 既定では接続詞・助詞・助動詞・記号類を除外し、名詞/動詞/形容詞などを対象にする
+  - リクエスト例:
+    ```json
+    {
+      "text": "今日は自然言語処理を勉強して、そして結果を共有します。",
+      "deduplicate": false
+    }
+    ```
+  - レスポンス例（抜粋）:
+    ```json
+    {
+      "text": "今日は自然言語処理を勉強して、そして結果を共有します。",
+      "meta": {
+        "model": "ja_ginza",
+        "vector_dim": 300,
+        "input_token_count": 16,
+        "output_token_count": 4
+      },
+      "tokens": [
+        {
+          "surface": "自然言語処理",
+          "base_form": "自然言語処理",
+          "pos": "名詞",
+          "vector_dim": 300
+        }
+      ]
+    }
+    ```
 
 ## ディレクトリ構成
 
-```
+```txt
 Backend/
-├── main.py                      # アプリのエントリーポイント
+├── main.py
 ├── requirements.txt
-├── venv/
 └── app/
     ├── api/
-    │   ├── __init__.py          # ルーターの集約（ここで全エンドポイントを登録）
+    │   ├── __init__.py
     │   └── endpoints/
-    │       ├── __init__.py
-    │       └── hoge.py          # 各エンドポイントの実装
+    │       ├── analysis.py
+    │       └── hoge.py
+    ├── services/
+    │   ├── text_analysis.py
+    │   └── hoge.py
     └── schemas/
-        ├── __init__.py
-        └── hoge.py              # リクエスト/レスポンスのスキーマ定義
+        ├── analysis.py
+        └── hoge.py
 ```
 
-## ルーティングの仕組み
+## 今後の実装予定
 
-リクエストは以下の流れでルーティングされます。
-
-```
-main.py  →  app/api/__init__.py  →  app/api/endpoints/各ファイル
-```
-
-| ファイル                 | 役割                                                                 |
-| ------------------------ | -------------------------------------------------------------------- |
-| `main.py`                | FastAPI アプリの作成と `app.include_router(router)` でルーターを登録 |
-| `app/api/__init__.py`    | 各エンドポイントの `router` を集約する中継地点                       |
-| `app/api/endpoints/*.py` | 個別のエンドポイント実装（`router = fastapi.APIRouter()` を定義）    |
-| `app/schemas/*.py`       | リクエスト/レスポンスの型定義（Pydantic モデル）                     |
-
-## エンドポイントの追加方法
-
-例として `fuga` エンドポイントを追加する場合：
-
-### 1. エンドポイントファイルを作成
-
-`app/api/endpoints/fuga.py` を作成し、`router` を定義します。
-
-```python
-import fastapi
-
-router = fastapi.APIRouter()
-
-@router.get("/")
-def read_fuga():
-    return {"Hello": "Fuga"}
-```
-
-### 2. ルーターを登録
-
-`app/api/__init__.py` にインポートと `include_router` を追加します。
-
-```python
-from app.api.endpoints import hoge, fuga  # fuga を追加
-
-router.include_router(hoge.router, prefix="/hoge", tags=["hoge"])
-router.include_router(fuga.router, prefix="/fuga", tags=["fuga"])  # 追加
-```
-
-> **Note:** `main.py` を編集する必要はありません。
-
-## スキーマ（リクエスト/レスポンス定義）
-
-`app/schemas/` にリクエストやレスポンスの型を Pydantic モデルで定義します。
-
-例: `app/schemas/hoge.py`
-
-```python
-from pydantic import BaseModel
-
-
-# レスポンス用スキーマ
-class HogeResponse(BaseModel):
-    Hello: str
-
-
-# リクエスト用スキーマ（POST等で使う場合）
-class HogeCreate(BaseModel):
-    message: str
-```
-
-エンドポイントでの使い方:
-
-```python
-from app.schemas.hoge import HogeResponse, HogeCreate
-
-@router.get("/", response_model=HogeResponse)
-def read_hoge():
-    return {"Hello": "Hoge"}
-
-@router.post("/", response_model=HogeResponse)
-def create_hoge(body: HogeCreate):
-    return {"Hello": body.message}
-```
-
-- `response_model` を指定するとレスポンスの型が自動でバリデーション & ドキュメント化されます
-- リクエストボディは引数に型を付けるだけで自動パースされます
+- 形態素解析、係り受け解析による単語分割・重要語判定
+- 類似度計算（`word2vec` など）による補助スコア
+- Frontend と接続する本番用解析 API の定義と実装

@@ -1,6 +1,9 @@
 import fastapi
+from app.api.endpoints import analysis
 
 router = fastapi.APIRouter()
+
+router.include_router(analysis.router, prefix="/analysis", tags=["analysis"])
 
 # 新しくエンドポイントを追加するときは、
 # 1. app/api/endpoints/new_endpoint.pyを作成する
