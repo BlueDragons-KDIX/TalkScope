@@ -665,3 +665,76 @@ def top_terms_by_tfidf(corpus: list[str], top_k: int = 10) -> list[list[dict[str
         )
 
     return top_terms
+
+
+# --- refer_dictionary 向け: 形態素解析済みトークンから直接ベクトルを算出する ---
+# morphological_analysis を再度呼ばずに済むため、
+# スレッドセーフ問題を回避しつつパフォーマンスも改善できる。
+
+def vectorize_pretokenized_words(
+    words: list[tuple[str, ...]],
+) -> list[list[float]]:
+    """形態素解析済みの単語タプルのリストからベクトルを算出する。
+
+    Args:
+        words: 形態素のタプルのリスト。
+               例: [("形態素", "解析"), ("係り受け", "解析")]
+
+    Returns:
+        各単語に対応するベクトルのリスト。
+
+    Note:
+        spaCy/GiNZA が利用可能ならモデルのベクトルを使い、
+        利用不可ならハッシュベクトルにフォールバックする。
+        トークナイザーを再呼び出ししないため、スレッドセーフ。
+    """
+    if not words:
+        return []
+
+    nlp = _get_spacy_ja()
+
+    # ベクトル次元を決定（spaCy語彙 → ハッシュ既定値）
+    vector_dim = _HASH_VECTOR_DIM
+    if nlp is not None:
+        dim = int(getattr(nlp.vocab, "vectors_length", 0) or 0)
+        if dim > 0:
+            vector_dim = dim
+
+    results: list[list[float]] = []
+
+    for word_parts in words:
+        # タプルを結合して1つの単語にする（例: ("機械", "学習") → "機械学習"）
+        compound_word = "".join(word_parts)
+
+        # 各形態素のベクトルを集めて平均する
+        part_vectors: list[list[float]] = []
+
+        for part in word_parts:
+            vec = _get_vocab_vector(nlp, part)
+            if vec:
+                part_vectors.append(vec)
+
+        if part_vectors:
+            # 形態素ベクトルの平均で複合語ベクトルを算出
+            results.append(_average_vectors(part_vectors))
+        else:
+            # spaCy で取れなければハッシュベクトルにフォールバック
+            results.append(_build_hashed_vector(compound_word, vector_dim))
+
+    return results
+
+
+def _get_vocab_vector(nlp: Any | None, word: str) -> list[float]:
+    """spaCy の語彙からベクトルを取得する。トークナイザーは使わない。
+
+    語彙辞書への直接アクセスのみを行うため、スレッドセーフ。
+    """
+    if nlp is None:
+        return []
+
+    lexeme = nlp.vocab[word]
+    if lexeme.has_vector and float(lexeme.vector_norm) > 0.0:
+        return [float(v) for v in lexeme.vector]
+
+    return []
+
