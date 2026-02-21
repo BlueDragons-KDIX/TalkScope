@@ -4,8 +4,8 @@ CREATE TABLE dictionary (
     id SERIAL PRIMARY KEY,
     word TEXT NOT NULL,
     meaning TEXT NOT NULL,
-    description TEXT,
-    meaning_vector VECTOR(300),
+    description TEXT NOT NULL,
+    meaning_vector VECTOR(300) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
