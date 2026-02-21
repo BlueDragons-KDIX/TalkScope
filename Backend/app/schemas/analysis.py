@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class VectorizeRequest(BaseModel):
@@ -113,3 +113,110 @@ class VectorizeResponse(BaseModel):
             ]
         }
     }
+
+
+class SentenceVectorizeRequest(BaseModel):
+    text: str = Field(
+        min_length=1,
+        description="文章ベクトル化対象テキスト",
+        examples=["本日の議事録を作成します。API設計と実装方針を共有します。"],
+    )
+    normalize: bool = Field(
+        default=True,
+        description="L2正規化したベクトルを返すか",
+        examples=[True],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"text": "本日の議事録を作成します。API設計と実装方針を共有します。", "normalize": True}
+            ]
+        }
+    }
+
+    @field_validator("text")
+    @classmethod
+    def validate_text_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("text must not be blank")
+        return value
+
+
+class SentenceVectorizeMeta(BaseModel):
+    model: str = Field(description="利用した埋め込みモデル名", examples=["ginza"])
+    vector_dim: int = Field(description="文章ベクトル次元", examples=[300])
+    vector_source: str = Field(
+        description="文章ベクトルの取得元（spacy_doc / spacy_token_avg / content_token_avg / hash）",
+        examples=["spacy_doc"],
+    )
+    normalize: bool = Field(description="正規化を適用したか", examples=[True])
+    input_token_count: int = Field(description="形態素解析後のトークン数", examples=[15])
+    content_token_count: int = Field(description="内容語として採用されたトークン数", examples=[7])
+
+
+class SentenceVectorizeResponse(BaseModel):
+    text: str = Field(description="入力テキスト（そのまま返却）")
+    meta: SentenceVectorizeMeta = Field(description="文章ベクトル化メタ情報")
+    sentence_vector: list[float] = Field(
+        description="文章ベクトル（vector_dim 個）",
+        examples=[[0.0312, -0.0124, 0.2011, -0.0942]],
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+                    "meta": {
+                        "model": "ginza",
+                        "vector_dim": 300,
+                        "vector_source": "spacy_doc",
+                        "normalize": True,
+                        "input_token_count": 13,
+                        "content_token_count": 6,
+                    },
+                    "sentence_vector": [0.0312, -0.0124, 0.2011, -0.0942],
+                }
+            ]
+        }
+    }
+
+
+class ReferDictionaryRequest(BaseModel):
+    text: str = Field(
+        min_length=1,
+        description="辞書検索対象のテキスト。名詞を自動抽出し辞書検索する",
+        examples=["人工知能と機械学習を学ぶ"],
+    )
+
+    @field_validator("text")
+    @classmethod
+    def validate_text_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("text must not be blank")
+        return value
+
+
+class ReferDictionaryEntry(BaseModel):
+    term: str = Field(description="辞書検索した用語", examples=["人工知能"])
+    description: str = Field(
+        description="用語の説明",
+        examples=["人間の知能を模倣するコンピュータシステムの総称です。"],
+    )
+    meaning_vector: list[float] | None = Field(
+        default=None,
+        description="用語の意味ベクトル（300次元）",
+    )
+    source: str = Field(
+        description="取得元（db: DB キャッシュ / llm: LLM生成）",
+        examples=["llm"],
+    )
+
+
+class ReferDictionaryResponse(BaseModel):
+    text: str = Field(description="入力テキスト（そのまま返却）")
+    entries: list[ReferDictionaryEntry] = Field(
+        description="辞書検索結果の一覧",
+    )
+

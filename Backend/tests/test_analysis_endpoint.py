@@ -33,3 +33,35 @@ def test_vectorize_endpoint_returns_vectors() -> None:
 def test_vectorize_endpoint_validates_empty_text() -> None:
     res = client.post("/analysis/vectorize", json={"text": ""})
     assert res.status_code == 422
+
+
+def test_vectorize_sentence_endpoint_returns_vector() -> None:
+    res = client.post(
+        "/analysis/vectorize/sentence",
+        json={
+            "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+            "normalize": True,
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+
+    assert "meta" in body
+    assert body["meta"]["vector_dim"] > 0
+    assert len(body["sentence_vector"]) == body["meta"]["vector_dim"]
+    assert body["meta"]["vector_source"] in {
+        "spacy_doc",
+        "spacy_token_avg",
+        "content_token_avg",
+        "hash",
+    }
+
+
+def test_vectorize_sentence_endpoint_validates_empty_text() -> None:
+    res = client.post("/analysis/vectorize/sentence", json={"text": ""})
+    assert res.status_code == 422
+
+
+def test_vectorize_sentence_endpoint_validates_whitespace_only_text() -> None:
+    res = client.post("/analysis/vectorize/sentence", json={"text": "   "})
+    assert res.status_code == 422
