@@ -165,13 +165,20 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     const themeScore = similarityToScore(themeSim);   // 0〜1
     const convScore = similarityToScore(convSim);    // 0〜1
     const displayCount = Math.min(freq, 10);        // 表示回数は10回まで反映
-    const w = isPinned?.has(term.id) ? 0 : (termWeights[term.id] || 0);
+    const isTermPinned = isPinned?.has(term.id);
+    const w = isTermPinned ? 0 : (termWeights[term.id] || 0);
     // スケールファクターを適用して半径を縮小
-    const baseR = (Math.min(Math.max(40, w * 10), 50) + (isPinned?.has(term.id) ? 20 : 0)) / 2;
+    const baseR = Math.min(Math.max(40, w * 10), 50) / 2;
     // 基本の大きさ * (1 + 主題類似度) * (1 + 会話類似度) * (1 + 0.1*表示回数)
-    const r = baseR * scaleFactor  * (1 + themeScore)
+    let r = baseR * scaleFactor  * (1 + themeScore)
       * (1 + convScore)
       * (1 + 0.1 * displayCount);
+    
+    // ピン留めされているバブルは、頻度や類似度に関係なく標準より一回り大きいサイズに統一する
+    if (isTermPinned) {
+      r = 35 * scaleFactor; 
+    }
+
     if (isDev && activeTerms.indexOf(term) <= 4) {
       console.log(`[BubbleCloud] 類似度(モック) ${term.word}`, {
         themeScore: Math.round(themeScore * 1000) / 1000,
