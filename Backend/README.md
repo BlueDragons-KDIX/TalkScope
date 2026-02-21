@@ -28,7 +28,7 @@ uvicorn main:app --reload
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
 
-## 現在の API（初期実装）
+## 現在の API
 
 - `GET /`
   - 疎通確認用
@@ -43,6 +43,37 @@ uvicorn main:app --reload
   - リクエスト例: `{"message": "test"}`
   - レスポンス例: `{"Hello": "test"}`
 
+- `POST /analysis/vectorize`
+  - テキストを形態素解析し、品詞フィルタ後の語をベクトル化して返す
+  - 既定では接続詞・助詞・助動詞・記号類を除外し、名詞/動詞/形容詞などを対象にする
+  - リクエスト例:
+    ```json
+    {
+      "text": "今日は自然言語処理を勉強して、そして結果を共有します。",
+      "deduplicate": false
+    }
+    ```
+  - レスポンス例（抜粋）:
+    ```json
+    {
+      "text": "今日は自然言語処理を勉強して、そして結果を共有します。",
+      "meta": {
+        "model": "ja_ginza",
+        "vector_dim": 300,
+        "input_token_count": 16,
+        "output_token_count": 4
+      },
+      "tokens": [
+        {
+          "surface": "自然言語処理",
+          "base_form": "自然言語処理",
+          "pos": "名詞",
+          "vector_dim": 300
+        }
+      ]
+    }
+    ```
+
 ## ディレクトリ構成
 
 ```txt
@@ -53,8 +84,13 @@ Backend/
     ├── api/
     │   ├── __init__.py
     │   └── endpoints/
+    │       ├── analysis.py
     │       └── hoge.py
+    ├── services/
+    │   ├── text_analysis.py
+    │   └── hoge.py
     └── schemas/
+        ├── analysis.py
         └── hoge.py
 ```
 
