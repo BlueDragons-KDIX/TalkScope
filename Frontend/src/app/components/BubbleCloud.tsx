@@ -41,11 +41,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const [isAutoPlay, setIsAutoPlay] = useState(false);
   const [intervalSec, setIntervalSec] = useState(4);
   const [showSlider, setShowSlider] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeTermsRef = useRef(activeTerms);
-
-  // 用語⇔説明の反転状態を管理するIDセット（Auto-Play ONのときのみ使用）
-  const [descIds, setDescIds] = useState<Set<string>>(new Set());
 
   // ── バブル物理エンジン ──────────────────────────────────────
   const engineRef = useRef<{
@@ -164,50 +160,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   }, [activeTerms]);
 
   useEffect(() => {
-    if (isAutoPlay) {
-      // 最初のON時に即座に半数を「説明」にする
-      const initToggle = () => {
-        const terms = activeTermsRef.current;
-        if (terms.length === 0) return;
-        
-        // シャッフルして約半分のIDを取得
-        const shuffled = [...terms].sort(() => 0.5 - Math.random());
-        const halfCount = Math.ceil(terms.length / 2);
-        const nextDescIds = new Set(shuffled.slice(0, halfCount).map(t => t.id));
-        setDescIds(nextDescIds);
-      };
-      initToggle();
-
-      const tick = () => {
-        const terms = activeTermsRef.current;
-        if (terms.length === 0) return;
-        
-        // 現在「説明」になっているものを「用語」に戻し、「用語」になっているものを「説明」にする（完全反転）
-        setDescIds(prev => {
-          const next = new Set<string>();
-          terms.forEach(t => {
-            if (!prev.has(t.id)) {
-              next.add(t.id);
-            }
-          });
-          return next;
-        });
-      };
-      intervalRef.current = setInterval(tick, intervalSec * 1000);
-    } else {
-      // OFFにした瞬間すべて「用語」表示に戻す
-      setDescIds(new Set());
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    }
-    return () => {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
+    // 従来の AutoPlay 処理は削除し、各 TermBubble 内で setInterval を個別処理させるように変更した
   }, [isAutoPlay, intervalSec]);
 
   useEffect(() => {
@@ -306,7 +259,8 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                       isPinned={pinnedTermIds.has(term.id)}
                       onTogglePin={onTogglePin}
                       size={node.radius * 2}
-                      showDescription={descIds.has(term.id)}
+                      isAutoPlay={isAutoPlay}
+                      intervalSec={intervalSec}
                     />
                   </motion.div>
                 </div>

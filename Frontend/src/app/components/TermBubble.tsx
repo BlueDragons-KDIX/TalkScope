@@ -12,7 +12,8 @@ interface TermBubbleProps {
   isPinned?: boolean;
   onTogglePin: (termId: string) => void;
   size?: number;
-  showDescription?: boolean;
+  isAutoPlay?: boolean;
+  intervalSec?: number;
 }
 
 export const TermBubble: React.FC<TermBubbleProps> = ({
@@ -24,9 +25,26 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   isPinned = false,
   onTogglePin,
   size: explicitSize,
-  showDescription = false,
+  isAutoPlay = false,
+  intervalSec = 5,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isShowingDesc, setIsShowingDesc] = useState(false);
+
+  React.useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval>;
+    if (isAutoPlay) {
+      intervalId = setInterval(() => {
+        setIsShowingDesc((prev) => !prev);
+      }, intervalSec * 1000);
+    } else {
+      setIsShowingDesc(false);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isAutoPlay, intervalSec]);
 
   const dk = darkMode;
 
@@ -78,18 +96,18 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
           transition-shadow duration-200
           ${isActive ? 'ring-2 ring-white/30 scale-110 shadow-lg' : ''}
           ${isHovered && dk ? 'shadow-lg shadow-indigo-500/10' : ''}
-          ${showDescription ? 'text-[9px] leading-tight font-medium p-3' : ''}
+          ${isShowingDesc ? 'text-[9px] leading-tight font-medium p-3' : ''}
         `}
-        style={{ width: size, height: size, fontSize: showDescription ? undefined : Math.max(11, size / 7) }}
+        style={{ width: size, height: size, fontSize: isShowingDesc ? undefined : Math.max(11, size / 7) }}
       >
         <AnimatePresence mode="wait">
-          {showDescription ? (
+          {isShowingDesc ? (
           <motion.div
             key="desc"
-            initial={{ opacity: 0, scale: 0.8, rotateY: 90 }}
-            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-            exit={{ opacity: 0, scale: 0.8, rotateY: -90 }}
-            transition={{ duration: 0.25, ease: "backOut" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
             className="line-clamp-4 overflow-hidden"
             title={term.shortDesc}
           >
@@ -98,10 +116,10 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         ) : (
           <motion.div
             key="word"
-            initial={{ opacity: 0, scale: 0.8, rotateY: -90 }}
-            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-            exit={{ opacity: 0, scale: 0.8, rotateY: 90 }}
-            transition={{ duration: 0.25, ease: "backOut" }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
           >
             {term.word}
           </motion.div>
