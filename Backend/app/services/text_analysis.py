@@ -761,3 +761,88 @@ def top_terms_by_tfidf(corpus: list[str], top_k: int = 10) -> list[list[dict[str
         )
 
     return top_terms
+
+
+# --- refer_dictionary 向け: 形態素解析済みトークンから直接ベクトルを算出する ---
+# morphological_analysis を再度呼ばずに済むため、
+# スレッドセーフ問題を回避しつつパフォーマンスも改善できる。
+
+def vectorize_pretokenized_words(
+    words: list[tuple[str, ...]],
+    target_dim: int = 300,
+) -> list[list[float]]:
+    """形態素解析済みの単語タプルのリストからベクトルを算出する。
+
+    Parameters
+    ----------
+    words : list[tuple[str, ...]]
+        形態素解析済みの単語タプルのリスト。
+    target_dim : int, optional
+        出力ベクトルの次元数。DB の VECTOR カラムと一致させること。
+        デフォルトは 300（DB の VECTOR(300) に対応）。
+
+    Returns
+    -------
+    list[list[float]]
+        各単語のベクトル。全て target_dim 次元で統一される。
+    """
+    if not words:
+        return []
+
+    nlp = _get_spacy_ja()
+
+    # spaCy の語彙ベクトル次元を確認
+    spacy_dim = 0
+    if nlp is not None:
+        spacy_dim = int(getattr(nlp.vocab, "vectors_length", 0) or 0)
+
+    results: list[list[float]] = []
+
+    for word_parts in words:
+        # タプルを結合して1つの単語にする（例: ("機械", "学習") → "機械学習"）
+        compound_word = "".join(word_parts)
+
+        # 各形態素のベクトルを集めて平均する
+        part_vectors: list[list[float]] = []
+
+        for part in word_parts:
+            vec = _get_vocab_vector(nlp, part)
+            if vec:
+                part_vectors.append(vec)
+
+        if part_vectors:
+            # 形態素ベクトルの平均で複合語ベクトルを算出
+            avg = _average_vectors(part_vectors)
+            # spaCy の次元が target_dim と異なる場合はパディング/切り詰め
+            if len(avg) != target_dim:
+                avg = _resize_vector(avg, target_dim)
+            results.append(avg)
+        else:
+            # spaCy で取れなければハッシュベクトルにフォールバック
+            # target_dim で生成するので DB と次元が一致する
+            results.append(_build_hashed_vector(compound_word, target_dim))
+
+    return results
+
+
+def _resize_vector(vec: list[float], target_dim: int) -> list[float]:
+    """ベクトルを target_dim に合わせてパディングまたは切り詰める。"""
+    if len(vec) >= target_dim:
+        return vec[:target_dim]
+    return vec + [0.0] * (target_dim - len(vec))
+
+
+def _get_vocab_vector(nlp: Any | None, word: str) -> list[float]:
+    """spaCy の語彙からベクトルを取得する。トークナイザーは使わない。
+
+    語彙辞書への直接アクセスのみを行うため、スレッドセーフ。
+    """
+    if nlp is None:
+        return []
+
+    lexeme = nlp.vocab[word]
+    if lexeme.has_vector and float(lexeme.vector_norm) > 0.0:
+        return [float(v) for v in lexeme.vector]
+
+    return []
+

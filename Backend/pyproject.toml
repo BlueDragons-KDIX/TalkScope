@@ -15,6 +15,10 @@ dependencies = [
     "spacy>=3.7.0",
     "ginza>=5.2.0",
     "ja-ginza>=5.2.0",
+    "pgvector>=0.4.2",
+    "psycopg2-binary>=2.9.11",
+    "sqlalchemy>=2.0.46",
+    "sqlalchemy-cockroachdb>=2.0.3",
 ]
 
 [dependency-groups]
