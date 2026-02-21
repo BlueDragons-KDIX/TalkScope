@@ -123,7 +123,7 @@ const App: React.FC = () => {
   useReferDict(transcript, {
     baseUrl: (import.meta.env.VITE_BACKEND_URL ?? '').trim(),
     intervalSec: 5,            // 5秒ごとのフォールバック送信
-    trailingDebounceMs: 3000,  // 入力が3秒止まったら末尾の未完了文も送信
+    trailingDebounceMs: 1000,  // 入力が1秒止まったら末尾の未完了文も送信
     onResults: handleDictResults,
     onError: (err: unknown) => console.warn('[referDict] send error', err),
   });

@@ -7,6 +7,7 @@ import {
   type ReferDictResponse,
 } from '../utils/referDictWithOverlaps';
 import type { Term } from '../data/terms';
+import { toast } from 'sonner';
 
 // ── 公開型 ───────────────────────────────────────────────────
 /** API から得た用語情報（Term + ベクトル + ソース） */
@@ -95,6 +96,7 @@ export function useReferDict(
     sentences: string[],
     from: number,
     to: number,
+    treatLastAsUncompleted: boolean = false
   ) => {
     if (sendingRef.current) return;
     if (from >= to) return;
@@ -120,14 +122,20 @@ export function useReferDict(
           continue;
         }
 
+        const isCurrentUncompleted = treatLastAsUncompleted && i === to - 1;
+
         try {
+          const typeLabel = isCurrentUncompleted ? '[未完了]' : `[文${i + 1}]`;
+          toast.info(`POST送信中 ${typeLabel}: "${text.slice(0, 15)}..."`, { duration: 2000 });
           const response = await sendReferDictRequest(
             { text, sentenceIndex: i },
             url,
           );
 
           consecutiveErrorsRef.current = 0;
-          lastSentIndexRef.current = i + 1;
+          if (!isCurrentUncompleted) {
+            lastSentIndexRef.current = i + 1;
+          }
 
           // 新規用語だけフィルタして通知
           const newResults: DictTermResult[] = [];
@@ -139,7 +147,10 @@ export function useReferDict(
           }
 
           if (newResults.length > 0) {
+            toast.success(`API受信[新規]: ${newResults.length}個の用語 (${newResults.map(r => r.term.word).join(', ')})`, { duration: 3000 });
             onResults?.(newResults, response);
+          } else {
+            toast.success(`API受信[重複]: 新規用語なし`, { duration: 1500 });
           }
 
           if (import.meta.env.DEV) {
@@ -151,7 +162,11 @@ export function useReferDict(
         } catch (err: unknown) {
           consecutiveErrorsRef.current += 1;
           onError?.(err);
-          // lastSentIndexRef は進めない → 次回リトライ対象
+          // エラーが起きても無限ループを防ぐため、完了文ならインデックスを進める（スキップする）
+          // [未完了]文の送信失敗時は次回送信チャレンジを残す（consecutiveErrorsRefで無限ループは防がれる）
+          if (!isCurrentUncompleted) {
+            lastSentIndexRef.current = i + 1;
+          }
           break;
         }
       }
@@ -188,7 +203,7 @@ export function useReferDict(
         // タイマー発火時点でまだ未送信なら送信
         const idx = lastSentIndexRef.current;
         if (sentences.length > idx) {
-          sendRange(sentences, idx, sentences.length);
+          sendRange(sentences, idx, sentences.length, true);
         }
       }, trailingDebounceMs);
       return () => clearTimeout(timer);
@@ -200,9 +215,10 @@ export function useReferDict(
     if (intervalSec <= 0) return;
     const id = setInterval(() => {
       const sentences = splitIntoSentences(transcript);
+      const endsComplete = SENTENCE_END_RE.test(transcript);
       const idx = lastSentIndexRef.current;
       if (sentences.length > idx) {
-        sendRange(sentences, idx, sentences.length);
+        sendRange(sentences, idx, sentences.length, !endsComplete);
       }
     }, intervalSec * 1000);
     return () => clearInterval(id);
@@ -220,8 +236,9 @@ export function useReferDict(
   /** 手動送信（未送信文を全て送る） */
   const send = useCallback(() => {
     const sentences = splitIntoSentences(transcript);
+    const endsComplete = SENTENCE_END_RE.test(transcript);
     if (sentences.length > lastSentIndexRef.current) {
-      sendRange(sentences, lastSentIndexRef.current, sentences.length);
+      sendRange(sentences, lastSentIndexRef.current, sentences.length, !endsComplete);
     }
   }, [transcript, sendRange]);
 
