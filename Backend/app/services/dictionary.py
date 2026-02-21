@@ -131,7 +131,6 @@ def _call_gemini(prompt: str) -> tuple[str, str]:
         ],
         "generationConfig": {
             "temperature": 0.2,
-            "maxOutputTokens": 120,
             "topP": 0.9,
         },
     }
@@ -179,7 +178,6 @@ async def _call_gemini_async(
         ],
         "generationConfig": {
             "temperature": 0.2,
-            "maxOutputTokens": 120,
             "topP": 0.9,
         },
     }
