@@ -141,7 +141,6 @@ const App: React.FC = () => {
         return;
       }
 
-      const pinned = isPinnedRef.current;
       const ts = termTimestamps.current;
       const deathRow = deathRowRef.current;
       const now = Date.now();
@@ -176,7 +175,7 @@ const App: React.FC = () => {
           }
 
           const elapsed = now - deathRow[t.id];
-          const lifetime = pinned.has(t.id) ? 10000 : 5000; // ピン留めは10秒、未ピンは5秒
+          const lifetime = 5000; // スターの有無に関係なく同じライフタイムで削除
 
           if (elapsed >= lifetime) {
             delete deathRow[t.id];

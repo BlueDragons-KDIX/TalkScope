@@ -216,7 +216,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
             e.stopPropagation();
             onTogglePin?.(term.id);
           }}
-          title={isPinned ? 'ピン解除' : 'ピン留め（消えなくなります）'}
+          title={isPinned ? 'ピン解除' : 'ピン留め'}
           className={`
             absolute top-0 right-2 z-10
             w-5 h-5 flex items-center justify-center
