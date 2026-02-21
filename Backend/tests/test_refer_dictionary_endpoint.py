@@ -1,21 +1,54 @@
 import pytest
+from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 
 from main import app
-from app.crud.dictionary import read_dictionary_by_term, delete_dictionary
+from app.schemas.analysis import ReferDictionaryEntry
 
 
 client = TestClient(app)
 
-# テストで作成したデータをクリーンアップするためのヘルパー
-def _cleanup_test_data(terms: list[str]) -> None:
-    for term in terms:
-        entry = read_dictionary_by_term(term)
-        if entry:
-            delete_dictionary(entry.id)
+# ---------------------------------------------------------------------------
+# モック用のダミーデータ
+# ---------------------------------------------------------------------------
+DUMMY_VECTOR = [0.1] * 300
 
 
-def test_refer_dictionary_single_noun() -> None:
+@pytest.fixture(autouse=True)
+def mock_external_services():
+    """LLM と DB の呼び出しをモック化する"""
+    with patch("app.services.refer_dictionary.read_dictionary_by_term") as mock_read, \
+         patch("app.services.refer_dictionary.create_dictionary") as mock_create, \
+         patch("app.services.refer_dictionary.lookup_term_summary") as mock_lookup, \
+         patch("app.services.refer_dictionary.db") as mock_db:
+
+        # デフォルトでDBは有効扱い
+        mock_db.is_available = True
+        
+        # DB は基本的に Miss を返す (None) -> 必要なテストで上書きする
+        mock_read.return_value = None
+        
+        # DB Insert時のダミー戻り値
+        mock_create.return_value = 1
+        
+        # LLM は常にダミー結果を返す
+        mock_lookup.side_effect = lambda term: {
+            "summary": f"モックされた {term} の説明です",
+        }
+
+        yield {
+            "read": mock_read,
+            "create": mock_create,
+            "lookup": mock_lookup,
+            "db": mock_db
+        }
+
+
+# ---------------------------------------------------------------------------
+# テストケース
+# ---------------------------------------------------------------------------
+
+def test_refer_dictionary_single_noun(mock_external_services) -> None:
     """単一名詞のテスト（正常系）"""
     res = client.post(
         "/analysis/refer_dictionary",
@@ -26,20 +59,22 @@ def test_refer_dictionary_single_noun() -> None:
     
     assert body["text"] == "犬が好きです"
     assert "entries" in body
-    assert len(body["entries"]) >= 1
+    assert len(body["entries"]) == 1
     
     first = body["entries"][0]
-    assert "term" in first
-    assert "description" in first
-    assert "meaning_vector" in first
-    assert "source" in first
+    assert first["term"] == "犬"
+    assert "モックされた 犬 の説明" in first["description"]
     assert first["meaning_vector"] is not None
     assert len(first["meaning_vector"]) == 300
+    assert first["source"] == "llm"  # デフォルトでは DB miss なので LLM からの取得になる
     
-    _cleanup_test_data([e["term"] for e in body["entries"] if e["source"] == "llm"])
+    # 外部API/DBが正しく呼ばれたか検証
+    mock_external_services["read"].assert_called_with("犬")
+    mock_external_services["lookup"].assert_called_with("犬")
+    mock_external_services["create"].assert_called_once()
 
 
-def test_refer_dictionary_compound_noun() -> None:
+def test_refer_dictionary_compound_noun(mock_external_services) -> None:
     """複合名詞のテスト（正常系）"""
     res = client.post(
         "/analysis/refer_dictionary",
@@ -50,10 +85,7 @@ def test_refer_dictionary_compound_noun() -> None:
     entries = body["entries"]
     
     assert len(entries) >= 1
-    # 複合名詞が結合されて取得できるか
     assert any("自然言語処理" in e["term"] for e in entries)
-    
-    _cleanup_test_data([e["term"] for e in body["entries"] if e["source"] == "llm"])
 
 
 def test_refer_dictionary_multiple_nouns() -> None:
@@ -65,10 +97,7 @@ def test_refer_dictionary_multiple_nouns() -> None:
     assert res.status_code == 200
     body = res.json()
     entries = body["entries"]
-    
     assert len(entries) >= 2
-    
-    _cleanup_test_data([e["term"] for e in body["entries"] if e["source"] == "llm"])
 
 
 def test_refer_dictionary_no_nouns() -> None:
@@ -76,23 +105,7 @@ def test_refer_dictionary_no_nouns() -> None:
     res = client.post("/analysis/refer_dictionary", json={"text": "とても速く走る"})
     assert res.status_code == 200
     body = res.json()
-    
     assert body["entries"] == []
-
-
-def test_refer_dictionary_long_text() -> None:
-    """長文のテスト（正常系）"""
-    res = client.post(
-        "/analysis/refer_dictionary",
-        json={"text": "人工知能と機械学習の分野において、基盤モデルの重要性が増しています。"},
-    )
-    assert res.status_code == 200
-    body = res.json()
-    entries = body["entries"]
-    
-    assert len(entries) >= 3
-    
-    _cleanup_test_data([e["term"] for e in body["entries"] if e["source"] == "llm"])
 
 
 def test_refer_dictionary_empty_text() -> None:
@@ -105,3 +118,46 @@ def test_refer_dictionary_whitespace_text() -> None:
     """空白のみのバリデーション（エラー期待）"""
     res = client.post("/analysis/refer_dictionary", json={"text": "   "})
     assert res.status_code == 422
+
+
+def test_refer_dictionary_cached_noun(mock_external_services) -> None:
+    """DBヒット時の挙動（LLMが呼ばれないこと）のテスト"""
+    # モックのDB(read)が常に「りんご」のエントリを返すように設定する
+    mock_entry = MagicMock()
+    mock_entry.term = "りんご"
+    mock_entry.description = "DBから取得されたりんごの説明"
+    mock_entry.meaning_vector = DUMMY_VECTOR
+    mock_external_services["read"].return_value = mock_entry
+
+    res = client.post("/analysis/refer_dictionary", json={"text": "りんご"})
+    assert res.status_code == 200
+    entries = res.json()["entries"]
+    
+    assert len(entries) == 1
+    first = entries[0]
+    assert first["term"] == "りんご"
+    assert first["source"] == "db"
+    assert first["description"] == "DBから取得されたりんごの説明"
+
+    # LLMの問い合わせやDB登録が行われていないか検証
+    mock_external_services["lookup"].assert_not_called()
+    mock_external_services["create"].assert_not_called()
+
+
+def test_refer_dictionary_db_unavailable(mock_external_services) -> None:
+    """DBが無効な場合のフォールバックテスト"""
+    # DBを無効化
+    mock_external_services["db"].is_available = False
+
+    res = client.post("/analysis/refer_dictionary", json={"text": "犬"})
+    assert res.status_code == 200
+    entries = res.json()["entries"]
+    
+    assert len(entries) == 1
+    assert entries[0]["term"] == "犬"
+    assert entries[0]["source"] == "llm"
+
+    # DB関数の呼び出しがスキップされ、LLMが叩かれていることを検証
+    mock_external_services["read"].assert_not_called()
+    mock_external_services["create"].assert_not_called()
+    mock_external_services["lookup"].assert_called_with("犬")

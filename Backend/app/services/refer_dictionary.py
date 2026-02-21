@@ -40,6 +40,7 @@ from typing import Any, TypedDict
 from app.services.text_analysis import morphological_analysis, vectorize_pretokenized_words
 from app.services.dictionary import lookup_term_summary
 from app.crud.dictionary import read_dictionary_by_term, create_dictionary
+from app.core.database import db
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,9 @@ async def _lookup_or_create(
     compound_term = "".join(term_parts)
 
     # 1. DB検索
-    entry = await asyncio.to_thread(read_dictionary_by_term, compound_term)
+    entry = None
+    if db.is_available:
+        entry = await asyncio.to_thread(read_dictionary_by_term, compound_term)
 
     if entry:
         return DictionaryEntry(
@@ -112,25 +115,26 @@ async def _lookup_or_create(
     # 3. DB登録（直列: 書き込み衝突防止）
     #    UNIQUE 制約違反は並列処理で同じ単語が同時に miss した場合に発生する。
     #    その場合は既存エントリを返す。
-    async with _get_db_sem():
-        try:
-            await asyncio.to_thread(
-                create_dictionary,
-                term=compound_term,
-                description=description,
-                meaning_vector=vector,
-            )
-        except Exception:
-            # UNIQUE 違反 → 既に他のタスクが登録済み
-            logger.info("重複登録をスキップ: %s", compound_term)
-            entry = await asyncio.to_thread(read_dictionary_by_term, compound_term)
-            if entry:
-                return DictionaryEntry(
-                    term=entry.term,
-                    description=entry.description,
-                    meaning_vector=entry.meaning_vector,
-                    source="db",
+    if db.is_available:
+        async with _get_db_sem():
+            try:
+                await asyncio.to_thread(
+                    create_dictionary,
+                    term=compound_term,
+                    description=description,
+                    meaning_vector=vector,
                 )
+            except Exception:
+                # UNIQUE 違反 → 既に他のタスクが登録済み
+                logger.info("重複登録をスキップ: %s", compound_term)
+                entry = await asyncio.to_thread(read_dictionary_by_term, compound_term)
+                if entry:
+                    return DictionaryEntry(
+                        term=entry.term,
+                        description=entry.description,
+                        meaning_vector=entry.meaning_vector,
+                        source="db",
+                    )
 
     return DictionaryEntry(
         term=compound_term,
