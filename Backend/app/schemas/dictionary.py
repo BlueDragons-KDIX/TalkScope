@@ -31,6 +31,8 @@ class DictionaryLookupRequest(BaseModel):
         normalized_terms: list[str] | None = None
         if self.terms is not None:
             normalized_terms = [term.strip() if isinstance(term, str) else term for term in self.terms]
+            if len(normalized_terms) == 0:
+                normalized_terms = None
 
         normalized_context = self.context.strip() if isinstance(self.context, str) else self.context
 

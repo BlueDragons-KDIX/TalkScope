@@ -63,6 +63,30 @@ def test_dictionary_lookup_batch_returns_200(monkeypatch) -> None:
     assert body["results"][1]["term"] == "MCP"
 
 
+def test_dictionary_lookup_treats_empty_terms_as_single(monkeypatch) -> None:
+    def _mock_lookup(term: str, context: str | None = None):
+        _ = context
+        return {
+            "term": term,
+            "summary": "RAGは回答時に外部情報を参照して根拠を補う手法です。",
+            "source": "gemini",
+            "model": "gemini-1.5-flash",
+            "cached": False,
+        }
+
+    monkeypatch.setattr(dictionary_endpoint, "lookup_term_summary", _mock_lookup)
+
+    res = client.post(
+        "/dictionary/lookup",
+        json={"term": "RAG", "terms": []},
+    )
+
+    assert res.status_code == 200
+    body = res.json()
+    assert body["term"] == "RAG"
+    assert "results" not in body
+
+
 def test_dictionary_lookup_validates_empty_term() -> None:
     res = client.post("/dictionary/lookup", json={"term": ""})
     assert res.status_code == 422
