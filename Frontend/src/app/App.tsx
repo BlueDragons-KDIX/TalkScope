@@ -53,6 +53,7 @@ const App: React.FC = () => {
   const deathRowRef       = useRef<Record<string, number>>({});       // termId → 削除待機リストに入った時刻
   const pinnedTermIdsRef  = useRef<Set<string>>(new Set());           // pinnedTermIds の ref ミラー
   const activeTermsRef    = useRef<Term[]>([]);                       // activeTerms の ref ミラー
+  const historicalTermIdsRef = useRef<Set<string>>(new Set());        // これまでに抽出・生成された全用語ID（ゾンビ復活防止用）
 
   // ── デモ機能（コア機能から独立） ──────────────────────────────
   const demoStream = useDemoStream({
@@ -87,12 +88,17 @@ const App: React.FC = () => {
     if (!transcript) return;
     const extracted = extractTerms(transcript);
     const now = Date.now();
-    setActiveTerms(prev => {
-      const ids = new Set(prev.map(t => t.id));
-      const newTerms = extracted.filter(t => !ids.has(t.id));
-      newTerms.forEach(t => { termTimestamps.current[t.id] = now; });
-      return [...prev, ...newTerms];
+    
+    // まだ一度も画面に出ていない完全に新規の用語だけをフィルタリング
+    const completelyNewTerms = extracted.filter(t => !historicalTermIdsRef.current.has(t.id));
+    if (completelyNewTerms.length === 0) return;
+
+    completelyNewTerms.forEach(t => {
+      historicalTermIdsRef.current.add(t.id);
+      termTimestamps.current[t.id] = now;
     });
+
+    setActiveTerms(prev => [...prev, ...completelyNewTerms]);
   }, [transcript]);
 
   // ── バブル削除アルゴリズム (1秒ごとに実行) ───────────────────
@@ -202,6 +208,7 @@ const App: React.FC = () => {
     setPinnedTermIds(new Set());
     termTimestamps.current = {};
     deathRowRef.current = {};
+    historicalTermIdsRef.current = new Set();
     toast.info('リセットしました');
   };
 
