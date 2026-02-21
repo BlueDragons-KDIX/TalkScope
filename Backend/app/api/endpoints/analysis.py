@@ -6,8 +6,44 @@ from app.services.text_analysis import vectorize_content_tokens
 router = fastapi.APIRouter()
 
 
-@router.post("/vectorize", response_model=VectorizeResponse)
-def vectorize(body: VectorizeRequest) -> VectorizeResponse:
+@router.post(
+    "/vectorize",
+    response_model=VectorizeResponse,
+    summary="テキストを品詞フィルタ付きでベクトル化する",
+    description=(
+        "入力テキストを形態素解析し、内容語（名詞/動詞/形容詞など）を中心にベクトル化します。"
+        " 既定では接続詞・助詞・助動詞・記号類を除外します。"
+    ),
+    response_description="ベクトル化結果（meta と tokens）",
+    responses={
+        200: {"description": "解析成功"},
+        422: {"description": "入力バリデーションエラー（text が空など）"},
+    },
+)
+def vectorize(
+    body: VectorizeRequest = fastapi.Body(
+        ...,
+        examples={
+            "default": {
+                "summary": "既定パラメータで実行",
+                "value": {
+                    "text": "今日は自然言語処理を勉強して、そして結果を共有します。",
+                    "deduplicate": False,
+                },
+            },
+            "custom_filter": {
+                "summary": "品詞フィルタを明示",
+                "value": {
+                    "text": "本日の議事録を作成します。API設計と実装方針を共有します。",
+                    "include_pos": ["名詞", "動詞", "形容詞"],
+                    "exclude_pos": ["接続詞", "助詞", "助動詞", "補助記号"],
+                    "min_length": 2,
+                    "deduplicate": True,
+                },
+            },
+        },
+    )
+) -> VectorizeResponse:
     result = vectorize_content_tokens(
         text=body.text,
         include_pos=body.include_pos,
