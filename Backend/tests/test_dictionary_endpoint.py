@@ -34,8 +34,42 @@ def test_dictionary_lookup_returns_200(monkeypatch) -> None:
     assert body["summary"]
 
 
+def test_dictionary_lookup_batch_returns_200(monkeypatch) -> None:
+    def _mock_lookup_terms(terms: list[str], context: str | None = None):
+        _ = context
+        return [
+            {
+                "term": term,
+                "summary": f"{term}の説明です。",
+                "source": "gemini",
+                "model": "gemini-1.5-flash",
+                "cached": False,
+            }
+            for term in terms
+        ]
+
+    monkeypatch.setattr(dictionary_endpoint, "lookup_terms_summaries", _mock_lookup_terms)
+
+    res = client.post(
+        "/dictionary/lookup",
+        json={"terms": ["RAG", "MCP"], "context": "技術会話で出た用語"},
+    )
+
+    assert res.status_code == 200
+    body = res.json()
+    assert "results" in body
+    assert len(body["results"]) == 2
+    assert body["results"][0]["term"] == "RAG"
+    assert body["results"][1]["term"] == "MCP"
+
+
 def test_dictionary_lookup_validates_empty_term() -> None:
     res = client.post("/dictionary/lookup", json={"term": ""})
+    assert res.status_code == 422
+
+
+def test_dictionary_lookup_validates_term_and_terms_together() -> None:
+    res = client.post("/dictionary/lookup", json={"term": "RAG", "terms": ["MCP"]})
     assert res.status_code == 422
 
 

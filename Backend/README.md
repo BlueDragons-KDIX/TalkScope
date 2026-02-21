@@ -90,14 +90,22 @@ make up-backend
 - `POST /dictionary/lookup`
   - 用語の意味を日本語で1〜2文の概要として返す
   - 現在は単語DB未実装のため、常にGeminiで生成する
-  - リクエスト例:
+  - `terms` 指定時は、単語ごとに Gemini を非同期並列で呼び出す
+  - リクエスト例（単体）:
     ```json
     {
       "term": "RAG",
       "context": "LLMの会話で出てきた用語"
     }
     ```
-  - レスポンス例:
+  - リクエスト例（複数）:
+    ```json
+    {
+      "terms": ["RAG", "MCP"],
+      "context": "技術会話で出た用語"
+    }
+    ```
+  - レスポンス例（単体）:
     ```json
     {
       "term": "RAG",
@@ -105,6 +113,27 @@ make up-backend
       "source": "gemini",
       "model": "gemini-1.5-flash",
       "cached": false
+    }
+    ```
+  - レスポンス例（複数）:
+    ```json
+    {
+      "results": [
+        {
+          "term": "RAG",
+          "summary": "RAGは、回答生成時に外部知識を検索して根拠を補う手法です。",
+          "source": "gemini",
+          "model": "gemini-1.5-flash",
+          "cached": false
+        },
+        {
+          "term": "MCP",
+          "summary": "MCPは、AIが外部ツールやデータに接続するための標準プロトコルです。",
+          "source": "gemini",
+          "model": "gemini-1.5-flash",
+          "cached": false
+        }
+      ]
     }
     ```
 

@@ -1,14 +1,19 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class DictionaryLookupRequest(BaseModel):
-    term: str = Field(
-        min_length=1,
-        max_length=128,
-        description="検索したい用語",
+    term: str | None = Field(
+        default=None,
+        description="検索したい用語（単体検索時に指定）",
         examples=["RAG"],
+    )
+    terms: list[str] | None = Field(
+        default=None,
+        max_length=20,
+        description="検索したい用語の配列（複数検索時に指定）",
+        examples=[["RAG", "MCP"]],
     )
     context: str | None = Field(
         default=None,
@@ -17,20 +22,35 @@ class DictionaryLookupRequest(BaseModel):
         examples=["LLMの会話で出てきた用語"],
     )
 
-    @field_validator("term", mode="before")
-    @classmethod
-    def normalize_term(cls, value: object) -> object:
-        if isinstance(value, str):
-            return value.strip()
-        return value
+    @model_validator(mode="after")
+    def normalize_and_validate(self) -> "DictionaryLookupRequest":
+        normalized_term = self.term.strip() if isinstance(self.term, str) else None
+        normalized_terms: list[str] | None = None
+        if self.terms is not None:
+            normalized_terms = [term.strip() if isinstance(term, str) else term for term in self.terms]
 
-    @field_validator("context", mode="before")
-    @classmethod
-    def normalize_context(cls, value: object) -> object:
-        if isinstance(value, str):
-            stripped = value.strip()
-            return stripped or None
-        return value
+        normalized_context = self.context.strip() if isinstance(self.context, str) else self.context
+
+        has_single = bool(normalized_term)
+        has_multi = bool(normalized_terms)
+        if has_single and has_multi:
+            raise ValueError("Specify either term or terms, not both")
+        if not has_single and not has_multi:
+            raise ValueError("Either term or terms is required")
+
+        if normalized_term is not None and len(normalized_term) > 128:
+            raise ValueError("term must be at most 128 characters")
+        if normalized_terms is not None:
+            for term in normalized_terms:
+                if not isinstance(term, str) or not term:
+                    raise ValueError("terms must not include empty strings")
+                if len(term) > 128:
+                    raise ValueError("each term in terms must be at most 128 characters")
+
+        self.term = normalized_term
+        self.terms = normalized_terms
+        self.context = normalized_context or None
+        return self
 
 
 class DictionaryLookupResponse(BaseModel):
@@ -42,3 +62,10 @@ class DictionaryLookupResponse(BaseModel):
     source: str = Field(description='回答ソース（固定: "gemini"）', examples=["gemini"])
     model: str = Field(description="使用したGeminiモデル名", examples=["gemini-1.5-flash"])
     cached: bool = Field(description="キャッシュ利用有無（現時点は常にfalse）", examples=[False])
+
+
+class DictionaryLookupBatchResponse(BaseModel):
+    results: list[DictionaryLookupResponse] = Field(
+        default_factory=list,
+        description="複数用語の検索結果",
+    )

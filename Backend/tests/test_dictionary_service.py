@@ -21,6 +21,32 @@ def test_lookup_term_summary_returns_gemini_result(monkeypatch) -> None:
     assert result["cached"] is False
 
 
+def test_lookup_terms_summaries_returns_multiple_results(monkeypatch) -> None:
+    async def _mock_async_lookup(terms: list[str], context: str | None):
+        assert context == "技術会話で出た用語"
+        return [
+            {
+                "term": term,
+                "summary": f"{term}の説明です。",
+                "source": "gemini",
+                "model": "gemini-1.5-flash",
+                "cached": False,
+            }
+            for term in terms
+        ]
+
+    monkeypatch.setattr(dictionary_service, "_lookup_terms_individually_async", _mock_async_lookup)
+
+    results = dictionary_service.lookup_terms_summaries(
+        [" RAG ", "MCP"],
+        context="技術会話で出た用語",
+    )
+
+    assert len(results) == 2
+    assert results[0]["term"] == "RAG"
+    assert results[1]["term"] == "MCP"
+
+
 def test_call_gemini_raises_503_when_api_key_missing(monkeypatch) -> None:
     monkeypatch.setattr(dictionary_service, "GEMINI_API_KEY", None)
 
