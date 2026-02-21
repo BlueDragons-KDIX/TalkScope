@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Settings, X, Moon, Sun, Volume2, Palette } from 'lucide-react';
+import { DbTestPanel } from './DbTestPanel';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -114,6 +115,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                     <span>高</span>
                   </div>
                 </div>
+              </section>
+
+              {/* IndexedDB 動作確認 */}
+              <section>
+                <DbTestPanel darkMode={dk} />
               </section>
             </div>
           </div>

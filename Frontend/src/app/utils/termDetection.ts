@@ -11,6 +11,26 @@ export const extractTerms = (text: string): Term[] => {
 };
 
 /**
+ * 文字起こしテキスト内での各用語の出現回数を数える（バブルサイズの頻度用）
+ */
+export function countTermFrequencies(text: string, terms: Term[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!text.trim()) return out;
+  for (const term of terms) {
+    let count = 0;
+    const word = term.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const kana = term.kana.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const reWord = new RegExp(word, 'gi');
+    const reKana = new RegExp(kana, 'g');
+    const wordMatches = text.match(reWord);
+    const kanaMatches = text.match(reKana);
+    count = (wordMatches?.length ?? 0) + (kanaMatches?.length ?? 0);
+    out[term.id] = count;
+  }
+  return out;
+}
+
+/**
  * テキスト内の用語をマークアップする
  */
 export const highlightTerms = (text: string) => {
