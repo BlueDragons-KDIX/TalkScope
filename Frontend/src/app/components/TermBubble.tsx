@@ -90,41 +90,45 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={`
-          flex items-center justify-center rounded-full border cursor-pointer
+          relative overflow-hidden flex items-center justify-center rounded-full border cursor-pointer
           ${colors[term.category]}
-          font-bold text-center p-2 break-words
+          font-bold text-center break-words
           transition-shadow duration-200
           ${isActive ? 'ring-2 ring-white/30 scale-110 shadow-lg' : ''}
           ${isHovered && dk ? 'shadow-lg shadow-indigo-500/10' : ''}
-          ${isShowingDesc ? 'text-[9px] leading-tight font-medium p-3' : ''}
         `}
-        style={{ width: size, height: size, fontSize: isShowingDesc ? undefined : Math.max(11, size / 7) }}
+        style={{ width: size, height: size }}
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {isShowingDesc ? (
-          <motion.div
-            key="desc"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="line-clamp-4 overflow-hidden"
-            title={term.shortDesc}
-          >
-            {term.shortDesc}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="word"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-          >
-            {term.word}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <motion.div
+              key="desc"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1, ease: "easeInOut" }}
+              className="absolute inset-0 flex items-center justify-center p-3"
+              title={term.shortDesc}
+            >
+              <span className="line-clamp-4 overflow-hidden w-full text-[9px] leading-tight font-medium">
+                {term.shortDesc}
+              </span>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="word"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1, ease: "easeInOut" }}
+              className="absolute inset-0 flex items-center justify-center p-2"
+            >
+              <span className="w-full" style={{ fontSize: Math.max(11, size / 7) }}>
+                {term.word}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
     </motion.div>
 
       {/* 星ボタン（バブル右上） */}
