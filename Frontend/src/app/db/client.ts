@@ -13,6 +13,7 @@ import {
   type PresentationRow,
   type HistoryRow,
   type WordRow,
+  type PinnedTermRow,
 } from './schema';
 
 export type LexiFlowDB = IDBPDatabase;
@@ -44,6 +45,10 @@ export function getDB(): Promise<LexiFlowDB> {
           });
           historyStore.createIndex('byPresentationId', 'presentationId', { unique: false });
           historyStore.createIndex('byWordId', 'wordId', { unique: false });
+        }
+        // ピン留め用語（ピン中一覧）。主キー id（Term.id）
+        if (!db.objectStoreNames.contains(STORE_NAMES.pinnedTerms)) {
+          db.createObjectStore(STORE_NAMES.pinnedTerms, { keyPath: 'id' });
         }
       },
     });
@@ -145,4 +150,29 @@ export async function getAllWords(): Promise<WordRow[]> {
   const db = await getDB();
   const tx = db.transaction(STORE_NAMES.words, 'readonly');
   return tx.objectStore(STORE_NAMES.words).getAll();
+}
+
+// --- ピン留め用語（pinnedTerms）---
+
+/** ピン留め用語を1件保存（Term と同型のオブジェクト） */
+export async function addPinnedTerm(term: PinnedTermRow): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(STORE_NAMES.pinnedTerms, 'readwrite');
+  await tx.objectStore(STORE_NAMES.pinnedTerms).put(term);
+  await tx.done;
+}
+
+/** ピン留めを解除 */
+export async function removePinnedTerm(id: string): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(STORE_NAMES.pinnedTerms, 'readwrite');
+  await tx.objectStore(STORE_NAMES.pinnedTerms).delete(id);
+  await tx.done;
+}
+
+/** ピン留めした用語を全件取得（ピン中一覧用） */
+export async function getAllPinnedTerms(): Promise<PinnedTermRow[]> {
+  const db = await getDB();
+  const tx = db.transaction(STORE_NAMES.pinnedTerms, 'readonly');
+  return tx.objectStore(STORE_NAMES.pinnedTerms).getAll();
 }

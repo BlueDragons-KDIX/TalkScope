@@ -11,6 +11,7 @@ import { BubbleCloud } from './components/BubbleCloud';
 import { TermDetailPanel } from './components/TermDetailPanel';
 import { HistoryPanel } from './components/HistoryPanel';
 import { Term } from './data/terms';
+import { getAllPinnedTerms, addPinnedTerm, removePinnedTerm } from './db';
 import { extractTerms, countTermFrequencies } from './utils/termDetection';
 import { Book, LayoutGrid, Settings, Target } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
@@ -50,6 +51,8 @@ const App: React.FC = () => {
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
   const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo' });
   const [isPinned, setIsPinned] = useState<Set<string>>(new Set());
+  /** ピン留めした用語一覧（IndexedDB と同期・ピン中タブで表示） */
+  const [pinnedTermsList, setPinnedTermsList] = useState<Term[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   /** バブルサイズ計算用：主題（ベクトル類似度の基準） */
   const [themeText, setThemeText] = useState('');
@@ -66,6 +69,22 @@ const App: React.FC = () => {
   const isPinnedRef  = useRef<Set<string>>(new Set());           // isPinned の ref ミラー
   const activeTermsRef    = useRef<Term[]>([]);                       // activeTerms の ref ミラー
   const historicalTermIdsRef = useRef<Set<string>>(new Set());        // これまでに抽出・生成された全用語ID（ゾンビ復活防止用）
+
+  // 起動時に IndexedDB からピン留め一覧を復元
+  useEffect(() => {
+    getAllPinnedTerms()
+      .then((list) => {
+        setPinnedTermsList(list);
+        setIsPinned((prev) => {
+          const next = new Set(prev);
+          list.forEach((t) => next.add(t.id));
+          return next;
+        });
+      })
+      .catch((err) => {
+        if (import.meta.env.DEV) console.warn('[pinnedTerms] load failed', err);
+      });
+  }, []);
 
   // ── デモ機能（コア機能から独立） ──────────────────────────────
   const demoStream = useDemoStream({
@@ -251,15 +270,21 @@ const App: React.FC = () => {
   }, []);
 
   const handleTogglePin = useCallback((termId: string) => {
-    setIsPinned(prev => {
+    setIsPinned((prev) => {
       const next = new Set(prev);
       if (next.has(termId)) {
-        // ピン解除: weightをリセット→生成直後と同じ状態に戻す
         next.delete(termId);
-        setTermWeights(prev => ({ ...prev, [termId]: 0 }));
+        setTermWeights((p) => ({ ...p, [termId]: 0 }));
         termTimestamps.current[termId] = Date.now();
+        setPinnedTermsList((p) => p.filter((t) => t.id !== termId));
+        removePinnedTerm(termId).catch((err) => import.meta.env.DEV && console.warn('[pinnedTerms] remove failed', err));
       } else {
         next.add(termId);
+        const term = activeTermsRef.current.find((t) => t.id === termId);
+        if (term) {
+          setPinnedTermsList((p) => (p.some((t) => t.id === termId) ? p : [...p, term]));
+          addPinnedTerm(term).catch((err) => import.meta.env.DEV && console.warn('[pinnedTerms] add failed', err));
+        }
       }
       return next;
     });
@@ -284,7 +309,12 @@ const App: React.FC = () => {
     toast.info('リセットしました');
   };
 
-  const filteredTerms = categoryFilter === 'ALL' ? activeTerms : activeTerms.filter(t => t.category === categoryFilter);
+  const filteredTerms =
+    categoryFilter === 'ALL'
+      ? activeTerms
+      : categoryFilter === 'ピン中'
+        ? pinnedTermsList
+        : activeTerms.filter(t => t.category === categoryFilter);
   const termFrequencies = useMemo(() => countTermFrequencies(transcript, activeTerms), [transcript, activeTerms]);
 
   // パネルコンテンツ（useMemo で過剰な再生成を抑制）
