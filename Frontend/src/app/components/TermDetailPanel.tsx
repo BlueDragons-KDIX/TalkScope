@@ -138,7 +138,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
         </section>
 
         {related.length > 0 && (
-          <section>
+          <section className="hidden">
             <div className={`flex items-center gap-1.5 mb-2 text-xs font-bold ${dk ? 'text-indigo-400' : 'text-indigo-600'}`}>
               <Layers size={13} /><span>関連ワード</span>
             </div>
