@@ -20,6 +20,16 @@ bun run dev
 - 開発サーバー: `http://localhost:5173`
 - 推奨ブラウザ: Chrome 系（Web Speech API 利用のため）
 
+## Docker で起動
+
+ルートディレクトリ（`/Users/honmayuudai/MyHobby/hackson/KC3Hack2026`）で実行してください。
+
+```bash
+make up-frontend
+```
+
+- URL: `http://localhost:5173`
+
 ## 現在の主要機能
 
 - 音声認識（`ja-JP`）とリアルタイム文字起こし

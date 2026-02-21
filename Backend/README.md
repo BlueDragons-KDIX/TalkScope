@@ -28,6 +28,19 @@ uvicorn main:app --reload
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - ReDoc: `http://127.0.0.1:8000/redoc`
 
+## Docker で起動
+
+ルートディレクトリ（`/Users/honmayuudai/MyHobby/hackson/KC3Hack2026`）で実行してください。
+ARM64 などで `sudachipy` の Linux wheel が無い場合でもビルドできるよう、Dockerfile には Rust ツールチェーンを含めています（初回ビルドは時間がかかる可能性があります）。
+
+```bash
+make up-backend
+```
+
+- API ベース URL: `http://localhost:8000`
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
 ## 現在の API
 
 - `GET /`
