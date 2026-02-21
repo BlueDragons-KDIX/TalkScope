@@ -41,7 +41,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const [isAutoPlay, setIsAutoPlay] = useState(false);
   const [intervalSec, setIntervalSec] = useState(4);
   const [showSlider, setShowSlider] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeTermsRef = useRef(activeTerms);
 
   // ── バブル物理エンジン ──────────────────────────────────────
@@ -161,28 +160,8 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   }, [activeTerms]);
 
   useEffect(() => {
-    if (isAutoPlay) {
-      const tick = () => {
-        const terms = activeTermsRef.current;
-        if (terms.length === 0) return;
-        const next = terms[Math.floor(Math.random() * terms.length)];
-        onTermClick(next);
-      };
-      tick();
-      intervalRef.current = setInterval(tick, intervalSec * 1000);
-    } else {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    }
-    return () => {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [isAutoPlay, intervalSec, onTermClick]);
+    // 従来の AutoPlay 処理は削除し、各 TermBubble 内で setInterval を個別処理させるように変更した
+  }, [isAutoPlay, intervalSec]);
 
   useEffect(() => {
     if (activeTerms.length === 0 && isAutoPlay) setIsAutoPlay(false);
@@ -280,6 +259,8 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                       isPinned={pinnedTermIds.has(term.id)}
                       onTogglePin={onTogglePin}
                       size={node.radius * 2}
+                      isAutoPlay={isAutoPlay}
+                      intervalSec={intervalSec}
                     />
                   </motion.div>
                 </div>
