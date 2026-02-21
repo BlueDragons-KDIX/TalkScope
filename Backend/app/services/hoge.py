@@ -7,4 +7,3 @@ def get_hoge() -> HogeResponse:
 
 def create_hoge(body: HogeCreate) -> HogeResponse:
     return HogeResponse(Hello=body.message)
-

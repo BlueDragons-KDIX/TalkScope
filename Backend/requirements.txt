@@ -2,3 +2,8 @@ fastapi
 uvicorn
 pydantic
 python-dotenv
+sudachipy
+sudachidict-core
+spacy
+ginza
+ja-ginza
