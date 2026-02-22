@@ -8,6 +8,8 @@ import {
 } from '../utils/referDictWithOverlaps';
 import type { Term } from '../data/terms';
 
+import { toast } from 'sonner';
+
 // ── 公開型 ───────────────────────────────────────────────────
 /** API から得た用語情報（Term + ベクトル + ソース） */
 export interface DictTermResult {
@@ -124,6 +126,10 @@ export function useReferDict(
         const isCurrentUncompleted = treatLastAsUncompleted && i === to - 1;
 
         try {
+
+          const typeLabel = isCurrentUncompleted ? '[未完了]' : `[文${i + 1}]`;
+          toast.info(`POST送信中 ${typeLabel}: "${text.slice(0, 15)}..."`, { duration: 2000 });
+
           const response = await sendReferDictRequest(
             { text, sentenceIndex: i },
             url,
@@ -144,7 +150,12 @@ export function useReferDict(
           }
 
           if (newResults.length > 0) {
+
+            toast.success(`API受信[新規]: ${newResults.length}個の用語 (${newResults.map(r => r.term.word).join(', ')})`, { duration: 3000 });
             onResults?.(newResults, response);
+          } else {
+            toast.success(`API受信[重複]: 新規用語なし`, { duration: 1500 });
+
           }
 
           if (import.meta.env.DEV) {
