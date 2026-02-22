@@ -2,7 +2,7 @@
 
 TalkScope
 
-![TalkScope]()![Uploading スクリーンショット 2026-02-22 12.29.49.png…]()
+![Uploading スクリーンショット 2026-02-22 12.29.49.png…]()
 
 
 ## チーム名
