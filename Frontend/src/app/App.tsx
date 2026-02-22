@@ -25,6 +25,7 @@ import {
   makeHorizontalLayout,
   makeVerticalLayout,
   makeLeftRightLayout,
+  removeLeaf,
 } from './layout/layoutUtils';
 
 
@@ -464,6 +465,14 @@ const App: React.FC = () => {
           darkMode={dk}
           themeColor={settings.themeColor}
           panels={panels}
+          onClose={(panelId) => {
+            const nextLayout = removeLeaf(layout, panelId);
+            if (nextLayout) {
+              setLayout(nextLayout);
+            } else {
+              toast.error("最後のパネルは閉じられません");
+            }
+          }}
         />
       </div>
 
