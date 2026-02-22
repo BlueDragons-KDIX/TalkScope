@@ -1,9 +1,12 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { highlightTerms } from '../utils/termDetection';
 import { Term } from '../data/terms';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, Square, Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle } from 'lucide-react';
+import { Mic, Square, Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle, Star } from 'lucide-react';
 import { UseDemoStreamReturn } from '../hooks/useDemoStream';
+
+const TOOLTIP = { W: 208, H: 100, PAD: 8, GAP_ABOVE: 12 } as const;
 
 interface TranscriptionViewProps {
   transcript: string;
@@ -12,10 +15,14 @@ interface TranscriptionViewProps {
   onClearTranscript?: () => void;
   onTermClick: (term: Term) => void;
   onTermHover: (term: Term | null) => void;
+  isPinned?: Set<string>;
+  onTogglePin?: (termId: string) => void;
   onLoadDemo?: () => void;
   /** 非同期ストリーミングデモの制御オブジェクト（コア機能とは独立） */
   demoStream?: UseDemoStreamReturn;
   darkMode?: boolean;
+  /** API で発見された動的用語（ハイライト対象に含める） */
+  apiTerms?: Term[];
 }
 
 export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
@@ -25,12 +32,62 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   onClearTranscript,
   onTermClick,
   onTermHover,
+  isPinned = new Set(),
+  onTogglePin,
   onLoadDemo,
   demoStream,
   darkMode = true,
+  apiTerms = [],
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [hoveredTermId, setHoveredTermId] = useState<string | null>(null);
+  const termButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const [hoveredPartIndex, setHoveredPartIndex] = useState<number | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; showBelow: boolean } | null>(null);
+
+  const updateTooltipPos = useCallback((partIndex: number) => {
+    const btn = termButtonRefs.current[partIndex];
+    if (!btn || !scrollRef.current) {
+      setTooltipPos(null);
+      return;
+    }
+    const rect = btn.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const { top: bubbleTop, bottom: bubbleBottom, height: bubbleH } = rect;
+    const bubbleGap = bubbleH * 0.2;
+    const map = scrollRef.current.getBoundingClientRect();
+    const mapLeft = map.left + TOOLTIP.PAD;
+    const mapRight = map.right - TOOLTIP.W - TOOLTIP.PAD;
+    const mapTop = map.top + TOOLTIP.PAD;
+    const mapBottom = map.bottom - TOOLTIP.PAD;
+    const spaceAbove = bubbleTop - mapTop;
+    const showBelow = spaceAbove < TOOLTIP.H;
+    const left = Math.max(mapLeft, Math.min(centerX - TOOLTIP.W / 2, mapRight));
+    const top = showBelow
+      ? Math.max(mapTop, Math.min(bubbleBottom + TOOLTIP.PAD + bubbleGap, mapBottom - TOOLTIP.H))
+      : Math.min(mapBottom - TOOLTIP.H, Math.max(mapTop, bubbleTop - TOOLTIP.GAP_ABOVE - TOOLTIP.H));
+    setTooltipPos({ left, top, showBelow });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (hoveredPartIndex === null) {
+      setTooltipPos(null);
+      return;
+    }
+    updateTooltipPos(hoveredPartIndex);
+  }, [hoveredPartIndex, updateTooltipPos]);
+
+  useEffect(() => {
+    if (hoveredPartIndex === null || !scrollRef.current) return;
+    const el = scrollRef.current;
+    const onScroll = () => updateTooltipPos(hoveredPartIndex);
+    const onResize = () => updateTooltipPos(hoveredPartIndex);
+    el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [hoveredPartIndex, updateTooltipPos]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -38,7 +95,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
     }
   }, [transcript]);
 
-  const parts = highlightTerms(transcript);
+  const parts = highlightTerms(transcript, apiTerms);
   const dk = darkMode;
 
   const isStreaming = demoStream?.status === 'playing';
@@ -49,7 +106,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   return (
     <div className={`flex flex-col h-full transition-colors ${dk ? 'bg-[#0d0e1a]' : 'bg-white'}`}>
       {/* Header */}
-      <div className={`flex items-center justify-between px-4 py-2.5 border-b flex-shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50/80'}`}>
+      <div className={`flex items-center justify-between px-4 py-2.5 border-b shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50/80'}`}>
         <div className="flex items-center gap-2">
           <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
             isStreaming ? (dk ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-purple-50 text-purple-600') :
@@ -70,7 +127,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
 
       {/* Streaming progress bar */}
       {(isStreaming || isPaused || isDone) && (
-        <div className={`h-0.5 w-full ${dk ? 'bg-slate-800' : 'bg-slate-100'} flex-shrink-0`}>
+        <div className={`h-0.5 w-full ${dk ? 'bg-slate-800' : 'bg-slate-100'} shrink-0`}>
           <motion.div
             className={`h-full ${isDone ? 'bg-emerald-500' : 'bg-purple-500'}`}
             initial={{ width: 0 }}
@@ -129,9 +186,14 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                 return (
                   <span key={index} className="relative group inline-block mx-0.5">
                     <button
+                      ref={(el) => { termButtonRefs.current[index] = el; }}
                       onClick={() => onTermClick(term)}
-                      onMouseEnter={() => { setHoveredTermId(term.id); onTermHover(term); }}
-                      onMouseLeave={() => { setHoveredTermId(null); onTermHover(null); }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        onTogglePin?.(term.id);
+                      }}
+                      onMouseEnter={() => { setHoveredPartIndex(index); onTermHover(term); }}
+                      onMouseLeave={() => { setHoveredPartIndex(null); onTermHover(null); }}
                       className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-all font-bold ${
                         dk
                           ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/35 border border-indigo-500/30'
@@ -141,25 +203,6 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                       {part.content}
                     </button>
 
-                    <AnimatePresence>
-                      {hoveredTermId === term.id && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95, y: -8 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95, y: -8 }}
-                          transition={{ duration: 0.12 }}
-                          className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-3 rounded-xl shadow-2xl z-30 pointer-events-none border ${dk ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-900 border-slate-800 text-white'}`}
-                        >
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className={`text-[10px] font-bold ${dk ? 'text-indigo-400' : 'text-indigo-300'}`}>{term.category}</span>
-                            <span className={`text-[10px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>Lv.{term.level}</span>
-                          </div>
-                          <div className="text-sm font-black mb-1">{term.word}</div>
-                          <p className={`text-[11px] leading-relaxed line-clamp-2 ${dk ? 'text-slate-400' : 'text-slate-300'}`}>{term.shortDesc}</p>
-                          <div className={`absolute top-full left-1/2 -translate-x-1/2 border-[6px] border-transparent ${dk ? 'border-t-slate-800' : 'border-t-slate-900'}`} />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </span>
                 );
               }
@@ -175,8 +218,44 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
         )}
       </div>
 
+      {/* ホバー時のツールチップ：ポータルで body に描画（見切れ防止） */}
+      {hoveredPartIndex !== null && tooltipPos && (() => {
+        const part = parts[hoveredPartIndex];
+        const hoveredTerm = part?.type === 'term' ? (part as { type: 'term'; content: string; term: Term }).term : null;
+        if (!hoveredTerm) return null;
+        return createPortal(
+          <motion.div
+            initial={{ opacity: 0, y: tooltipPos.showBelow ? 8 : -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.12 }}
+            className={`fixed w-52 p-3 rounded-xl shadow-2xl z-9999 pointer-events-none border ${dk ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-900 border-slate-800 text-white'}`}
+            style={{ left: tooltipPos.left, top: tooltipPos.top }}
+          >
+            {isPinned.has(hoveredTerm.id) && (
+              <div className="absolute top-2 right-2 text-yellow-400">
+                <Star size={12} fill="currentColor" />
+              </div>
+            )}
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className={`text-[10px] font-bold ${dk ? 'text-indigo-400' : 'text-indigo-300'}`}>{hoveredTerm.category}</span>
+              <span className={`text-[10px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>Lv.{hoveredTerm.level}</span>
+            </div>
+            <div className="text-sm font-black mb-1">{hoveredTerm.word}</div>
+            <p className={`text-[11px] leading-relaxed line-clamp-2 ${dk ? 'text-slate-400' : 'text-slate-300'}`}>{hoveredTerm.shortDesc}</p>
+            <div
+              className={`absolute left-1/2 -translate-x-1/2 border-[6px] border-transparent ${
+                tooltipPos.showBelow
+                  ? `-top-3 ${dk ? 'border-b-slate-800' : 'border-b-slate-900'}`
+                  : `top-full ${dk ? 'border-t-slate-800' : 'border-t-slate-900'}`
+              }`}
+            />
+          </motion.div>,
+          document.body
+        );
+      })()}
+
       {/* Footer: Big round recording buttons */}
-      <div className={`px-5 py-4 border-t flex-shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/20' : 'border-slate-100 bg-slate-50/80'}`}>
+      <div className={`px-5 py-4 border-t shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/20' : 'border-slate-100 bg-slate-50/80'}`}>
         <div className="flex items-center justify-center gap-5">
 
           {/* リセットボタン */}

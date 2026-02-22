@@ -32,15 +32,34 @@ uvicorn main:app --reload
 ## Docker で起動
 
 ルートディレクトリ（`/Users/honmayuudai/MyHobby/hackson/KC3Hack2026`）で実行してください。
-ARM64 などで `sudachipy` の Linux wheel が無い場合でもビルドできるよう、Dockerfile には Rust ツールチェーンを含めています（初回ビルドは時間がかかる可能性があります）。
+`docker-compose.yml` では `Backend` をデフォルトで `linux/amd64` で起動し、依存の wheel を優先利用します。
+必要に応じて `BACKEND_PLATFORM=linux/arm64` のように上書き可能です。
 
 ```bash
 make up-backend
 ```
 
+初回や Dockerfile 更新後に再ビルドしたい場合:
+
+```bash
+make up-backend-build
+```
+
+Docker の build cache が溜まって容量不足になった場合:
+
+```bash
+make docker-clean
+```
+
 - API ベース URL: `http://localhost:8000`
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
+
+## Cloud Run デプロイ
+
+Cloud Run へのデプロイ手順は以下を参照してください。
+
+- `/Users/honmayuudai/MyHobby/hackson/KC3Hack2026/doc/cloud-run-deploy-workflow.md`
 
 ## 現在の API
 
@@ -114,7 +133,7 @@ make up-backend
 
 - `POST /dictionary/lookup`
   - 用語の意味を日本語で1〜2文の概要として返す
-  - 現在は単語DB未実装のため、常にGeminiで生成する
+  - このエンドポイントは現在DB参照未連携のため、常にGeminiで生成する
   - `terms` 指定時は、単語ごとに Gemini を非同期並列で呼び出す
   - リクエスト例（単体）:
     ```json
@@ -123,6 +142,22 @@ make up-backend
       "context": "LLMの会話で出てきた用語"
     }
     ```
+
+- `GET /dictionary/entries`
+  - 辞書DBに登録されている単語一覧を取得する
+  - クエリパラメータ: `q`（部分一致）, `limit`, `offset`
+
+- `POST /dictionary/entries/bulk`
+  - カンマ/空白区切りの単語を一括登録する
+  - 各単語について Gemini で説明を生成し、意味ベクトルを付与してDBに保存する
+  - 既存単語はスキップされる
+
+- `PATCH /dictionary/entries/{id}`
+  - 辞書エントリの単語/説明を更新する
+  - 単語変更時は意味ベクトルも再生成する
+
+- `DELETE /dictionary/entries/{id}`
+  - 辞書エントリを削除する
   - リクエスト例（複数）:
     ```json
     {

@@ -21,11 +21,14 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
     """アプリの起動・終了時に実行されるライフスパンイベント。"""
-    # 起動時: DB があれば初期化
-    if os.environ.get("DATABASE_URL"):
+    # 起動時: 明示的に有効化された場合のみ DB 初期化を実行する。
+    db_init_enabled = os.environ.get("ENABLE_DB_INIT", "").lower() in {"1", "true", "yes"}
+    if db_init_enabled and os.environ.get("DATABASE_URL"):
         from app.core.database import db
         db.init_db()
         logger.info("DB 初期化完了")
+    elif os.environ.get("DATABASE_URL"):
+        logger.info("DATABASE_URL は設定済みだが ENABLE_DB_INIT が無効のためスキップ")
     else:
         logger.warning("DATABASE_URL 未設定のため、DB 初期化をスキップ")
     yield
@@ -48,13 +51,21 @@ app = fastapi.FastAPI(
     lifespan=lifespan,
 )
 
+default_origins = [
+    "http://localhost:5173",
+    "https://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://127.0.0.1:5173",
+    "http://127.0.0.1:51080",
+]
+env_origins = [
+    origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()
+]
+allow_origins = list(dict.fromkeys(default_origins + env_origins))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:51080"
-    ],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

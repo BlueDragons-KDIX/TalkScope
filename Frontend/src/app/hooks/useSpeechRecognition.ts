@@ -32,8 +32,17 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
 
     recognition.onresult = (event: any) => {
       let currentTranscript = '';
+
       for (let i = 0; i < event.results.length; i++) {
-        currentTranscript += event.results[i][0].transcript;
+        const text: string = event.results[i][0].transcript;
+        const isFinal: boolean = event.results[i].isFinal;
+
+        // If it's a final result, it's a natural break
+        if (isFinal) {
+          currentTranscript += text + '。\n';
+        } else {
+          currentTranscript += text;
+        }
       }
       setTranscript(currentTranscript);
     };

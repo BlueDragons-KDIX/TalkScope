@@ -1,17 +1,33 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Term, IT_TERMS } from '../data/terms';
-import { X, ExternalLink, Hash, BookOpen, Layers } from 'lucide-react';
+import { X, ExternalLink, Hash, BookOpen, Layers, Copy } from 'lucide-react';
 
 interface TermDetailModalProps {
   term: Term | null;
   onClose: () => void;
   onRelatedTermClick: (term: Term) => void;
   darkMode?: boolean;
-  themeColor?: string;
 }
 
 export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose, onRelatedTermClick, darkMode = true }) => {
+  const [copied, setCopied] = useState<'word' | 'desc' | null>(null);
+
+  const copyWord = useCallback(() => {
+    if (!term) return;
+    navigator.clipboard.writeText(term.word).then(() => {
+      setCopied('word');
+      setTimeout(() => setCopied(null), 1500);
+    });
+  }, [term?.word]);
+
+  const copyDesc = useCallback(() => {
+    if (!term) return;
+    navigator.clipboard.writeText(term.longDesc).then(() => {
+      setCopied('desc');
+      setTimeout(() => setCopied(null), 1500);
+    });
+  }, [term?.longDesc]);
   if (!term) return null;
 
   const dk = darkMode;
@@ -56,7 +72,17 @@ export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose,
                     {term.category}
                   </span>
                 </div>
-                <h2 className="text-2xl font-black">{term.word}</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-2xl font-black">{term.word}</h2>
+                  <button
+                    onClick={copyWord}
+                    title="単語をコピー"
+                    className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'}`}
+                  >
+                    <Copy size={14} />
+                  </button>
+                  {copied === 'word' && <span className="text-[10px] font-bold text-emerald-500">コピーしました</span>}
+                </div>
                 <p className={`text-sm font-medium ${dk ? 'text-slate-500' : 'text-slate-400'}`}>{term.kana}</p>
               </div>
               <button 
@@ -69,17 +95,27 @@ export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose,
 
             <div className="space-y-5">
               <section>
-                <div className={`flex items-center gap-1.5 mb-2 text-xs font-bold ${dk ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                  <BookOpen size={14} />
-                  <span>説明</span>
+                <div className={`flex items-center justify-between gap-2 mb-2 text-xs font-bold ${dk ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                  <span className="flex items-center gap-1.5">
+                    <BookOpen size={14} />
+                    <span>説明</span>
+                  </span>
+                  <button
+                    onClick={copyDesc}
+                    title="説明をコピー"
+                    className={`p-1.5 rounded-lg transition-colors shrink-0 ${dk ? 'hover:bg-slate-800 text-indigo-400/80 hover:text-indigo-400' : 'hover:bg-slate-100 text-indigo-600/80 hover:text-indigo-600'}`}
+                  >
+                    <Copy size={13} />
+                  </button>
                 </div>
+                {copied === 'desc' && <p className="text-[10px] font-bold text-emerald-500 mb-1">コピーしました</p>}
                 <p className={`text-sm leading-relaxed font-medium ${dk ? 'text-slate-300' : 'text-slate-600'}`}>
                   {term.longDesc}
                 </p>
               </section>
 
               {term.relatedTerms.length > 0 && (
-                <section>
+                <section className="hidden">
                   <div className={`flex items-center gap-1.5 mb-2 text-xs font-bold ${dk ? 'text-indigo-400' : 'text-indigo-600'}`}>
                     <Layers size={14} />
                     <span>関連ワード</span>
