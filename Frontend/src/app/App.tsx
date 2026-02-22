@@ -48,7 +48,7 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
-  const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo', sensitivity: 50 });
+  const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo' });
   const [isPinned, setIsPinned] = useState<Set<string>>(new Set());
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   /** バブルサイズ計算用：主題（ベクトル類似度の基準） */
