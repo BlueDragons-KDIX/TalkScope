@@ -28,6 +28,7 @@ import {
   makeLeftRightLayout,
   removeLeaf,
 } from './layout/layoutUtils';
+import { VectorApiCheckButton } from './components/VectorApiCheckButton';
 
 
 
