@@ -1,0 +1,75 @@
+name: Deploy Backend to Cloud Run
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - "Backend/**"
+      - ".github/workflows/deploy-backend-cloud-run.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  GCP_PROJECT_ID: kc3hack2026
+  GCP_REGION: asia-southeast1
+  CLOUD_RUN_SERVICE: lexiflow-backend
+  GEMINI_SECRET_NAME: gemini-api-key
+  DB_CERT_SECRET_NAME: cockroach-root-crt
+
+concurrency:
+  group: deploy-backend-cloud-run-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
+            echo "::error::Repository secret GCP_SA_KEY is not set."
+            exit 1
+          fi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Deploy Backend to Cloud Run
+        run: |
+          gcloud run deploy "${CLOUD_RUN_SERVICE}" \
+            --quiet \
+            --source "${GITHUB_WORKSPACE}/Backend" \
+            --project "${GCP_PROJECT_ID}" \
+            --region "${GCP_REGION}" \
+            --allow-unauthenticated \
+            --memory 1Gi \
+            --cpu 1 \
+            --concurrency 10 \
+            --timeout 60 \
+            --min-instances 0 \
+            --max-instances 2 \
+            --set-secrets "GEMINI_API_KEY=${GEMINI_SECRET_NAME}:latest,/root/.postgresql/root.crt=${DB_CERT_SECRET_NAME}:latest" \
+            --set-env-vars "GEMINI_MODEL=gemini-2.5-flash-lite,GEMINI_TIMEOUT_SECONDS=10,GEMINI_PARALLELISM=3,ENABLE_DB_INIT=false"
+
+      - name: Smoke test
+        run: |
+          SERVICE_URL="$(gcloud run services describe "${CLOUD_RUN_SERVICE}" --region "${GCP_REGION}" --project "${GCP_PROJECT_ID}" --format='value(status.url)')"
+          echo "Service URL: ${SERVICE_URL}"
+          curl -fsS "${SERVICE_URL}/"
