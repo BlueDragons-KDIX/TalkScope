@@ -172,7 +172,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     // 重みで基本半径に差をつける（小: 18 〜 大: 38 程度）
     const baseR = Math.min(Math.max(36, w * 12), 76) / 1.8;
     // 主題・会話類似度と表示回数で差をつける
-    const similarityMult = (1 + 0.6 * themeScore) * (1 + 0.6 * convScore);
+    const similarityMult = (1 + 0.6 * themeScore) * (1 + convScore);
     const freqMult = 1 + 0.12 * displayCount;
     let r = baseR * scaleFactor * similarityMult * freqMult;
     r = Math.min(r, 95); // 極端に大きくなりすぎないよう上限
