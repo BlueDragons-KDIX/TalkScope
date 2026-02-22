@@ -16,7 +16,6 @@ import { getAllPinnedTerms, addPinnedTerm, removePinnedTerm } from './db';
 import { extractTerms, countTermFrequencies } from './utils/termDetection';
 import { Book, LayoutGrid, LibraryBig, Settings, Target } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
-import { VectorApiCheckButton } from './components/VectorApiCheckButton';
 import { Toaster, toast } from 'sonner';
 import { LayoutEngine } from './layout/LayoutEngine';
 import { LayoutNode, PanelId } from './layout/types';
@@ -29,6 +28,7 @@ import {
   makeLeftRightLayout,
   removeLeaf,
 } from './layout/layoutUtils';
+import { VectorApiCheckButton } from './components/VectorApiCheckButton';
 
 
 
@@ -53,7 +53,7 @@ const App: React.FC = () => {
   const [isDictionaryManagerOpen, setIsDictionaryManagerOpen] = useState(false);
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
-  const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo', sensitivity: 50 });
+  const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo' });
   const [isPinned, setIsPinned] = useState<Set<string>>(new Set());
   /** ピン留めした用語一覧（IndexedDB と同期・ピン中タブで表示） */
   const [pinnedTermsList, setPinnedTermsList] = useState<Term[]>([]);

@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings, X, Moon, Sun, Volume2, Palette } from 'lucide-react';
-import { DbTestPanel } from './DbTestPanel';
+import { Settings, X, Moon, Sun, Palette } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -9,7 +8,6 @@ interface SettingsModalProps {
   settings: {
     darkMode: boolean;
     themeColor: string;
-    sensitivity: number;
   };
   updateSettings: (newSettings: any) => void;
 }
@@ -91,36 +89,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                 </div>
               </section>
 
-              {/* Audio Settings */}
-              <section>
-                <div className={`flex items-center gap-1.5 mb-3 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
-                  <Volume2 size={12} /> 音声・解析
-                </div>
-                
-                <div className="mb-3.5">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-xs font-bold">入力感度</span>
-                    <span className={`text-[10px] font-mono font-bold ${dk ? 'text-slate-500' : 'text-slate-400'}`}>{settings.sensitivity}%</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="1" 
-                    max="100" 
-                    value={settings.sensitivity}
-                    onChange={(e) => updateSettings({ sensitivity: parseInt(e.target.value) })}
-                    className="w-full h-1 rounded-lg appearance-none cursor-pointer bg-slate-700 accent-indigo-500"
-                  />
-                  <div className={`flex justify-between mt-0.5 text-[9px] ${dk ? 'text-slate-600' : 'text-slate-400'}`}>
-                    <span>低</span>
-                    <span>高</span>
-                  </div>
-                </div>
-              </section>
 
-              {/* IndexedDB 動作確認 */}
-              <section>
-                <DbTestPanel darkMode={dk} />
-              </section>
+
             </div>
           </div>
         </motion.div>
