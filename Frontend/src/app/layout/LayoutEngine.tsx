@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { GripHorizontal } from 'lucide-react';
+import { GripHorizontal, X } from 'lucide-react';
 import { DropZone, LayoutNode, PanelId } from './types';
 import { movePanel, updateRatio } from './layoutUtils';
 
@@ -92,9 +92,10 @@ export interface LayoutEngineProps {
     darkMode: boolean;
     themeColor?: string;
     panels: Record<PanelId, React.ReactNode>;
+    onClose?: (panelId: PanelId) => void;
 }
 
-export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, onLayoutChange, darkMode, themeColor = 'indigo', panels }) => {
+export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, onLayoutChange, darkMode, themeColor = 'indigo', panels, onClose }) => {
     const dk = darkMode;
     const accentRgb = ACCENT_RGB[themeColor] ?? ACCENT_RGB['indigo'];
     const borderStyle = `2px solid rgba(${accentRgb},0.6)`;
@@ -166,6 +167,18 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, onLayoutChan
                         />
                         <GripHorizontal size={10} className="opacity-40 flex-shrink-0" />
                         <span className="text-[9px] font-bold uppercase tracking-[0.15em]">{PANEL_LABELS[node.panelId]}</span>
+                        {onClose && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onClose(node.panelId);
+                                }}
+                                className={`ml-auto p-0.5 rounded transition-colors ${dk ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-200 hover:text-black'}`}
+                                aria-label="閉じる"
+                            >
+                                <X size={12} />
+                            </button>
+                        )}
                     </div>
 
                     {/* パネルコンテンツ */}
@@ -224,7 +237,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, onLayoutChan
             </div>
         );
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [dragging, dropInfo, dk, panels, accentRgb, borderStyle, headerBg, dotColor, calcZone, onLayoutChange]);
+    }, [dragging, dropInfo, dk, panels, accentRgb, borderStyle, headerBg, dotColor, calcZone, onLayoutChange, onClose]);
 
     return (
         <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
