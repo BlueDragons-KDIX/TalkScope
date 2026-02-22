@@ -52,8 +52,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "https://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://127.0.0.1:51080"
+        "https://127.0.0.1:5173",
+        "http://127.0.0.1:51080",
+        "https://192.168.1.1:5173" # For wildcard local testing if needed, or we can just use allow_origin_regex
     ],
     allow_credentials=True,
     allow_methods=["*"],

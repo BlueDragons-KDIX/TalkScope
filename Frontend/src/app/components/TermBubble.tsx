@@ -56,8 +56,8 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   }, [isAutoPlay, intervalSec]);
 
 
-  // 重要度とピンの有無によってサイズ（半径×2）を変える
-  const defaultSize = Math.max(60, 80 + weight * 10) + (isPinned ? 20 : 0);
+  // 重要度によってサイズ（半径×2）を変える。ピン留め時は標準より一回り大きいサイズ(80)に固定
+  const defaultSize = isPinned ? 80 : Math.max(60, 80 + weight * 10);
   const size = explicitSize ?? defaultSize;
 
   const updateTooltipPos = useCallback(() => {
@@ -216,7 +216,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
             e.stopPropagation();
             onTogglePin?.(term.id);
           }}
-          title={isPinned ? 'ピン解除' : 'ピン留め（消えなくなります）'}
+          title={isPinned ? 'ピン解除' : 'ピン留め'}
           className={`
             absolute top-0 right-2 z-10
             w-5 h-5 flex items-center justify-center

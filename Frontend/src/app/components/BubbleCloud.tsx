@@ -40,6 +40,8 @@ interface BubbleCloudProps {
   themeVector?: ThemeVectorResult | null;
   /** 主題テキスト（用語がこれと一致するとき主題との類似度を 1 とする） */
   themeText?: string;
+  /** API から取得した用語の意味ベクトル（termId → vector）。あればモックの代わりに使用 */
+  termVectors?: Record<string, number[]>;
   /** カテゴリフィルター（'ALL' または category 名） */
   categoryFilter?: string;
   /** カテゴリフィルター変更 */
@@ -57,11 +59,12 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   onTogglePin,
   themeVector,
   themeText = '',
+  termVectors = {},
   categoryFilter = 'ALL',
   onCategoryFilterChange,
 }) => {
   const dk = darkMode;
-  const categories = ['ALL', ...Object.keys(CATEGORY_COLORS)];
+  const categories = ['ALL', 'ピン中', ...Object.keys(CATEGORY_COLORS)];
 
   /** 主題ベクトル（APIの結果 or 未設定時はモック） */
   const themeVectorRef = useRef(themeVector);
@@ -93,20 +96,16 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   }>({ nodes: new Map(), width: 800, height: 500, rafId: null });
   const containerRef = useRef<HTMLDivElement>(null);
   const bubbleRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  /** 一定以上の大きさで自動ピンする候補（render で貯め、effect で適用） */
-  const autoPinCandidatesRef = useRef<Set<string>>(new Set());
 
-  /** この半径以上で自動で星（ピン）をつける */
-  const AUTO_PIN_RADIUS_THRESHOLD = 55;
-  
   // コンテナの初期幅を記憶し、それをデフォルトサイズとする
   const defaultWidthRef = useRef<number | null>(null);
   
   // マップのリサイズを検知して再描画をトリガーする用
   const [mapSize, setMapSize] = useState({ width: 800, height: 500 });
 
-  // コンテナの寸法を計測（リサイズ対応）
+  // コンテナの寸法を計測（リサイズ対応）。ピン中→バブルに戻った時に再アタッチするため categoryFilter を依存に
   useEffect(() => {
+    if (categoryFilter === 'ピン中') return;
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver(([e]) => {
@@ -115,55 +114,71 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
       if (w > 0 && defaultWidthRef.current === null) {
         defaultWidthRef.current = w;
       }
-      
-      // ResizeObserverからの過剰な再レンダリングを防ぐため、10px以上の差がある場合のみ更新
       setMapSize(prev => {
         if (Math.abs(prev.width - w) > 10 || Math.abs(prev.height - h) > 10) {
           return { width: w, height: h };
         }
         return prev;
       });
-
       engineRef.current.width = w;
       engineRef.current.height = h;
     });
     ro.observe(el);
+    // 初回に即時寸法を反映（戻った直後の1フレームで正しいサイズにする）
+    const w = el.getBoundingClientRect().width;
+    const h = el.getBoundingClientRect().height;
+    if (w > 0 && h > 0) {
+      engineRef.current.width = w;
+      engineRef.current.height = h;
+      setMapSize(prev => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
+    }
     return () => ro.disconnect();
-  }, []);
+  }, [categoryFilter]);
 
   // ノードの追加・削除・半径更新（レンダリングのタイミングで同期）
   const activeIds = new Set(activeTerms.map(t => t.id));
   const engineNodes = engineRef.current.nodes;
-  
-  // デフォルト幅を基準にしてスケールダウン（大きくなる時は1.0でストップ）
+
+  // ピン中表示の間はノードをクリアし、バブルに戻った時に全ノードを再初期化して左上に固まるのを防ぐ
+  if (categoryFilter === 'ピン中') {
+    engineNodes.clear();
+  } else {
   const DEFAULT_WIDTH = defaultWidthRef.current || 800;
   const currentWidth = mapSize.width;
   const scaleFactor = Math.min(1, currentWidth / DEFAULT_WIDTH);
-
   for (const id of Array.from(engineNodes.keys())) {
     if (!activeIds.has(id)) engineNodes.delete(id);
   }
   const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
-  autoPinCandidatesRef.current.clear();
   const themeTextTrimmed = themeText.trim();
   for (const term of activeTerms) {
     const freq = termFrequencies[term.id] ?? 0;
-    // 主題と同じ単語なら用語ベクトルに主題ベクトルを使う → 計算で自然に類似度 1 になる
+    // 優先順: 1) 主題と同じ単語→主題ベクトル  2) APIの実ベクトル  3) モックベクトル
+    const apiVec = termVectors[term.id];
     const termVec = (themeTextTrimmed && term.word === themeTextTrimmed)
       ? themeVec
-      : getMockTermVector(term.id, dim);
+      : apiVec && apiVec.length > 0
+        ? apiVec
+        : getMockTermVector(term.id, dim);
     const themeSim = cosineSimilarity(termVec, themeVec);
     const convSim = cosineSimilarity(termVec, conversationVec);
     const themeScore = similarityToScore(themeSim);   // 0〜1
     const convScore = similarityToScore(convSim);    // 0〜1
     const displayCount = Math.min(freq, 10);        // 表示回数は10回まで反映
-    const w = isPinned?.has(term.id) ? 0 : (termWeights[term.id] || 0);
+    const isTermPinned = isPinned?.has(term.id);
+    const w = isTermPinned ? 0 : (termWeights[term.id] || 0);
     // スケールファクターを適用して半径を縮小
-    const baseR = (Math.min(Math.max(40, w * 10), 50) + (isPinned?.has(term.id) ? 20 : 0)) / 2;
+    const baseR = Math.min(Math.max(40, w * 10), 50) / 2;
     // 基本の大きさ * (1 + 主題類似度) * (1 + 会話類似度) * (1 + 0.1*表示回数)
-    const r = baseR * scaleFactor  * (1 + themeScore)
+    let r = baseR * scaleFactor  * (1 + themeScore)
       * (1 + convScore)
       * (1 + 0.1 * displayCount);
+    
+    // ピン留めされているバブルは、頻度や類似度に関係なく標準より一回り大きいサイズに統一する
+    if (isTermPinned) {
+      r = 35 * scaleFactor; 
+    }
+
     if (isDev && activeTerms.indexOf(term) <= 4) {
       console.log(`[BubbleCloud] 類似度(モック) ${term.word}`, {
         themeScore: Math.round(themeScore * 1000) / 1000,
@@ -171,9 +186,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         freq,
         radius: Math.round(r * 10) / 10,
       });
-    }
-    if (r >= AUTO_PIN_RADIUS_THRESHOLD && !isPinned.has(term.id)) {
-      autoPinCandidatesRef.current.add(term.id);
     }
     
     if (!engineNodes.has(term.id)) {
@@ -186,14 +198,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
       engineNodes.get(term.id)!.radius = r; // サイズの動的更新
     }
   }
-
-  // 一定以上の大きさになった用語を自動でピン（星）する
-  useEffect(() => {
-    const toPin = autoPinCandidatesRef.current;
-    if (toPin.size === 0) return;
-    toPin.forEach((id) => onTogglePin(id));
-    toPin.clear();
-  }, [activeTerms, termFrequencies, themeVector, onTogglePin]);
+  }
 
   // 物理シミュレーションループ
   useEffect(() => {
@@ -302,10 +307,67 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
           )}
         </div>
         <span className={`text-[10px] font-mono border px-1.5 py-0.5 rounded ${dk ? 'bg-slate-800/50 border-slate-700/50 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
-          {activeTerms.length} terms
+          {categoryFilter === 'ピン中' ? `${activeTerms.length} ピン` : `${activeTerms.length} terms`}
         </span>
       </div>
 
+      {/* ピン中: IndexedDB のピン留め一覧を表で表示（文字起こしハイライト風） */}
+      {categoryFilter === 'ピン中' ? (
+        <div className="flex-1 overflow-auto">
+          {activeTerms.length === 0 ? (
+            <div className={`flex flex-col items-center justify-center h-full ${dk ? 'text-slate-600' : 'text-slate-400'}`}>
+              <Hexagon className="mb-3 opacity-30" size={40} />
+              <p className="text-xs font-bold opacity-60">ピン留めした用語がありません</p>
+              <p className="text-[10px] opacity-40 mt-1">用語を右クリックでピン留めすると<br />ここに一覧表示されます</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left">
+                <thead className={`sticky top-0 z-10 ${dk ? 'bg-slate-900/95 border-b border-slate-700/60' : 'bg-slate-50/95 border-b border-slate-200'}`}>
+                  <tr>
+                    <th className={`text-[10px] font-bold py-2 px-3 ${dk ? 'text-slate-500' : 'text-slate-500'}`}>用語</th>
+                    <th className={`text-[10px] font-bold py-2 px-3 ${dk ? 'text-slate-500' : 'text-slate-500'}`}>カテゴリ</th>
+                    <th className={`text-[10px] font-bold py-2 px-3 ${dk ? 'text-slate-500' : 'text-slate-500'}`}>説明</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeTerms.map((term) => (
+                    <tr
+                      key={term.id}
+                      className={`border-b ${dk ? 'border-slate-800/60 hover:bg-slate-800/40' : 'border-slate-100 hover:bg-slate-50/80'}`}
+                    >
+                      <td className="py-2 px-3">
+                        <button
+                          type="button"
+                          onClick={() => onTermClick(term)}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            onTogglePin(term.id);
+                          }}
+                          className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-all font-bold text-left ${
+                            dk
+                              ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/35 border border-indigo-500/30'
+                              : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                          }`}
+                        >
+                          {term.word}
+                        </button>
+                      </td>
+                      <td className={`py-2 px-3 text-xs ${dk ? 'text-slate-400' : 'text-slate-600'}`}>{term.category}</td>
+                      <td className="py-2 px-3 max-w-[180px] align-top">
+                        <div className={`text-[11px] overflow-x-auto overflow-y-hidden whitespace-nowrap max-h-12 ${dk ? 'text-slate-500' : 'text-slate-500'}`}>
+                          {term.shortDesc}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
       {/* Bubbles area — 座標固定+上方フロート */}
       <div ref={containerRef} className="relative flex-1 overflow-hidden">
         {dk && (
@@ -487,6 +549,8 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

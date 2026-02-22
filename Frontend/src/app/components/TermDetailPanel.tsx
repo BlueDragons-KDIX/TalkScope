@@ -89,7 +89,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
             {onTogglePin && (
               <button
                 onClick={onTogglePin}
-                title={isPinned ? 'ピン解除' : 'ピン留め（30秒で消えなくなります）'}
+                title={isPinned ? 'ピン解除' : 'ピン留め'}
                 className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   isPinned
                     ? 'text-yellow-400 bg-yellow-400/10 border border-yellow-400/30'

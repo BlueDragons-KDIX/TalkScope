@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import path from 'path'
 
 const VECTOR_API_PATH_PREFIX = '/analysis';
@@ -10,17 +11,18 @@ export default defineConfig(({ mode }) => {
   const target = env.VITE_BACKEND_URL?.trim() || undefined
   const proxy: Record<string, { target: string; changeOrigin: boolean }> | undefined = target
     ? {
-        [VECTOR_API_PATH_PREFIX]: {
-          target,
-          changeOrigin: true,
-        },
-      }
+      [VECTOR_API_PATH_PREFIX]: {
+        target,
+        changeOrigin: true,
+      },
+    }
     : undefined
 
   return {
     plugins: [
       react(),
       tailwindcss(),
+      basicSsl()
     ],
     resolve: {
       alias: {
