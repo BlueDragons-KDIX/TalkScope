@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings, X, Moon, Sun, Palette } from 'lucide-react';
+import { Settings, X, Moon, Sun, Palette, SlidersHorizontal, Loader2 } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -10,6 +10,16 @@ interface SettingsModalProps {
     themeColor: string;
   };
   updateSettings: (newSettings: any) => void;
+  /** 類似度フィルター ON/OFF */
+  similarityFilterEnabled?: boolean;
+  onSimilarityFilterEnabledChange?: (enabled: boolean) => void;
+  /** フィルターの強さ 0〜100 */
+  similarityFilterStrength?: number;
+  onSimilarityFilterStrengthChange?: (value: number) => void;
+  /** 基準語（一覧表示用） */
+  similarityReferenceWord?: string;
+  /** APIから基準ベクトルを取得できたか */
+  similarityReady?: boolean;
 }
 
 const THEME_COLORS = [
@@ -21,7 +31,18 @@ const THEME_COLORS = [
   { name: 'Orange', value: 'orange', bg: 'bg-orange-500' },
 ];
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, updateSettings }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({
+  isOpen,
+  onClose,
+  settings,
+  updateSettings,
+  similarityFilterEnabled = false,
+  onSimilarityFilterEnabledChange,
+  similarityFilterStrength = 8,
+  onSimilarityFilterStrengthChange,
+  similarityReferenceWord = 'it',
+  similarityReady = false,
+}) => {
   if (!isOpen) return null;
 
   const dk = settings.darkMode;
@@ -89,7 +110,53 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                 </div>
               </section>
 
+              {/* Similarity Filter Settings */}
+              {onSimilarityFilterEnabledChange && (
+                <section>
+                  <div className={`flex items-center gap-1.5 mb-3 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+                    <SlidersHorizontal size={12} /> 用語フィルター
+                  </div>
 
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold">&ldquo;{similarityReferenceWord}&rdquo; 類似度フィルター</span>
+                      {!similarityReady && (
+                        <span className={`flex items-center gap-1 text-[9px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+                          <Loader2 size={10} className="animate-spin" />準備中
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => onSimilarityFilterEnabledChange(!similarityFilterEnabled)}
+                      className={`w-10 h-5 rounded-full relative transition-colors ${similarityFilterEnabled ? 'bg-indigo-600' : (dk ? 'bg-slate-700' : 'bg-slate-200')}`}
+                    >
+                      <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${similarityFilterEnabled ? 'left-[22px]' : 'left-0.5'}`} />
+                    </button>
+                  </div>
+
+                  {onSimilarityFilterStrengthChange && (
+                    <div className={`mb-2 transition-opacity ${similarityFilterEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-bold">強さ</span>
+                        <span className={`text-[10px] font-mono font-bold ${dk ? 'text-slate-500' : 'text-slate-400'}`}>{similarityFilterStrength}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={similarityFilterStrength}
+                        onChange={(e) => onSimilarityFilterStrengthChange(Number(e.target.value))}
+                        className="w-full h-1 rounded-lg appearance-none cursor-pointer bg-slate-700 accent-indigo-500"
+                      />
+                      <div className={`flex justify-between mt-0.5 text-[9px] ${dk ? 'text-slate-600' : 'text-slate-400'}`}>
+                        <span>広く</span>
+                        <span>絞る</span>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              )}
 
             </div>
           </div>

@@ -489,13 +489,6 @@ const App: React.FC = () => {
         termVectors={termVectors}
         categoryFilter={categoryFilter}
         onCategoryFilterChange={setCategoryFilter}
-        similarityFilterEnabled={isSimilarityFilterEnabled}
-        onSimilarityFilterEnabledChange={setIsSimilarityFilterEnabled}
-        similarityFilterStrength={similarityFilterStrength}
-        onSimilarityFilterStrengthChange={setSimilarityFilterStrength}
-        similarityThreshold={similarityThreshold}
-        similarityReferenceWord="it"
-        similarityReady={isItReferenceReady}
       />
     ),
     detail: (
@@ -517,7 +510,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms, isSimilarityFilterEnabled, similarityFilterStrength, similarityThreshold, isItReferenceReady]);
+  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms]);
 
   return (
     <div
@@ -638,6 +631,12 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         updateSettings={s => setSettings(prev => ({ ...prev, ...s }))}
+        similarityFilterEnabled={isSimilarityFilterEnabled}
+        onSimilarityFilterEnabledChange={setIsSimilarityFilterEnabled}
+        similarityFilterStrength={similarityFilterStrength}
+        onSimilarityFilterStrengthChange={setSimilarityFilterStrength}
+        similarityReferenceWord="it"
+        similarityReady={isItReferenceReady}
       />
 
       <DictionaryManagerModal
