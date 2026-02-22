@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Term } from '../data/terms';
 import { TermBubble } from './TermBubble';
-import { Hexagon, Shuffle, Pause, ChevronUp, ChevronDown } from 'lucide-react';
+import { Hexagon, Shuffle, Pause, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import {
   getMockTermVector,
   getMockThemeVector,
@@ -53,10 +53,12 @@ interface BubbleCloudProps {
   similarityFilterEnabled?: boolean;
   /** 類似度フィルタ有効状態の変更 */
   onSimilarityFilterEnabledChange?: (enabled: boolean) => void;
-  /** 類似度しきい値（コサイン類似度） */
+  /** ベクトルフィルタの強さ（0〜100） */
+  similarityFilterStrength?: number;
+  /** ベクトルフィルタ強さ変更 */
+  onSimilarityFilterStrengthChange?: (value: number) => void;
+  /** 現在しきい値（表示用） */
   similarityThreshold?: number;
-  /** 類似度しきい値変更 */
-  onSimilarityThresholdChange?: (value: number) => void;
   /** 類似度基準語（現状は "it"） */
   similarityReferenceWord?: string;
   /** 基準ベクトルが利用可能か */
@@ -79,8 +81,9 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   onCategoryFilterChange,
   similarityFilterEnabled = false,
   onSimilarityFilterEnabledChange,
-  similarityThreshold = 0.25,
-  onSimilarityThresholdChange,
+  similarityFilterStrength = 50,
+  onSimilarityFilterStrengthChange,
+  similarityThreshold = 0.33,
   similarityReferenceWord = 'it',
   similarityReady = false,
 }) => {
@@ -330,24 +333,30 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
               <input
                 type="checkbox"
                 checked={similarityFilterEnabled}
-                disabled={!similarityReady}
                 onChange={(e) => onSimilarityFilterEnabledChange(e.target.checked)}
               />
               <span>{`"${similarityReferenceWord}" 類似`}</span>
+              {!similarityReady && (
+                <span className="inline-flex items-center gap-1 text-[9px] opacity-80">
+                  <Loader2 size={10} className="animate-spin" />
+                  準備中
+                </span>
+              )}
             </label>
           )}
-          {onSimilarityThresholdChange && similarityFilterEnabled && (
+          {onSimilarityFilterStrengthChange && similarityFilterEnabled && (
             <div className={`flex items-center gap-1.5 px-2 py-1 rounded border ${dk ? 'border-slate-700/60 bg-slate-800/40 text-slate-300' : 'border-slate-200 bg-white text-slate-700'}`}>
               <input
                 type="range"
-                min={-1}
-                max={1}
-                step={0.05}
-                value={similarityThreshold}
-                onChange={(e) => onSimilarityThresholdChange(Number(e.target.value))}
+                min={0}
+                max={100}
+                step={1}
+                value={similarityFilterStrength}
+                onChange={(e) => onSimilarityFilterStrengthChange(Number(e.target.value))}
                 className="w-20"
               />
-              <span className="text-[10px] font-mono w-10 text-right">{similarityThreshold.toFixed(2)}</span>
+              <span className="text-[10px] font-mono w-10 text-right">{similarityFilterStrength}</span>
+              <span className="text-[10px] opacity-70 whitespace-nowrap">{`th:${similarityThreshold.toFixed(2)}`}</span>
             </div>
           )}
         </div>
