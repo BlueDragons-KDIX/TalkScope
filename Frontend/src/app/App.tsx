@@ -19,6 +19,7 @@ import { VectorApiCheckButton } from './components/VectorApiCheckButton';
 import { Toaster, toast } from 'sonner';
 import { LayoutEngine } from './layout/LayoutEngine';
 import { LayoutNode, PanelId } from './layout/types';
+import { cosineSimilarity } from './utils/mockVectors';
 import {
   makeDefaultLayout,
   make2x2Layout,
@@ -62,6 +63,14 @@ const App: React.FC = () => {
   const [apiTerms, setApiTerms] = useState<Term[]>([]);
   /** API 用語の意味ベクトル (termId → vector)。バブルサイズ計算用 */
   const [termVectors, setTermVectors] = useState<Record<string, number[]>>({});
+  /** フィルタ基準語（現状固定）との類似度フィルタ有効化 */
+  const [isSimilarityFilterEnabled, setIsSimilarityFilterEnabled] = useState(false);
+  /** 類似度しきい値（コサイン類似度 -1.0〜1.0） */
+  const [similarityThreshold, setSimilarityThreshold] = useState(0.25);
+  /** "it" の基準ベクトル */
+  const [itReferenceVector, setItReferenceVector] = useState<number[] | null>(null);
+  /** term.id が未解決なときの補助ベクトル（word単位） */
+  const [wordVectors, setWordVectors] = useState<Record<string, number[]>>({});
 
   // ── バブル寿命管理 refs ────────────────────────────────────────
   const termTimestamps    = useRef<Record<string, number>>({});       // termId → 追加時刻
@@ -69,6 +78,10 @@ const App: React.FC = () => {
   const isPinnedRef  = useRef<Set<string>>(new Set());           // isPinned の ref ミラー
   const activeTermsRef    = useRef<Term[]>([]);                       // activeTerms の ref ミラー
   const historicalTermIdsRef = useRef<Set<string>>(new Set());        // これまでに抽出・生成された全用語ID（ゾンビ復活防止用）
+  const fetchingWordSetRef = useRef<Set<string>>(new Set());
+  const failedWordSetRef = useRef<Set<string>>(new Set());
+
+  const normalizeWordKey = useCallback((word: string) => word.trim().toLowerCase(), []);
 
   // 起動時に IndexedDB からピン留め一覧を復元
   useEffect(() => {
@@ -150,6 +163,76 @@ const App: React.FC = () => {
     }, 500);
     return () => clearTimeout(t);
   }, [themeText]);
+
+  // フィルタ基準語 "it" のベクトルを起動時に取得
+  useEffect(() => {
+    let cancelled = false;
+    fetchThemeVector('it')
+      .then((result) => {
+        if (!cancelled) {
+          setItReferenceVector(result?.vector?.length ? result.vector : null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setItReferenceVector(null);
+          if (import.meta.env.DEV) console.warn('[itReferenceVector]', err);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // term.id のベクトルが無い単語は word 単位で補助ベクトルを取得する
+  useEffect(() => {
+    const unresolvedWords = activeTerms
+      .map((term) => ({ key: normalizeWordKey(term.word), word: term.word, id: term.id }))
+      .filter(({ key, id }) =>
+        key &&
+        !termVectors[id]?.length &&
+        !wordVectors[key]?.length &&
+        !fetchingWordSetRef.current.has(key) &&
+        !failedWordSetRef.current.has(key),
+      );
+
+    if (unresolvedWords.length === 0) return;
+
+    unresolvedWords.forEach(({ key }) => fetchingWordSetRef.current.add(key));
+    let cancelled = false;
+
+    void Promise.all(
+      unresolvedWords.map(async ({ key, word }) => {
+        try {
+          const result = await fetchThemeVector(word);
+          if (cancelled) return null;
+          if (result?.vector?.length) return { key, vector: result.vector };
+          failedWordSetRef.current.add(key);
+          return null;
+        } catch (err) {
+          failedWordSetRef.current.add(key);
+          if (import.meta.env.DEV) console.warn('[wordVector]', word, err);
+          return null;
+        } finally {
+          fetchingWordSetRef.current.delete(key);
+        }
+      }),
+    ).then((rows) => {
+      if (cancelled) return;
+      const merged: Record<string, number[]> = {};
+      for (const row of rows) {
+        if (!row) continue;
+        merged[row.key] = row.vector;
+      }
+      if (Object.keys(merged).length > 0) {
+        setWordVectors((prev) => ({ ...prev, ...merged }));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTerms, termVectors, wordVectors, normalizeWordKey]);
 
   const dk = settings.darkMode;
 
@@ -303,18 +386,39 @@ const App: React.FC = () => {
     setIsPinned(new Set());
     setApiTerms([]);
     setTermVectors({});
+    setWordVectors({});
     termTimestamps.current = {};
     deathRowRef.current = {};
     historicalTermIdsRef.current = new Set();
+    fetchingWordSetRef.current.clear();
+    failedWordSetRef.current.clear();
     toast.info('リセットしました');
   };
 
-  const filteredTerms =
+  const termSimilarities = useMemo(() => {
+    const out: Record<string, number> = {};
+    if (!itReferenceVector?.length) return out;
+
+    for (const term of activeTerms) {
+      const direct = termVectors[term.id];
+      const fallback = wordVectors[normalizeWordKey(term.word)];
+      const candidateVector = direct?.length ? direct : fallback?.length ? fallback : null;
+      if (!candidateVector) continue;
+      out[term.id] = cosineSimilarity(candidateVector, itReferenceVector);
+    }
+    return out;
+  }, [activeTerms, termVectors, wordVectors, itReferenceVector, normalizeWordKey]);
+
+  const categoryFilteredTerms =
     categoryFilter === 'ALL'
       ? activeTerms
       : categoryFilter === 'ピン中'
         ? pinnedTermsList
         : activeTerms.filter(t => t.category === categoryFilter);
+  const filteredTerms =
+    isSimilarityFilterEnabled && categoryFilter !== 'ピン中' && itReferenceVector?.length
+      ? categoryFilteredTerms.filter((term) => (termSimilarities[term.id] ?? -1) >= similarityThreshold)
+      : categoryFilteredTerms;
   const termFrequencies = useMemo(() => countTermFrequencies(transcript, activeTerms), [transcript, activeTerms]);
 
   // パネルコンテンツ（useMemo で過剰な再生成を抑制）
@@ -350,6 +454,12 @@ const App: React.FC = () => {
         termVectors={termVectors}
         categoryFilter={categoryFilter}
         onCategoryFilterChange={setCategoryFilter}
+        similarityFilterEnabled={isSimilarityFilterEnabled}
+        onSimilarityFilterEnabledChange={setIsSimilarityFilterEnabled}
+        similarityThreshold={similarityThreshold}
+        onSimilarityThresholdChange={setSimilarityThreshold}
+        similarityReferenceWord="it"
+        similarityReady={Boolean(itReferenceVector?.length)}
       />
     ),
     detail: (
@@ -371,7 +481,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms]);
+  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms, isSimilarityFilterEnabled, similarityThreshold, itReferenceVector]);
 
   return (
     <div
