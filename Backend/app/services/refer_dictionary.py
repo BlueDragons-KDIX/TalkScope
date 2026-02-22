@@ -95,7 +95,11 @@ async def _lookup_or_create(
     # 1. DB検索
     entry = None
     if db.is_available:
-        entry = await asyncio.to_thread(read_dictionary_by_term, compound_term)
+        try:
+            entry = await asyncio.to_thread(read_dictionary_by_term, compound_term)
+        except Exception:
+            logger.exception("DB検索に失敗したためLLMへフォールバック: term=%s", compound_term)
+            entry = None
 
     if entry:
         return DictionaryEntry(
@@ -125,9 +129,14 @@ async def _lookup_or_create(
                     meaning_vector=vector,
                 )
             except Exception:
-                # UNIQUE 違反 → 既に他のタスクが登録済み
-                logger.info("重複登録をスキップ: %s", compound_term)
-                entry = await asyncio.to_thread(read_dictionary_by_term, compound_term)
+                # UNIQUE 違反などで登録に失敗した場合は既存行を読み直す。
+                # 読み直しにも失敗した場合はLLM結果を返し、API全体は継続させる。
+                logger.exception("DB登録に失敗したため読み直しを試行: term=%s", compound_term)
+                try:
+                    entry = await asyncio.to_thread(read_dictionary_by_term, compound_term)
+                except Exception:
+                    logger.exception("DB再読込にも失敗したためLLM結果を返却: term=%s", compound_term)
+                    entry = None
                 if entry:
                     return DictionaryEntry(
                         term=entry.term,
