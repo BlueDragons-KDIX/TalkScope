@@ -13,7 +13,6 @@ import { Term } from './data/terms';
 import { extractTerms, countTermFrequencies } from './utils/termDetection';
 import { Book, LayoutGrid, Settings, Target } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
-import { VectorApiCheckButton } from './components/VectorApiCheckButton';
 import { Toaster, toast } from 'sonner';
 import { LayoutEngine } from './layout/LayoutEngine';
 import { LayoutNode, PanelId } from './layout/types';
@@ -387,7 +386,6 @@ const App: React.FC = () => {
             </div>
 
 
-            <VectorApiCheckButton darkMode={dk} />
             <button onClick={() => setIsSettingsOpen(true)} className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}>
               <Settings size={18} />
             </button>
