@@ -42,7 +42,7 @@ const PRESETS = [
 ] as const;
 
 const App: React.FC = () => {
-  if (import.meta.env.DEV) console.log('[LexiFlow] App.tsx 読み込み（主題入力あり）');
+  if (import.meta.env.DEV) console.log('[TalkScope] App.tsx 読み込み（主題入力あり）');
   const { transcript, setTranscript, isListening, startListening, stopListening, error } = useSpeechRecognition();
 
   const [activeTerms, setActiveTerms] = useState<Term[]>([]);
@@ -533,7 +533,7 @@ const App: React.FC = () => {
             <div className="bg-indigo-600 p-1.5 rounded-xl text-white shadow-lg shadow-indigo-600/30">
               <Book size={18} />
             </div>
-            <span className="text-lg font-black tracking-tight">LexiFlow</span>
+            <span className="text-lg font-black tracking-tight">TalkScope</span>
             <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-[0.2em] hidden sm:inline">Pro</span>
           </div>
 
