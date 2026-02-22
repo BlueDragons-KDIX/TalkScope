@@ -10,10 +10,11 @@ import { TranscriptionView } from './components/TranscriptionView';
 import { BubbleCloud } from './components/BubbleCloud';
 import { TermDetailPanel } from './components/TermDetailPanel';
 import { HistoryPanel } from './components/HistoryPanel';
+import { DictionaryManagerModal } from './components/DictionaryManagerModal';
 import { Term } from './data/terms';
 import { getAllPinnedTerms, addPinnedTerm, removePinnedTerm } from './db';
 import { extractTerms, countTermFrequencies } from './utils/termDetection';
-import { Book, LayoutGrid, Settings, Target } from 'lucide-react';
+import { Book, LayoutGrid, LibraryBig, Settings, Target } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
 import { VectorApiCheckButton } from './components/VectorApiCheckButton';
 import { Toaster, toast } from 'sonner';
@@ -48,6 +49,7 @@ const App: React.FC = () => {
   const [termWeights, setTermWeights] = useState<Record<string, number>>({});
   const [searchHistory, setSearchHistory] = useState<Term[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDictionaryManagerOpen, setIsDictionaryManagerOpen] = useState(false);
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
   const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo', sensitivity: 50 });
@@ -449,6 +451,18 @@ const App: React.FC = () => {
             </div>
 
 
+            <button
+              onClick={() => setIsDictionaryManagerOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                dk
+                  ? 'text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 border-slate-700/50'
+                  : 'text-slate-500 hover:text-slate-700 bg-white border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <LibraryBig size={13} />
+              単語管理
+            </button>
+
             <VectorApiCheckButton darkMode={dk} />
             <button onClick={() => setIsSettingsOpen(true)} className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}>
               <Settings size={18} />
@@ -481,6 +495,12 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         updateSettings={s => setSettings(prev => ({ ...prev, ...s }))}
+      />
+
+      <DictionaryManagerModal
+        isOpen={isDictionaryManagerOpen}
+        onClose={() => setIsDictionaryManagerOpen(false)}
+        darkMode={dk}
       />
     </div>
   );

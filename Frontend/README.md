@@ -28,7 +28,20 @@ bun run dev
 make up-frontend
 ```
 
+初回や Dockerfile 更新後に再ビルドしたい場合:
+
+```bash
+make up-frontend-build
+```
+
+Docker の build cache が溜まって容量不足になった場合:
+
+```bash
+make docker-clean
+```
+
 - URL: `http://localhost:5173`
+- HTTPS 開発サーバーが必要な場合は `VITE_USE_HTTPS=true` を設定
 
 ## 現在の主要機能
 
@@ -36,6 +49,7 @@ make up-frontend
 - 文字起こしテキストからの用語抽出
 - 用語のバブル表示・詳細表示
 - 検索履歴管理（`localStorage`）
+- 単語管理モーダル（一覧/編集/削除/一括登録）
 - 複数レイアウトプリセット切り替え
 
 ## ディレクトリ概要
