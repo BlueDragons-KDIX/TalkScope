@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Term } from '../data/terms';
 import { TermBubble } from './TermBubble';
-import { Hexagon, Shuffle, Pause, ChevronUp, ChevronDown } from 'lucide-react';
+import { Hexagon, Shuffle, Pause, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
 import {
   getMockTermVector,
   getMockThemeVector,
@@ -19,6 +19,9 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
   'AI/Data':{ bg: 'bg-amber-500/20',   text: 'text-amber-300',   border: 'border-amber-500/30',   dot: '#fbbf24' },
   General:  { bg: 'bg-slate-500/20',   text: 'text-slate-300',   border: 'border-slate-500/30',   dot: '#94a3b8' },
 };
+
+/** レイアウト変更でアンマウントされても基準幅を保持（枠が小さくなった時にバブルを自動で縮小するため） */
+let sharedDefaultWidth: number | null = null;
 
 /** 主題ベクトル（APIでベクトル化した主題テキストの平均ベクトル）。類似度計算用 */
 export interface ThemeVectorResult {
@@ -46,6 +49,20 @@ interface BubbleCloudProps {
   categoryFilter?: string;
   /** カテゴリフィルター変更 */
   onCategoryFilterChange?: (category: string) => void;
+  /** 類似度フィルタの有効状態 */
+  similarityFilterEnabled?: boolean;
+  /** 類似度フィルタ有効状態の変更 */
+  onSimilarityFilterEnabledChange?: (enabled: boolean) => void;
+  /** ベクトルフィルタの強さ（0〜100） */
+  similarityFilterStrength?: number;
+  /** ベクトルフィルタ強さ変更 */
+  onSimilarityFilterStrengthChange?: (value: number) => void;
+  /** 現在しきい値（表示用） */
+  similarityThreshold?: number;
+  /** 類似度基準語（現状は "it"） */
+  similarityReferenceWord?: string;
+  /** 基準ベクトルが利用可能か */
+  similarityReady?: boolean;
 }
 
 export const BubbleCloud: React.FC<BubbleCloudProps> = ({
@@ -62,15 +79,16 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   termVectors = {},
   categoryFilter = 'ALL',
   onCategoryFilterChange,
+  similarityFilterEnabled = false,
+  onSimilarityFilterEnabledChange,
+  similarityFilterStrength = 50,
+  onSimilarityFilterStrengthChange,
+  similarityThreshold = 0.33,
+  similarityReferenceWord = 'it',
+  similarityReady = false,
 }) => {
   const dk = darkMode;
   const categories = ['ALL', 'ピン中', ...Object.keys(CATEGORY_COLORS)];
-
-  /** 主題ベクトル（APIの結果 or 未設定時はモック） */
-  const themeVectorRef = useRef(themeVector);
-  useEffect(() => {
-    themeVectorRef.current = themeVector;
-  }, [themeVector]);
 
   const dim = themeVector?.dim ?? MOCK_DIM;
   const themeVec = useMemo(() => {
@@ -82,6 +100,8 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const [isAutoPlay, setIsAutoPlay] = useState(false);
   const [intervalSec, setIntervalSec] = useState(4);
   const [showSlider, setShowSlider] = useState(false);
+  /** 全バブルの倍率（0.5〜2.0、1=100%） */
+  const [bubbleScale, setBubbleScale] = useState(1);
   const activeTermsRef = useRef(activeTerms);
 
   // 用語⇔説明の反転状態を管理するIDセット（Auto-Play ONのときのみ使用）
@@ -96,19 +116,11 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   }>({ nodes: new Map(), width: 800, height: 500, rafId: null });
   const containerRef = useRef<HTMLDivElement>(null);
   const bubbleRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  /** 一定以上の大きさで自動ピンする候補（render で貯め、effect で適用） */
-  const autoPinCandidatesRef = useRef<Set<string>>(new Set());
 
-  /** この半径以上で自動で星（ピン）をつける */
-  const AUTO_PIN_RADIUS_THRESHOLD = 55;
-  
-  // コンテナの初期幅を記憶し、それをデフォルトサイズとする
-  const defaultWidthRef = useRef<number | null>(null);
-  
   // マップのリサイズを検知して再描画をトリガーする用
   const [mapSize, setMapSize] = useState({ width: 800, height: 500 });
 
-  // コンテナの寸法を計測（リサイズ対応）。ピン中→バブルに戻った時に再アタッチするため categoryFilter を依存に
+  // コンテナの寸法を計測（リサイズ対応）。レイアウト変更でアンマウントされても sharedDefaultWidth で基準を保持
   useEffect(() => {
     if (categoryFilter === 'ピン中') return;
     const el = containerRef.current;
@@ -116,15 +128,12 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     const ro = new ResizeObserver(([e]) => {
       const w = e.contentRect.width;
       const h = e.contentRect.height;
-      if (w > 0 && defaultWidthRef.current === null) {
-        defaultWidthRef.current = w;
+      if (w <= 0 || h <= 0) return;
+      // 初回または枠が大きくなったら基準幅を更新（枠が小さくなった時にバブルを縮小する基準）
+      if (sharedDefaultWidth === null || w > sharedDefaultWidth) {
+        sharedDefaultWidth = w;
       }
-      setMapSize(prev => {
-        if (Math.abs(prev.width - w) > 10 || Math.abs(prev.height - h) > 10) {
-          return { width: w, height: h };
-        }
-        return prev;
-      });
+      setMapSize({ width: w, height: h });
       engineRef.current.width = w;
       engineRef.current.height = h;
     });
@@ -133,9 +142,12 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     const w = el.getBoundingClientRect().width;
     const h = el.getBoundingClientRect().height;
     if (w > 0 && h > 0) {
+      if (sharedDefaultWidth === null || w > sharedDefaultWidth) {
+        sharedDefaultWidth = w;
+      }
       engineRef.current.width = w;
       engineRef.current.height = h;
-      setMapSize(prev => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
+      setMapSize({ width: w, height: h });
     }
     return () => ro.disconnect();
   }, [categoryFilter]);
@@ -148,14 +160,13 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   if (categoryFilter === 'ピン中') {
     engineNodes.clear();
   } else {
-  const DEFAULT_WIDTH = defaultWidthRef.current || 800;
+  const DEFAULT_WIDTH = sharedDefaultWidth ?? 800;
   const currentWidth = mapSize.width;
   const scaleFactor = Math.min(1, currentWidth / DEFAULT_WIDTH);
   for (const id of Array.from(engineNodes.keys())) {
     if (!activeIds.has(id)) engineNodes.delete(id);
   }
   const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
-  autoPinCandidatesRef.current.clear();
   const themeTextTrimmed = themeText.trim();
   for (const term of activeTerms) {
     const freq = termFrequencies[term.id] ?? 0;
@@ -171,13 +182,26 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     const themeScore = similarityToScore(themeSim);   // 0〜1
     const convScore = similarityToScore(convSim);    // 0〜1
     const displayCount = Math.min(freq, 10);        // 表示回数は10回まで反映
-    const w = isPinned?.has(term.id) ? 0 : (termWeights[term.id] || 0);
-    // スケールファクターを適用して半径を縮小
-    const baseR = (Math.min(Math.max(40, w * 10), 50) + (isPinned?.has(term.id) ? 20 : 0)) / 2;
-    // 基本の大きさ * (1 + 主題類似度) * (1 + 会話類似度) * (1 + 0.1*表示回数)
-    const r = baseR * scaleFactor  * (1 + themeScore)
-      * (1 + convScore)
-      * (1 + 0.1 * displayCount);
+    const isTermPinned = isPinned?.has(term.id);
+    const w = isTermPinned ? 0 : (termWeights[term.id] || 0);
+    // 重みで基本半径に差をつける（小: 18 〜 大: 38 程度）
+    const baseR = Math.min(Math.max(36, w * 12), 76) / 1.8;
+    // 主題・会話類似度と表示回数で差をつける
+    const similarityMult = (1 + 0.6 * themeScore) * (1 + convScore);
+    const freqMult = 1 + 0.12 * displayCount;
+    let r = baseR * scaleFactor * similarityMult * freqMult;
+    r = Math.min(r, 95); // 極端に大きくなりすぎないよう上限
+
+    // ピン留めされているバブルは、標準より一回り大きいサイズに統一
+    if (isTermPinned) {
+      r = 38 * scaleFactor;
+    }
+
+    // ユーザー指定の倍率を適用
+    r = r * bubbleScale;
+    // バブルの最小半径を20に統一
+    r = Math.max(20, r);
+
     if (isDev && activeTerms.indexOf(term) <= 4) {
       console.log(`[BubbleCloud] 類似度(モック) ${term.word}`, {
         themeScore: Math.round(themeScore * 1000) / 1000,
@@ -185,9 +209,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         freq,
         radius: Math.round(r * 10) / 10,
       });
-    }
-    if (r >= AUTO_PIN_RADIUS_THRESHOLD && !isPinned.has(term.id)) {
-      autoPinCandidatesRef.current.add(term.id);
     }
     
     if (!engineNodes.has(term.id)) {
@@ -201,14 +222,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     }
   }
   }
-
-  // 一定以上の大きさになった用語を自動でピン（星）する
-  useEffect(() => {
-    const toPin = autoPinCandidatesRef.current;
-    if (toPin.size === 0) return;
-    toPin.forEach((id) => onTogglePin(id));
-    toPin.clear();
-  }, [activeTerms, termFrequencies, themeVector, onTogglePin]);
 
   // 物理シミュレーションループ
   useEffect(() => {
@@ -301,7 +314,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     <div className={`flex flex-col h-full transition-colors ${dk ? 'bg-[#0d0e1a]' : 'bg-white'}`}>
       {/* Header */}
       <div className={`flex items-center justify-between px-4 py-2.5 border-b shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50/80'}`}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <Hexagon size={13} className={dk ? 'text-slate-600' : 'text-slate-300'} />
           <span className={`text-xs font-bold ${dk ? 'text-slate-300' : 'text-slate-600'}`}>用語マップ</span>
           {onCategoryFilterChange && (
@@ -315,11 +328,61 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
               ))}
             </select>
           )}
+          {onSimilarityFilterEnabledChange && (
+            <label className={`flex items-center gap-1.5 text-[10px] font-semibold px-2 py-1 rounded border whitespace-nowrap ${dk ? 'border-slate-700/60 bg-slate-800/40 text-slate-300' : 'border-slate-200 bg-white text-slate-700'}`}>
+              <input
+                type="checkbox"
+                checked={similarityFilterEnabled}
+                onChange={(e) => onSimilarityFilterEnabledChange(e.target.checked)}
+              />
+              <span>{`"${similarityReferenceWord}" 類似`}</span>
+              {!similarityReady && (
+                <span className="inline-flex items-center gap-1 text-[9px] opacity-80">
+                  <Loader2 size={10} className="animate-spin" />
+                  準備中
+                </span>
+              )}
+            </label>
+          )}
+          {onSimilarityFilterStrengthChange && similarityFilterEnabled && (
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded border ${dk ? 'border-slate-700/60 bg-slate-800/40 text-slate-300' : 'border-slate-200 bg-white text-slate-700'}`}>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={similarityFilterStrength}
+                onChange={(e) => onSimilarityFilterStrengthChange(Number(e.target.value))}
+                className="w-20"
+              />
+              <span className="text-[10px] font-mono w-10 text-right">{similarityFilterStrength}</span>
+              <span className="text-[10px] opacity-70 whitespace-nowrap">{`th:${similarityThreshold.toFixed(2)}`}</span>
+            </div>
+          )}
         </div>
         <span className={`text-[10px] font-mono border px-1.5 py-0.5 rounded ${dk ? 'bg-slate-800/50 border-slate-700/50 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
           {categoryFilter === 'ピン中' ? `${activeTerms.length} ピン` : `${activeTerms.length} terms`}
         </span>
       </div>
+
+      {/* バブル倍率スライダー（バブル表示時のみ） */}
+      {categoryFilter !== 'ピン中' && (
+        <div className={`flex items-center gap-3 px-4 py-2 border-b shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`}>
+          <span className={`text-[10px] font-bold shrink-0 ${dk ? 'text-slate-400' : 'text-slate-500'}`}>バブル倍率</span>
+          <input
+            type="range"
+            min={0.5}
+            max={2}
+            step={0.1}
+            value={bubbleScale}
+            onChange={(e) => setBubbleScale(Number(e.target.value))}
+            className={`flex-1 h-2 rounded-full appearance-none cursor-pointer accent-indigo-500 ${dk ? 'bg-slate-700' : 'bg-slate-200'}`}
+          />
+          <span className={`text-[10px] font-mono font-bold tabular-nums w-10 shrink-0 ${dk ? 'text-slate-400' : 'text-slate-600'}`}>
+            {Math.round(bubbleScale * 100)}%
+          </span>
+        </div>
+      )}
 
       {/* ピン中: IndexedDB のピン留め一覧を表で表示（文字起こしハイライト風） */}
       {categoryFilter === 'ピン中' ? (

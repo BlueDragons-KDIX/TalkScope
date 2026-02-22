@@ -133,7 +133,7 @@ Cloud Run へのデプロイ手順は以下を参照してください。
 
 - `POST /dictionary/lookup`
   - 用語の意味を日本語で1〜2文の概要として返す
-  - 現在は単語DB未実装のため、常にGeminiで生成する
+  - このエンドポイントは現在DB参照未連携のため、常にGeminiで生成する
   - `terms` 指定時は、単語ごとに Gemini を非同期並列で呼び出す
   - リクエスト例（単体）:
     ```json
@@ -142,6 +142,22 @@ Cloud Run へのデプロイ手順は以下を参照してください。
       "context": "LLMの会話で出てきた用語"
     }
     ```
+
+- `GET /dictionary/entries`
+  - 辞書DBに登録されている単語一覧を取得する
+  - クエリパラメータ: `q`（部分一致）, `limit`, `offset`
+
+- `POST /dictionary/entries/bulk`
+  - カンマ/空白区切りの単語を一括登録する
+  - 各単語について Gemini で説明を生成し、意味ベクトルを付与してDBに保存する
+  - 既存単語はスキップされる
+
+- `PATCH /dictionary/entries/{id}`
+  - 辞書エントリの単語/説明を更新する
+  - 単語変更時は意味ベクトルも再生成する
+
+- `DELETE /dictionary/entries/{id}`
+  - 辞書エントリを削除する
   - リクエスト例（複数）:
     ```json
     {
