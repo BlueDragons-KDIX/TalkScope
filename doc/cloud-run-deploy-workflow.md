@@ -9,6 +9,7 @@ PROJECT_ID="kc3hack2026"
 REGION="asia-southeast1"
 SERVICE_NAME="lexiflow-backend"
 SECRET_NAME="gemini-api-key"
+CERT_SECRET_NAME="cockroach-root-crt"
 ```
 
 - GCP のシンガポールリージョン名は `asia-southeast1`（AWS の `ap-southeast-1` とは表記が異なる）
@@ -62,6 +63,15 @@ gcloud secrets add-iam-policy-binding "$SECRET_NAME" \
   --project "$PROJECT_ID"
 ```
 
+証明書 Secret も同様に付与:
+
+```bash
+gcloud secrets add-iam-policy-binding "$CERT_SECRET_NAME" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor" \
+  --project "$PROJECT_ID"
+```
+
 ## 2. デプロイ（通常運用）
 
 リポジトリルート（`/Users/honmayuudai/MyHobby/hackson/KC3Hack2026`）で実行:
@@ -79,8 +89,8 @@ gcloud run deploy "$SERVICE_NAME" \
   --timeout 60 \
   --min-instances 0 \
   --max-instances 2 \
-  --set-secrets "GEMINI_API_KEY=${SECRET_NAME}:latest" \
-  --set-env-vars "GEMINI_MODEL=gemini-2.0-flash,GEMINI_TIMEOUT_SECONDS=10,GEMINI_PARALLELISM=3,ENABLE_DB_INIT=false"
+  --set-secrets "GEMINI_API_KEY=${SECRET_NAME}:latest,/root/.postgresql/root.crt=${CERT_SECRET_NAME}:latest" \
+  --set-env-vars "GEMINI_MODEL=gemini-2.5-flash-lite,GEMINI_TIMEOUT_SECONDS=10,GEMINI_PARALLELISM=3,ENABLE_DB_INIT=false"
 ```
 
 ## 3. デプロイ後の確認
@@ -110,6 +120,15 @@ gcloud run services update "$SERVICE_NAME" \
   --update-secrets "GEMINI_API_KEY=${SECRET_NAME}:latest"
 ```
 
+証明書 Secret を更新した場合:
+
+```bash
+gcloud run services update "$SERVICE_NAME" \
+  --project "$PROJECT_ID" \
+  --region "$REGION" \
+  --update-secrets "/root/.postgresql/root.crt=${CERT_SECRET_NAME}:latest"
+```
+
 ## 5. CORS（フロント本番URL）設定例
 
 `ALLOWED_ORIGINS` はカンマ区切りで指定:
@@ -136,3 +155,12 @@ gcloud secrets delete "$SECRET_NAME" \
   --project "$OLD_PROJECT_ID" \
   --quiet
 ```
+
+## 7. GitHub Actions で自動デプロイ
+
+`/Users/honmayuudai/MyHobby/hackson/KC3Hack2026/.github/workflows/deploy-backend-cloud-run.yml` を使う場合、
+GitHub Repository Secrets に以下を登録します。
+
+- `GCP_SA_KEY`: Cloud Run デプロイ権限を持つサービスアカウント JSON キー
+
+このワークフローは `develop` / `main` への push（`Backend/**` 変更時）で自動実行されます。

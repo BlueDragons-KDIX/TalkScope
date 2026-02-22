@@ -60,6 +60,7 @@ make docker-clean
 Cloud Run へのデプロイ手順は以下を参照してください。
 
 - `/Users/honmayuudai/MyHobby/hackson/KC3Hack2026/doc/cloud-run-deploy-workflow.md`
+- 自動デプロイ Workflow: `/Users/honmayuudai/MyHobby/hackson/KC3Hack2026/.github/workflows/deploy-backend-cloud-run.yml`
 
 ## 現在の API
 

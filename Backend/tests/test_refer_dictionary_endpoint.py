@@ -161,3 +161,34 @@ def test_refer_dictionary_db_unavailable(mock_external_services) -> None:
     mock_external_services["read"].assert_not_called()
     mock_external_services["create"].assert_not_called()
     mock_external_services["lookup"].assert_called_with("犬")
+
+
+def test_refer_dictionary_db_read_error_fallback(mock_external_services) -> None:
+    """DB readで例外が出てもLLMフォールバックで200を返す。"""
+    mock_external_services["read"].side_effect = RuntimeError("db read failed")
+
+    res = client.post("/analysis/refer_dictionary", json={"text": "犬"})
+    assert res.status_code == 200
+
+    entries = res.json()["entries"]
+    assert len(entries) == 1
+    assert entries[0]["term"] == "犬"
+    assert entries[0]["source"] == "llm"
+
+    mock_external_services["lookup"].assert_called_with("犬")
+
+
+def test_refer_dictionary_db_create_error_fallback(mock_external_services) -> None:
+    """DB createで例外が出てもLLM結果を返し500にしない。"""
+    mock_external_services["read"].return_value = None
+    mock_external_services["create"].side_effect = RuntimeError("db write failed")
+
+    res = client.post("/analysis/refer_dictionary", json={"text": "犬"})
+    assert res.status_code == 200
+
+    entries = res.json()["entries"]
+    assert len(entries) == 1
+    assert entries[0]["term"] == "犬"
+    assert entries[0]["source"] == "llm"
+
+    mock_external_services["lookup"].assert_called_with("犬")
