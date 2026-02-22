@@ -322,44 +322,45 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
           {/* ライブデモボタン＋速度スライダー（右側） */}
           {demoStream && (
             <div className="flex flex-col items-center gap-2">
-              {/* 速度スライダー */}
-              <div className={`flex flex-col gap-1 w-full px-1 ${
-                isStreaming || isPaused
-                  ? (dk ? 'opacity-100' : 'opacity-100')
-                  : (dk ? 'opacity-50' : 'opacity-60')
-              } transition-opacity`}>
-                <div className="flex items-center justify-between">
-                  <span className={`text-[9px] font-bold ${dk ? 'text-slate-600' : 'text-slate-400'}`}>速度</span>
-                  <span className={`text-[9px] font-black font-mono ${isStreaming ? 'text-purple-400' : (dk ? 'text-slate-500' : 'text-slate-400')}`}>
-                    {demoStream.intervalMs >= 2000 ? '超遅'
-                      : demoStream.intervalMs >= 400 ? '遅'
-                      : demoStream.intervalMs >= 250 ? '普通'
-                      : demoStream.intervalMs >= 130 ? '速い'
-                      : '超速'}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={60}
-                  max={5000}
-                  step={10}
-                  // スライダーは「右が速い」ので max-min を反転
-                  value={5000 - (demoStream.intervalMs - 60)}
-                  onChange={e => {
-                    const inverted = Number(e.target.value);
-                    demoStream.setIntervalMs(5000 - (inverted - 60));
-                  }}
-                  className={`w-full h-1.5 rounded-full appearance-none cursor-pointer ${
-                    isStreaming ? 'accent-purple-500' : (dk ? 'accent-slate-500' : 'accent-slate-400')
-                  }`}
-                  style={{ background: dk ? '#1e293b' : '#e2e8f0' }}
-                  title={`速度: ${demoStream.intervalMs}ms/チャンク`}
-                />
-                <div className={`flex justify-between text-[8px] font-bold ${dk ? 'text-slate-700' : 'text-slate-300'}`}>
-                  <span>遅</span>
-                  <span>速</span>
-                </div>
-              </div>
+              {/* 速度スライダー: pos 0(遅)〜100(速), pos30≒3518ms */}
+              {(() => {
+                const msToPos = (ms: number) => Math.round((5000 - ms) / (5000 - 60) * 100);
+                const posToMs = (pos: number) => Math.round(5000 - pos / 100 * (5000 - 60));
+                const pos = msToPos(demoStream.intervalMs);
+                return (
+                  <div className={`flex flex-col gap-1 w-full px-1 ${
+                    isStreaming || isPaused ? 'opacity-100' : (dk ? 'opacity-50' : 'opacity-60')
+                  } transition-opacity`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[9px] font-bold ${dk ? 'text-slate-600' : 'text-slate-400'}`}>速度</span>
+                      <span className={`text-[9px] font-black font-mono ${isStreaming ? 'text-purple-400' : (dk ? 'text-slate-500' : 'text-slate-400')}`}>
+                        {demoStream.intervalMs >= 2000 ? '超遅'
+                          : demoStream.intervalMs >= 400 ? '遅'
+                          : demoStream.intervalMs >= 250 ? '普通'
+                          : demoStream.intervalMs >= 130 ? '速い'
+                          : '超速'}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={pos}
+                      onChange={e => demoStream.setIntervalMs(posToMs(Number(e.target.value)))}
+                      className={`w-full h-1.5 rounded-full appearance-none cursor-pointer ${
+                        isStreaming ? 'accent-purple-500' : (dk ? 'accent-slate-500' : 'accent-slate-400')
+                      }`}
+                      style={{ background: dk ? '#1e293b' : '#e2e8f0' }}
+                      title={`速度: ${demoStream.intervalMs}ms (${pos}/100)`}
+                    />
+                    <div className={`flex justify-between text-[8px] font-bold ${dk ? 'text-slate-700' : 'text-slate-300'}`}>
+                      <span>遅</span>
+                      <span>速</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* ライブデモトグルボタン */}
               <AnimatePresence mode="wait">
