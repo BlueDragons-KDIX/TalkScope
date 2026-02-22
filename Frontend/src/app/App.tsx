@@ -19,7 +19,7 @@ import { VectorApiCheckButton } from './components/VectorApiCheckButton';
 import { Toaster, toast } from 'sonner';
 import { LayoutEngine } from './layout/LayoutEngine';
 import { LayoutNode, PanelId } from './layout/types';
-import { cosineSimilarity } from './utils/mockVectors';
+import { cosineSimilarity, getMockThemeVector, MOCK_DIM } from './utils/mockVectors';
 import {
   makeDefaultLayout,
   make2x2Layout,
@@ -65,10 +65,12 @@ const App: React.FC = () => {
   const [termVectors, setTermVectors] = useState<Record<string, number[]>>({});
   /** フィルタ基準語（現状固定）との類似度フィルタ有効化 */
   const [isSimilarityFilterEnabled, setIsSimilarityFilterEnabled] = useState(false);
-  /** 類似度しきい値（コサイン類似度 -1.0〜1.0） */
-  const [similarityThreshold, setSimilarityThreshold] = useState(0.25);
-  /** "it" の基準ベクトル */
-  const [itReferenceVector, setItReferenceVector] = useState<number[] | null>(null);
+  /** ベクトルフィルタの強さ（0〜100） */
+  const [similarityFilterStrength, setSimilarityFilterStrength] = useState(50);
+  /** "it" の基準ベクトル（初期はフォールバックで即時利用可能にする） */
+  const [itReferenceVector, setItReferenceVector] = useState<number[] | null>(() => getMockThemeVector(MOCK_DIM));
+  /** "it" ベクトルをバックエンドから取得できたか */
+  const [isItReferenceReady, setIsItReferenceReady] = useState(false);
   /** term.id が未解決なときの補助ベクトル（word単位） */
   const [wordVectors, setWordVectors] = useState<Record<string, number[]>>({});
 
@@ -167,20 +169,31 @@ const App: React.FC = () => {
   // フィルタ基準語 "it" のベクトルを起動時に取得
   useEffect(() => {
     let cancelled = false;
-    fetchThemeVector('it')
-      .then((result) => {
-        if (!cancelled) {
-          setItReferenceVector(result?.vector?.length ? result.vector : null);
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const fetchItReference = async () => {
+      try {
+        const result = await fetchThemeVector('it');
+        if (cancelled) return;
+        if (result?.vector?.length) {
+          setItReferenceVector(result.vector);
+          setIsItReferenceReady(true);
+          return;
         }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setItReferenceVector(null);
-          if (import.meta.env.DEV) console.warn('[itReferenceVector]', err);
-        }
-      });
+      } catch (err) {
+        if (!cancelled && import.meta.env.DEV) console.warn('[itReferenceVector]', err);
+      }
+
+      if (!cancelled) {
+        setIsItReferenceReady(false);
+        retryTimer = setTimeout(fetchItReference, 5000);
+      }
+    };
+
+    void fetchItReference();
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, []);
 
@@ -409,6 +422,14 @@ const App: React.FC = () => {
     return out;
   }, [activeTerms, termVectors, wordVectors, itReferenceVector, normalizeWordKey]);
 
+  // 強さ(0〜100)をコサイン類似度しきい値(-0.2〜0.85)に変換
+  const similarityThreshold = useMemo(() => {
+    const minThreshold = -0.2;
+    const maxThreshold = 0.85;
+    const ratio = Math.max(0, Math.min(1, similarityFilterStrength / 100));
+    return minThreshold + ratio * (maxThreshold - minThreshold);
+  }, [similarityFilterStrength]);
+
   const categoryFilteredTerms =
     categoryFilter === 'ALL'
       ? activeTerms
@@ -456,10 +477,11 @@ const App: React.FC = () => {
         onCategoryFilterChange={setCategoryFilter}
         similarityFilterEnabled={isSimilarityFilterEnabled}
         onSimilarityFilterEnabledChange={setIsSimilarityFilterEnabled}
+        similarityFilterStrength={similarityFilterStrength}
+        onSimilarityFilterStrengthChange={setSimilarityFilterStrength}
         similarityThreshold={similarityThreshold}
-        onSimilarityThresholdChange={setSimilarityThreshold}
         similarityReferenceWord="it"
-        similarityReady={Boolean(itReferenceVector?.length)}
+        similarityReady={isItReferenceReady}
       />
     ),
     detail: (
@@ -481,7 +503,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms, isSimilarityFilterEnabled, similarityThreshold, itReferenceVector]);
+  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms, isSimilarityFilterEnabled, similarityFilterStrength, similarityThreshold, isItReferenceReady]);
 
   return (
     <div
