@@ -128,23 +128,42 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
 
   const dk = darkMode;
 
-  const darkColors: Record<string, string> = {
-    Frontend: 'bg-blue-500/15 border-blue-500/30 text-blue-300',
-    Backend: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300',
-    Infra: 'bg-violet-500/15 border-violet-500/30 text-violet-300',
-    "AI/Data": 'bg-amber-500/15 border-amber-500/30 text-amber-300',
-    General: 'bg-slate-500/15 border-slate-500/30 text-slate-300',
+  // term.id のハッシュで鮮やかなパレットから安定した色を選択
+  const PALETTE_DARK = [
+    'bg-blue-500/20 border-blue-400/40 text-blue-200',
+    'bg-violet-500/20 border-violet-400/40 text-violet-200',
+    'bg-emerald-500/20 border-emerald-400/40 text-emerald-200',
+    'bg-rose-500/20 border-rose-400/40 text-rose-200',
+    'bg-amber-500/20 border-amber-400/40 text-amber-200',
+    'bg-cyan-500/20 border-cyan-400/40 text-cyan-200',
+    'bg-fuchsia-500/20 border-fuchsia-400/40 text-fuchsia-200',
+    'bg-teal-500/20 border-teal-400/40 text-teal-200',
+    'bg-orange-500/20 border-orange-400/40 text-orange-200',
+    'bg-indigo-500/20 border-indigo-400/40 text-indigo-200',
+    'bg-lime-500/20 border-lime-400/40 text-lime-200',
+    'bg-pink-500/20 border-pink-400/40 text-pink-200',
+  ];
+  const PALETTE_LIGHT = [
+    'bg-blue-100 border-blue-300 text-blue-700',
+    'bg-violet-100 border-violet-300 text-violet-700',
+    'bg-emerald-100 border-emerald-300 text-emerald-700',
+    'bg-rose-100 border-rose-300 text-rose-700',
+    'bg-amber-100 border-amber-300 text-amber-700',
+    'bg-cyan-100 border-cyan-300 text-cyan-700',
+    'bg-fuchsia-100 border-fuchsia-300 text-fuchsia-700',
+    'bg-teal-100 border-teal-300 text-teal-700',
+    'bg-orange-100 border-orange-300 text-orange-700',
+    'bg-indigo-100 border-indigo-300 text-indigo-700',
+    'bg-lime-100 border-lime-300 text-lime-700',
+    'bg-pink-100 border-pink-300 text-pink-700',
+  ];
+  const hashStr = (s: string) => {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
   };
-
-  const lightColors: Record<string, string> = {
-    Frontend: 'bg-blue-50 border-blue-200 text-blue-700',
-    Backend: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-    Infra: 'bg-violet-50 border-violet-200 text-violet-700',
-    "AI/Data": 'bg-amber-50 border-amber-200 text-amber-700',
-    General: 'bg-slate-50 border-slate-200 text-slate-700',
-  };
-
-  const colors = dk ? darkColors : lightColors;
+  const palette = dk ? PALETTE_DARK : PALETTE_LIGHT;
+  const termColor = palette[hashStr(term.id) % palette.length];
 
   return (
     <div ref={containerRef} className="relative inline-block m-1.5">
@@ -173,11 +192,11 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         onMouseLeave={() => setIsHovered(false)}
         className={`
           relative flex items-center justify-center rounded-full border cursor-pointer
-          ${colors[term.category]}
+          ${termColor}
           font-bold text-center break-words
           transition-shadow duration-200
           ${isActive ? 'ring-2 ring-white/30 scale-110 shadow-lg' : ''}
-          ${isHovered && dk ? 'shadow-lg shadow-indigo-500/10' : ''}
+          ${isHovered && dk ? 'shadow-lg shadow-current/20' : ''}
         `}
         style={{ width: size, height: size }}
       >
