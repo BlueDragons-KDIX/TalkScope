@@ -169,16 +169,17 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     const displayCount = Math.min(freq, 10);        // 表示回数は10回まで反映
     const isTermPinned = isPinned?.has(term.id);
     const w = isTermPinned ? 0 : (termWeights[term.id] || 0);
-    // スケールファクターを適用して半径を縮小
-    const baseR = Math.min(Math.max(40, w * 10), 50) / 2;
-    // 基本の大きさ * (1 + 主題類似度) * (1 + 会話類似度) * (1 + 0.1*表示回数)
-    let r = baseR * scaleFactor  * (1 + themeScore)
-      * (1 + convScore)
-      * (1 + 0.1 * displayCount);
-    
-    // ピン留めされているバブルは、頻度や類似度に関係なく標準より一回り大きいサイズに統一する
+    // 重みで基本半径に差をつける（小: 18 〜 大: 38 程度）
+    const baseR = Math.min(Math.max(36, w * 12), 76) / 1.8;
+    // 主題・会話類似度と表示回数で差をつける
+    const similarityMult = (1 + 0.6 * themeScore) * (1 + 0.6 * convScore);
+    const freqMult = 1 + 0.12 * displayCount;
+    let r = baseR * scaleFactor * similarityMult * freqMult;
+    r = Math.min(r, 95); // 極端に大きくなりすぎないよう上限
+
+    // ピン留めされているバブルは、標準より一回り大きいサイズに統一
     if (isTermPinned) {
-      r = 35 * scaleFactor;
+      r = 38 * scaleFactor;
     }
 
     // ユーザー指定の倍率を適用
