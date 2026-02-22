@@ -28,7 +28,7 @@ export interface UseDemoStreamReturn {
 
 export const useDemoStream = ({
     onAppend,
-    intervalMs: initialIntervalMs = 250,
+    intervalMs: initialIntervalMs = 1540,
 }: UseDemoStreamOptions): UseDemoStreamReturn => {
     const [status, setStatus] = useState<DemoStreamStatus>('idle');
     const [progress, setProgress] = useState(0);

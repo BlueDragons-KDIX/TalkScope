@@ -28,7 +28,7 @@ import {
   makeLeftRightLayout,
   removeLeaf,
 } from './layout/layoutUtils';
-import { VectorApiCheckButton } from './components/VectorApiCheckButton';
+
 
 
 
@@ -53,7 +53,7 @@ const App: React.FC = () => {
   const [isDictionaryManagerOpen, setIsDictionaryManagerOpen] = useState(false);
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
-  const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo' });
+  const [settings, setSettings] = useState({ darkMode: false, themeColor: 'indigo' });
   const [isPinned, setIsPinned] = useState<Set<string>>(new Set());
   /** ピン留めした用語一覧（IndexedDB と同期・ピン中タブで表示） */
   const [pinnedTermsList, setPinnedTermsList] = useState<Term[]>([]);
@@ -599,7 +599,7 @@ const App: React.FC = () => {
               単語管理
             </button>
 
-            <VectorApiCheckButton darkMode={dk} />
+
             <button onClick={() => setIsSettingsOpen(true)} className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}>
               <Settings size={18} />
             </button>
@@ -635,7 +635,7 @@ const App: React.FC = () => {
         onSimilarityFilterEnabledChange={setIsSimilarityFilterEnabled}
         similarityFilterStrength={similarityFilterStrength}
         onSimilarityFilterStrengthChange={setSimilarityFilterStrength}
-        similarityReferenceWord="it"
+        similarityReferenceWord="IT"
         similarityReady={isItReferenceReady}
       />
 
