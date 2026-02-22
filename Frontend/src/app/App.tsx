@@ -28,7 +28,7 @@ import {
   makeLeftRightLayout,
   removeLeaf,
 } from './layout/layoutUtils';
-import { VectorApiCheckButton } from './components/VectorApiCheckButton';
+
 
 
 
@@ -42,7 +42,7 @@ const PRESETS = [
 ] as const;
 
 const App: React.FC = () => {
-  if (import.meta.env.DEV) console.log('[LexiFlow] App.tsx 読み込み（主題入力あり）');
+  if (import.meta.env.DEV) console.log('[TalkScope] App.tsx 読み込み（主題入力あり）');
   const { transcript, setTranscript, isListening, startListening, stopListening, error } = useSpeechRecognition();
 
   const [activeTerms, setActiveTerms] = useState<Term[]>([]);
@@ -53,7 +53,7 @@ const App: React.FC = () => {
   const [isDictionaryManagerOpen, setIsDictionaryManagerOpen] = useState(false);
   const [isLayoutMenuOpen, setIsLayoutMenuOpen] = useState(false);
   const [layout, setLayout] = useState<LayoutNode>(makeDefaultLayout);
-  const [settings, setSettings] = useState({ darkMode: true, themeColor: 'indigo' });
+  const [settings, setSettings] = useState({ darkMode: false, themeColor: 'indigo' });
   const [isPinned, setIsPinned] = useState<Set<string>>(new Set());
   /** ピン留めした用語一覧（IndexedDB と同期・ピン中タブで表示） */
   const [pinnedTermsList, setPinnedTermsList] = useState<Term[]>([]);
@@ -107,7 +107,6 @@ const App: React.FC = () => {
   // ── デモ機能（コア機能から独立） ──────────────────────────────
   const demoStream = useDemoStream({
     onAppend: (text) => setTranscript(text),
-    intervalMs: 220,
   });
   // ──────────────────────────────────────────────────────────────
 
@@ -489,13 +488,6 @@ const App: React.FC = () => {
         termVectors={termVectors}
         categoryFilter={categoryFilter}
         onCategoryFilterChange={setCategoryFilter}
-        similarityFilterEnabled={isSimilarityFilterEnabled}
-        onSimilarityFilterEnabledChange={setIsSimilarityFilterEnabled}
-        similarityFilterStrength={similarityFilterStrength}
-        onSimilarityFilterStrengthChange={setSimilarityFilterStrength}
-        similarityThreshold={similarityThreshold}
-        similarityReferenceWord="it"
-        similarityReady={isItReferenceReady}
       />
     ),
     detail: (
@@ -517,7 +509,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms, isSimilarityFilterEnabled, similarityFilterStrength, similarityThreshold, isItReferenceReady]);
+  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms]);
 
   return (
     <div
@@ -541,7 +533,7 @@ const App: React.FC = () => {
             <div className="bg-indigo-600 p-1.5 rounded-xl text-white shadow-lg shadow-indigo-600/30">
               <Book size={18} />
             </div>
-            <span className="text-lg font-black tracking-tight">LexiFlow</span>
+            <span className="text-lg font-black tracking-tight">TalkScope</span>
             <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-[0.2em] hidden sm:inline">Pro</span>
           </div>
 
@@ -606,7 +598,7 @@ const App: React.FC = () => {
               単語管理
             </button>
 
-            <VectorApiCheckButton darkMode={dk} />
+
             <button onClick={() => setIsSettingsOpen(true)} className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500 hover:text-slate-300' : 'hover:bg-slate-100 text-slate-400'}`}>
               <Settings size={18} />
             </button>
@@ -638,6 +630,12 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         updateSettings={s => setSettings(prev => ({ ...prev, ...s }))}
+        similarityFilterEnabled={isSimilarityFilterEnabled}
+        onSimilarityFilterEnabledChange={setIsSimilarityFilterEnabled}
+        similarityFilterStrength={similarityFilterStrength}
+        onSimilarityFilterStrengthChange={setSimilarityFilterStrength}
+        similarityReferenceWord="IT"
+        similarityReady={isItReferenceReady}
       />
 
       <DictionaryManagerModal
