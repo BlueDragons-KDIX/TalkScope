@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -78,4 +81,100 @@ class DictionaryLookupBatchResponse(BaseModel):
     results: list[DictionaryLookupResponse] = Field(
         default_factory=list,
         description="複数用語の検索結果",
+    )
+
+
+class DictionaryEntryResponse(BaseModel):
+    id: int = Field(description="辞書エントリID")
+    term: str = Field(description="用語")
+    description: str = Field(description="説明文")
+    meaning_vector: list[float] | None = Field(
+        default=None,
+        description="意味ベクトル",
+    )
+    created_at: datetime = Field(description="作成日時(UTC)")
+    updated_at: datetime = Field(description="更新日時(UTC)")
+
+
+class DictionaryEntryListResponse(BaseModel):
+    items: list[DictionaryEntryResponse] = Field(
+        default_factory=list,
+        description="辞書エントリ一覧",
+    )
+    total: int = Field(description="検索条件に一致した総件数")
+    limit: int = Field(description="取得件数上限")
+    offset: int = Field(description="取得開始オフセット")
+
+
+class DictionaryEntryUpdateRequest(BaseModel):
+    term: str | None = Field(
+        default=None,
+        description="更新後の用語",
+        max_length=128,
+    )
+    description: str | None = Field(
+        default=None,
+        description="更新後の説明文",
+        max_length=2000,
+    )
+
+    @model_validator(mode="after")
+    def normalize_and_validate(self) -> "DictionaryEntryUpdateRequest":
+        normalized_term = self.term.strip() if isinstance(self.term, str) else None
+        normalized_description = (
+            self.description.strip() if isinstance(self.description, str) else None
+        )
+
+        has_term = bool(normalized_term)
+        has_description = bool(normalized_description)
+        if not has_term and not has_description:
+            raise ValueError("Either term or description is required")
+
+        self.term = normalized_term if has_term else None
+        self.description = normalized_description if has_description else None
+        return self
+
+
+class DictionaryBulkRegisterRequest(BaseModel):
+    raw_terms: str = Field(
+        min_length=1,
+        max_length=5000,
+        description="カンマまたは空白区切りの用語文字列",
+        examples=["RAG MCP,VectorDB"],
+    )
+
+    @model_validator(mode="after")
+    def validate_not_blank(self) -> "DictionaryBulkRegisterRequest":
+        if not self.raw_terms.strip():
+            raise ValueError("raw_terms must not be blank")
+        return self
+
+
+class DictionaryBulkRegisterSkipped(BaseModel):
+    term: str = Field(description="スキップした用語")
+    reason: str = Field(description="スキップ理由")
+
+
+class DictionaryBulkRegisterResult(BaseModel):
+    term: str = Field(description="登録対象の用語")
+    status: Literal["created", "skipped"] = Field(
+        description="登録結果ステータス"
+    )
+    entry: DictionaryEntryResponse | None = Field(
+        default=None,
+        description="登録されたエントリ。status=created のときのみ設定",
+    )
+    skipped: DictionaryBulkRegisterSkipped | None = Field(
+        default=None,
+        description="スキップ情報。status=skipped のときのみ設定",
+    )
+
+
+class DictionaryBulkRegisterResponse(BaseModel):
+    requested_count: int = Field(description="入力から解釈された用語数（重複除外後）")
+    created_count: int = Field(description="新規登録件数")
+    skipped_count: int = Field(description="スキップ件数")
+    results: list[DictionaryBulkRegisterResult] = Field(
+        default_factory=list,
+        description="用語ごとの処理結果",
     )
