@@ -66,9 +66,9 @@ const App: React.FC = () => {
   /** API 用語の意味ベクトル (termId → vector)。バブルサイズ計算用 */
   const [termVectors, setTermVectors] = useState<Record<string, number[]>>({});
   /** フィルタ基準語（現状固定）との類似度フィルタ有効化 */
-  const [isSimilarityFilterEnabled, setIsSimilarityFilterEnabled] = useState(false);
+  const [isSimilarityFilterEnabled, setIsSimilarityFilterEnabled] = useState(true);
   /** ベクトルフィルタの強さ（0〜100） */
-  const [similarityFilterStrength, setSimilarityFilterStrength] = useState(50);
+  const [similarityFilterStrength, setSimilarityFilterStrength] = useState(8);
   /** "it" の基準ベクトル（初期はフォールバックで即時利用可能にする） */
   const [itReferenceVector, setItReferenceVector] = useState<number[] | null>(() => getMockThemeVector(MOCK_DIM));
   /** "it" ベクトルをバックエンドから取得できたか */
@@ -424,12 +424,23 @@ const App: React.FC = () => {
     return out;
   }, [activeTerms, termVectors, wordVectors, itReferenceVector, normalizeWordKey]);
 
-  // 強さ(0〜100)をコサイン類似度しきい値(-0.2〜0.85)に変換
+  // 強さ(0〜100)をコサイン類似度しきい値に変換。
+  // 仕様:
+  // - 強さ 8 -> -0.12（既定）
+  // - 前半(0〜50): 細かく変わる
+  // - 後半(51〜100): 大きく変わる
   const similarityThreshold = useMemo(() => {
-    const minThreshold = -0.2;
-    const maxThreshold = 0.85;
-    const ratio = Math.max(0, Math.min(1, similarityFilterStrength / 100));
-    return minThreshold + ratio * (maxThreshold - minThreshold);
+    const s = Math.max(0, Math.min(100, similarityFilterStrength));
+
+    if (s <= 50) {
+      // 2次式（アンカー: 0->-0.2, 8->-0.12, 50->0.1）
+      const a = -0.000095238095;
+      const b = 0.01076190476;
+      return -0.2 + a * s * s + b * s;
+    }
+
+    // 後半は線形で粗く上げる（50->0.1, 100->0.9）
+    return 0.1 + ((s - 50) / 50) * 0.8;
   }, [similarityFilterStrength]);
 
   const categoryFilteredTerms =
