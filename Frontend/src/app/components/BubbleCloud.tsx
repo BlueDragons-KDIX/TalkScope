@@ -20,6 +20,9 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
   General:  { bg: 'bg-slate-500/20',   text: 'text-slate-300',   border: 'border-slate-500/30',   dot: '#94a3b8' },
 };
 
+/** レイアウト変更でアンマウントされても基準幅を保持（枠が小さくなった時にバブルを自動で縮小するため） */
+let sharedDefaultWidth: number | null = null;
+
 /** 主題ベクトル（APIでベクトル化した主題テキストの平均ベクトル）。類似度計算用 */
 export interface ThemeVectorResult {
   vector: number[];
@@ -82,6 +85,8 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const [isAutoPlay, setIsAutoPlay] = useState(false);
   const [intervalSec, setIntervalSec] = useState(4);
   const [showSlider, setShowSlider] = useState(false);
+  /** 全バブルの倍率（0.5〜2.0、1=100%） */
+  const [bubbleScale, setBubbleScale] = useState(1);
   const activeTermsRef = useRef(activeTerms);
 
   // 用語⇔説明の反転状態を管理するIDセット（Auto-Play ONのときのみ使用）
@@ -97,13 +102,10 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const bubbleRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // コンテナの初期幅を記憶し、それをデフォルトサイズとする
-  const defaultWidthRef = useRef<number | null>(null);
-  
   // マップのリサイズを検知して再描画をトリガーする用
   const [mapSize, setMapSize] = useState({ width: 800, height: 500 });
 
-  // コンテナの寸法を計測（リサイズ対応）。ピン中→バブルに戻った時に再アタッチするため categoryFilter を依存に
+  // コンテナの寸法を計測（リサイズ対応）。レイアウト変更でアンマウントされても sharedDefaultWidth で基準を保持
   useEffect(() => {
     if (categoryFilter === 'ピン中') return;
     const el = containerRef.current;
@@ -111,15 +113,12 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     const ro = new ResizeObserver(([e]) => {
       const w = e.contentRect.width;
       const h = e.contentRect.height;
-      if (w > 0 && defaultWidthRef.current === null) {
-        defaultWidthRef.current = w;
+      if (w <= 0 || h <= 0) return;
+      // 初回または枠が大きくなったら基準幅を更新（枠が小さくなった時にバブルを縮小する基準）
+      if (sharedDefaultWidth === null || w > sharedDefaultWidth) {
+        sharedDefaultWidth = w;
       }
-      setMapSize(prev => {
-        if (Math.abs(prev.width - w) > 10 || Math.abs(prev.height - h) > 10) {
-          return { width: w, height: h };
-        }
-        return prev;
-      });
+      setMapSize({ width: w, height: h });
       engineRef.current.width = w;
       engineRef.current.height = h;
     });
@@ -128,9 +127,12 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     const w = el.getBoundingClientRect().width;
     const h = el.getBoundingClientRect().height;
     if (w > 0 && h > 0) {
+      if (sharedDefaultWidth === null || w > sharedDefaultWidth) {
+        sharedDefaultWidth = w;
+      }
       engineRef.current.width = w;
       engineRef.current.height = h;
-      setMapSize(prev => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
+      setMapSize({ width: w, height: h });
     }
     return () => ro.disconnect();
   }, [categoryFilter]);
@@ -143,7 +145,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   if (categoryFilter === 'ピン中') {
     engineNodes.clear();
   } else {
-  const DEFAULT_WIDTH = defaultWidthRef.current || 800;
+  const DEFAULT_WIDTH = sharedDefaultWidth ?? 800;
   const currentWidth = mapSize.width;
   const scaleFactor = Math.min(1, currentWidth / DEFAULT_WIDTH);
   for (const id of Array.from(engineNodes.keys())) {
@@ -176,8 +178,13 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     
     // ピン留めされているバブルは、頻度や類似度に関係なく標準より一回り大きいサイズに統一する
     if (isTermPinned) {
-      r = 35 * scaleFactor; 
+      r = 35 * scaleFactor;
     }
+
+    // ユーザー指定の倍率を適用
+    r = r * bubbleScale;
+    // バブルの最小半径を20に統一
+    r = Math.max(20, r);
 
     if (isDev && activeTerms.indexOf(term) <= 4) {
       console.log(`[BubbleCloud] 類似度(モック) ${term.word}`, {
@@ -310,6 +317,25 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
           {categoryFilter === 'ピン中' ? `${activeTerms.length} ピン` : `${activeTerms.length} terms`}
         </span>
       </div>
+
+      {/* バブル倍率スライダー（バブル表示時のみ） */}
+      {categoryFilter !== 'ピン中' && (
+        <div className={`flex items-center gap-3 px-4 py-2 border-b shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`}>
+          <span className={`text-[10px] font-bold shrink-0 ${dk ? 'text-slate-400' : 'text-slate-500'}`}>バブル倍率</span>
+          <input
+            type="range"
+            min={0.5}
+            max={2}
+            step={0.1}
+            value={bubbleScale}
+            onChange={(e) => setBubbleScale(Number(e.target.value))}
+            className={`flex-1 h-2 rounded-full appearance-none cursor-pointer accent-indigo-500 ${dk ? 'bg-slate-700' : 'bg-slate-200'}`}
+          />
+          <span className={`text-[10px] font-mono font-bold tabular-nums w-10 shrink-0 ${dk ? 'text-slate-400' : 'text-slate-600'}`}>
+            {Math.round(bubbleScale * 100)}%
+          </span>
+        </div>
+      )}
 
       {/* ピン中: IndexedDB のピン留め一覧を表で表示（文字起こしハイライト風） */}
       {categoryFilter === 'ピン中' ? (
