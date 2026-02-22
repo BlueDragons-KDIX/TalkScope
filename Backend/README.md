@@ -55,6 +55,12 @@ make docker-clean
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
+## Cloud Run デプロイ
+
+Cloud Run へのデプロイ手順は以下を参照してください。
+
+- `/Users/honmayuudai/MyHobby/hackson/KC3Hack2026/doc/cloud-run-deploy-workflow.md`
+
 ## 現在の API
 
 - `GET /`
