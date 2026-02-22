@@ -58,12 +58,19 @@ uv run uvicorn main:app --reload
 ### Docker 実行手順
 
 ルートディレクトリ（`/Users/honmayuudai/MyHobby/hackson/KC3Hack2026`）で実行します。
-`Backend` は ARM64 環境でも動作するように Rust ビルド対応しているため、初回ビルドに時間がかかる場合があります。
+`Backend` はデフォルトで `linux/amd64` で起動し、依存 wheel を優先利用します（ARM Mac でも起動可能）。
+ネイティブ実行したい場合は `BACKEND_PLATFORM=linux/arm64` などを指定してください。
 
 1. Frontend + Backend を同時起動
 
 ```bash
 make up
+```
+
+初回や Dockerfile 更新後に再ビルドしたい場合:
+
+```bash
+make up-build
 ```
 
 2. Frontend のみ起動
@@ -82,6 +89,12 @@ make up-backend
 
 ```bash
 make down
+```
+
+Docker の build cache が溜まって容量不足になった場合:
+
+```bash
+make docker-clean
 ```
 
 - Frontend: `http://localhost:5173`
