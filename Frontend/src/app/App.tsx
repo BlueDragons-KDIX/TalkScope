@@ -107,7 +107,6 @@ const App: React.FC = () => {
   // ── デモ機能（コア機能から独立） ──────────────────────────────
   const demoStream = useDemoStream({
     onAppend: (text) => setTranscript(text),
-    intervalMs: 220,
   });
   // ──────────────────────────────────────────────────────────────
 
