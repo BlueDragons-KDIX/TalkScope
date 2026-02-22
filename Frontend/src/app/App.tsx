@@ -67,7 +67,7 @@ const App: React.FC = () => {
   /** API 用語の意味ベクトル (termId → vector)。バブルサイズ計算用 */
   const [termVectors, setTermVectors] = useState<Record<string, number[]>>({});
   /** フィルタ基準語（現状固定）との類似度フィルタ有効化 */
-  const [isSimilarityFilterEnabled, setIsSimilarityFilterEnabled] = useState(true);
+  const [isSimilarityFilterEnabled, setIsSimilarityFilterEnabled] = useState(false);
   /** ベクトルフィルタの強さ（0〜100） */
   const [similarityFilterStrength, setSimilarityFilterStrength] = useState(8);
   /** "it" の基準ベクトル（初期はフォールバックで即時利用可能にする） */
