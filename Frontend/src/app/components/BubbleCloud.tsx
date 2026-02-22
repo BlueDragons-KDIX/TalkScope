@@ -291,47 +291,41 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
 
   return (
     <div className={`flex flex-col h-full transition-colors ${dk ? 'bg-[#0d0e1a]' : 'bg-white'}`}>
-      {/* Header */}
-      <div className={`flex items-center justify-between px-4 py-2.5 border-b shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50/80'}`}>
-        <div className="flex items-center gap-2 min-w-0">
-          <Hexagon size={13} className={dk ? 'text-slate-600' : 'text-slate-300'} />
-          <span className={`text-xs font-bold ${dk ? 'text-slate-300' : 'text-slate-600'}`}>用語マップ</span>
-          {onCategoryFilterChange && (
-            <select
-              value={categoryFilter}
-              onChange={(e) => onCategoryFilterChange(e.target.value)}
-              className={`text-[10px] py-1 px-2 rounded border ${dk ? 'bg-slate-800/50 border-slate-700/50 text-slate-300' : 'bg-white border-slate-200 text-slate-700'}`}
-            >
-              {categories.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          )}
-        </div>
-        <span className={`text-[10px] font-mono border px-1.5 py-0.5 rounded ${dk ? 'bg-slate-800/50 border-slate-700/50 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
+      {/* Header: filter + scale slider + term count — 1 row */}
+      <div className={`flex items-center gap-2 px-4 py-2 border-b shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/30' : 'border-slate-100 bg-slate-50/80'}`}>
+        <Hexagon size={13} className={dk ? 'text-slate-600' : 'text-slate-300'} />
+        {onCategoryFilterChange && (
+          <select
+            value={categoryFilter}
+            onChange={(e) => onCategoryFilterChange(e.target.value)}
+            className={`text-[10px] py-1 px-2 rounded border shrink-0 ${dk ? 'bg-slate-800/50 border-slate-700/50 text-slate-300' : 'bg-white border-slate-200 text-slate-700'}`}
+          >
+            {categories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        )}
+        {categoryFilter !== 'ピン中' && (
+          <>
+            <span className={`text-[10px] font-bold shrink-0 ${dk ? 'text-slate-500' : 'text-slate-500'}`}>倍率</span>
+            <input
+              type="range"
+              min={0.5}
+              max={2}
+              step={0.1}
+              value={bubbleScale}
+              onChange={(e) => setBubbleScale(Number(e.target.value))}
+              className={`flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-indigo-500 min-w-0 ${dk ? 'bg-slate-700' : 'bg-slate-200'}`}
+            />
+            <span className={`text-[10px] font-mono font-bold tabular-nums shrink-0 ${dk ? 'text-slate-400' : 'text-slate-600'}`}>
+              {Math.round(bubbleScale * 100)}%
+            </span>
+          </>
+        )}
+        <span className={`ml-auto text-[10px] font-mono border px-1.5 py-0.5 rounded shrink-0 ${dk ? 'bg-slate-800/50 border-slate-700/50 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
           {categoryFilter === 'ピン中' ? `${activeTerms.length} ピン` : `${activeTerms.length} terms`}
         </span>
       </div>
-
-      {/* バブル倍率スライダー（バブル表示時のみ） */}
-      {categoryFilter !== 'ピン中' && (
-        <div className={`flex items-center gap-3 px-4 py-2 border-b shrink-0 ${dk ? 'border-slate-800/60 bg-slate-900/20' : 'border-slate-100 bg-slate-50/50'}`}>
-          <span className={`text-[10px] font-bold shrink-0 ${dk ? 'text-slate-400' : 'text-slate-500'}`}>バブル倍率</span>
-          <input
-            type="range"
-            min={0.5}
-            max={2}
-            step={0.1}
-            value={bubbleScale}
-            onChange={(e) => setBubbleScale(Number(e.target.value))}
-            className={`flex-1 h-2 rounded-full appearance-none cursor-pointer accent-indigo-500 ${dk ? 'bg-slate-700' : 'bg-slate-200'}`}
-          />
-          <span className={`text-[10px] font-mono font-bold tabular-nums w-10 shrink-0 ${dk ? 'text-slate-400' : 'text-slate-600'}`}>
-            {Math.round(bubbleScale * 100)}%
-          </span>
-        </div>
-      )}
-
       {/* ピン中: IndexedDB のピン留め一覧を表で表示（文字起こしハイライト風） */}
       {categoryFilter === 'ピン中' ? (
         <div className="flex-1 overflow-auto">
