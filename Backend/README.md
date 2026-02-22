@@ -32,10 +32,23 @@ uvicorn main:app --reload
 ## Docker で起動
 
 ルートディレクトリ（`/Users/honmayuudai/MyHobby/hackson/KC3Hack2026`）で実行してください。
-ARM64 などで `sudachipy` の Linux wheel が無い場合でもビルドできるよう、Dockerfile には Rust ツールチェーンを含めています（初回ビルドは時間がかかる可能性があります）。
+`docker-compose.yml` では `Backend` をデフォルトで `linux/amd64` で起動し、依存の wheel を優先利用します。
+必要に応じて `BACKEND_PLATFORM=linux/arm64` のように上書き可能です。
 
 ```bash
 make up-backend
+```
+
+初回や Dockerfile 更新後に再ビルドしたい場合:
+
+```bash
+make up-backend-build
+```
+
+Docker の build cache が溜まって容量不足になった場合:
+
+```bash
+make docker-clean
 ```
 
 - API ベース URL: `http://localhost:8000`

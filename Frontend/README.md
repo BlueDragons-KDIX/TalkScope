@@ -28,7 +28,20 @@ bun run dev
 make up-frontend
 ```
 
+初回や Dockerfile 更新後に再ビルドしたい場合:
+
+```bash
+make up-frontend-build
+```
+
+Docker の build cache が溜まって容量不足になった場合:
+
+```bash
+make docker-clean
+```
+
 - URL: `http://localhost:5173`
+- HTTPS 開発サーバーが必要な場合は `VITE_USE_HTTPS=true` を設定
 
 ## 現在の主要機能
 
