@@ -1,4 +1,4 @@
-import { sendVectorRequest, getVectorApiUrl, type VectorPayload } from './vectorSendWithOverlap';
+import { sendVectorRequest, getVectorApiUrl, type VectorPayload } from '@/infrastructure/api/vectorSendWithOverlap';
 
 const TEST_PAYLOAD: VectorPayload = {
   sentences: ['接続確認用テスト文。'],

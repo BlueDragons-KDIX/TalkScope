@@ -4,7 +4,7 @@
  * 類似度計算の基準ベクトルとして利用する。
  */
 
-import { getVectorApiUrl } from './vectorSendWithOverlap';
+import { getVectorApiUrl } from '@/infrastructure/api/vectorSendWithOverlap';
 
 export interface ThemeVectorResult {
   vector: number[];
