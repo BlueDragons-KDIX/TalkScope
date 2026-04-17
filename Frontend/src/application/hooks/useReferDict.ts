@@ -1,12 +1,12 @@
 import { useRef, useCallback, useEffect } from 'react';
-import { splitIntoSentences } from '../utils/sentenceSplit';
+import { splitIntoSentences } from '@/shared/utils/sentenceSplit';
 import {
   sendReferDictRequest,
   firstSentence,
   type ReferDictEntry,
   type ReferDictResponse,
-} from '../utils/referDictWithOverlaps';
-import type { Term } from '../data/terms';
+} from '@/infrastructure/api/referDictWithOverlaps';
+import type { Term } from '@/domain/models/terms';
 
 
 

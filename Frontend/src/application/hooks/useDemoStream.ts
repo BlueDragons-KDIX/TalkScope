@@ -5,7 +5,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { DEMO_TEXT_STREAM, splitDemoIntoChunks } from '../demo/demo';
+import { DEMO_TEXT_STREAM, splitDemoIntoChunks } from '@/shared/utils/demo';
 
 export type DemoStreamStatus = 'idle' | 'playing' | 'paused' | 'done';
 

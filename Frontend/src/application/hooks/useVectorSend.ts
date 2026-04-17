@@ -1,10 +1,10 @@
 import { useRef, useCallback, useEffect } from 'react';
-import { splitIntoSentences } from '../utils/sentenceSplit';
+import { splitIntoSentences } from '@/shared/utils/sentenceSplit';
 import {
   createVectorSendState,
   sendVectorRequest,
   type VectorPayload,
-} from '../utils/vectorSendWithOverlap';
+} from '@/infrastructure/api/vectorSendWithOverlap';
 
 export interface UseVectorSendOptions {
   overlapSentences?: number;
