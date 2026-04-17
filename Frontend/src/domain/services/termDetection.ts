@@ -1,4 +1,4 @@
-import { Term, IT_TERMS } from "../data/terms";
+import { Term, IT_TERMS } from "@/domain/models/terms";
 
 /**
  * 文字起こしテキストからIT用語を抽出する。
