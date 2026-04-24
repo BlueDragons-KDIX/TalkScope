@@ -1,6 +1,6 @@
 /**
  * 類似度計算の検証スクリプト。
- * 実行: cd Frontend && bun run src/app/utils/verifySimilarity.ts
+ * 実行: cd Frontend && bun run src/shared/utils/verifySimilarity.ts
  */
 
 import {

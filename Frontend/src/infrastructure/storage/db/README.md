@@ -41,7 +41,7 @@ import {
   getWord,
   setHistoryPinned,
   getPinnedWordIdsByPresentation,
-} from "@/app/db";
+} from "@/infrastructure/storage/db";
 ```
 
 - 発表の保存: `putPresentation({ presentationId, fullText, conversationVector, themeVector, themeText })`

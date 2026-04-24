@@ -57,13 +57,13 @@ make docker-clean
 ```txt
 Frontend/
 ├── src/
-│   ├── app/
-│   │   ├── App.tsx
-│   │   ├── hooks/useSpeechRecognition.ts
-│   │   ├── utils/termDetection.ts
-│   │   ├── components/
-│   │   └── layout/
+│   ├── domain/
+│   ├── application/
+│   ├── presentation/
+│   ├── infrastructure/
+│   ├── shared/
 │   ├── styles/
+│   ├── App.tsx
 │   └── main.tsx
 ├── package.json
 └── vite.config.ts
