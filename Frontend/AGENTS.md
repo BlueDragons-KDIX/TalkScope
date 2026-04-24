@@ -46,6 +46,7 @@ bun run build
 #### 📄 ドキュメント管理
 - コーディング時の判断や設計の変更理由は、適宜ドキュメントを新規作成して `Frontend/docs/decisions/` に保存すること。
 - 実際に与えられたプロンプトや実装内容は、`Frontend/docs/orders/` に保存すること。
+- API層（`src/infrastructure/api/`）を変更した場合は、`src/infrastructure/api/API_SPEC.md` を必ず更新すること。
 
 #### 🧪 テストと品質保証
 - キリのいいタイミングでテストコードを作成し、`Frontend/tests/` に保存すること。

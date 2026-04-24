@@ -101,3 +101,4 @@ bun run verify:similarity
 - 用語抽出は現在フロント側のロジックで実施
 - 今後は Backend の解析 API と接続し、抽出精度・スコア計算を強化予定
 - UI 検証の速度を優先するため、ログインなしで利用できる設計
+- APIクライアント仕様は `src/infrastructure/api/API_SPEC.md` を参照
