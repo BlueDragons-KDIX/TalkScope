@@ -1,3 +1,7 @@
+/**
+ * 単一用語を円形バブルとして描画するコンポーネント。
+ * ホバー説明、ピン留め、オート再生時の表示切替を担当する。
+ */
 import React, { useState, useRef, useLayoutEffect, useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -60,6 +64,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   const defaultSize = isPinned ? 80 : Math.max(60, 80 + weight * 10);
   const size = explicitSize ?? defaultSize;
 
+  /** バブル位置と表示領域から、ツールチップ描画座標を計算する。 */
   const updateTooltipPos = useCallback(() => {
     if (!containerRef.current) {
       setTooltipPos(null);

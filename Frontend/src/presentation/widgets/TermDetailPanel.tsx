@@ -1,3 +1,7 @@
+/**
+ * 選択中の用語詳細を表示するサイドパネル。
+ * 説明閲覧、コピー、外部検索、ピン留め操作の導線をまとめる。
+ */
 import React, { useState, useCallback } from 'react';
 import { Term, IT_TERMS } from '@/domain/models/terms';
 import { X, ExternalLink, Hash, BookOpen, Layers, Star, Copy } from 'lucide-react';
@@ -30,6 +34,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
     );
   }
 
+  /** 難易度レベルを表示用ラベルと色へ変換する。 */
   const getLevelInfo = (level: number) => {
     switch (level) {
       case 1: return { text: '初級', color: dk ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-green-100 text-green-700' };
@@ -43,6 +48,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
   const related = term.relatedTerms.map(w => IT_TERMS.find(t => t.word === w)).filter(Boolean) as Term[];
   const [copied, setCopied] = useState<'word' | 'desc' | null>(null);
 
+  /** 用語名をクリップボードへコピーする。 */
   const copyWord = useCallback(() => {
     navigator.clipboard.writeText(term.word).then(() => {
       setCopied('word');
@@ -50,6 +56,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
     });
   }, [term.word]);
 
+  /** 詳細説明をクリップボードへコピーする。 */
   const copyDesc = useCallback(() => {
     navigator.clipboard.writeText(term.longDesc).then(() => {
       setCopied('desc');

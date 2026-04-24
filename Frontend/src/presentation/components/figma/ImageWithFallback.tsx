@@ -1,3 +1,7 @@
+/**
+ * 画像読み込み失敗時にプレースホルダーへ切り替える軽量コンポーネント。
+ * デザインモックや外部画像を安全に表示するために利用する。
+ */
 import React, { useState } from 'react'
 
 const ERROR_IMG_SRC =
@@ -6,6 +10,7 @@ const ERROR_IMG_SRC =
 export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElement>) {
   const [didError, setDidError] = useState(false)
 
+  /** 読み込みエラー発生時にフォールバック表示へ切り替える。 */
   const handleError = () => {
     setDidError(true)
   }

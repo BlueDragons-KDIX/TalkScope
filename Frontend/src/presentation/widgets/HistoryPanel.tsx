@@ -1,3 +1,7 @@
+/**
+ * セッション中に選択された用語の履歴を表示するウィジェット。
+ * 検索・再選択・履歴クリアの操作を提供する。
+ */
 import React, { useState } from 'react';
 import { Term } from '@/domain/models/terms';
 import { History, Trash2, ChevronRight, Search } from 'lucide-react';

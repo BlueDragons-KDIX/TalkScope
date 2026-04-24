@@ -1,3 +1,7 @@
+/**
+ * ベクトルAPIの疎通確認を手動で実行するウィジェット。
+ * 接続可否を確認し、トーストで結果をユーザーへ通知する。
+ */
 import React, { useState } from 'react';
 import { Zap } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,6 +19,7 @@ export const VectorApiCheckButton: React.FC<VectorApiCheckButtonProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
 
+  /** APIチェック処理を実行し、結果をトースト表示する。 */
   const handleClick = async () => {
     setLoading(true);
     const result = await checkVectorApi();

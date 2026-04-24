@@ -1,3 +1,7 @@
+/**
+ * 用語バブル群を表示するメインウィジェット。
+ * 物理シミュレーション、カテゴリフィルタ、自動切換え、ピン表示を統合する。
+ */
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Term } from '@/domain/models/terms';
@@ -284,6 +288,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     if (activeTerms.length === 0 && isAutoPlay) setIsAutoPlay(false);
   }, [activeTerms.length, isAutoPlay]);
 
+  /** 用語バブルの自動切換え機能をON/OFFする。 */
   const toggleAutoPlay = () => {
     if (activeTerms.length === 0) return;
     setIsAutoPlay(prev => !prev);

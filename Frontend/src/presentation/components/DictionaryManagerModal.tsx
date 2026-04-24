@@ -1,3 +1,7 @@
+/**
+ * 辞書エントリの一覧取得・検索・一括登録・編集・削除を行う管理モーダル。
+ * dictionary API クライアントを利用して運用者向けCRUD操作を提供する。
+ */
 import React, { useCallback, useEffect, useState } from 'react';
 import { BookOpenText, Loader2, Pencil, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,6 +20,7 @@ interface DictionaryManagerModalProps {
   darkMode?: boolean;
 }
 
+/** APIの日時文字列を表示用フォーマットへ変換する。 */
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
@@ -48,6 +53,7 @@ export const DictionaryManagerModal: React.FC<DictionaryManagerModalProps> = ({
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  /** 辞書エントリ一覧を検索条件付きで取得し、表示状態へ反映する。 */
   const loadEntries = useCallback(async (searchText: string) => {
     setLoading(true);
     try {
@@ -73,11 +79,13 @@ export const DictionaryManagerModal: React.FC<DictionaryManagerModalProps> = ({
 
   if (!isOpen) return null;
 
+  /** 検索フォーム送信時に一覧の再取得を行う。 */
   const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     await loadEntries(query);
   };
 
+  /** テキスト入力された単語群を辞書へ一括登録する。 */
   const handleBulkRegister = async () => {
     const text = bulkInput.trim();
     if (!text) {
@@ -99,18 +107,21 @@ export const DictionaryManagerModal: React.FC<DictionaryManagerModalProps> = ({
     }
   };
 
+  /** 指定エントリを編集モードで開く。 */
   const openEdit = (entry: DictionaryEntry) => {
     setEditing(entry);
     setEditTerm(entry.term);
     setEditDescription(entry.description);
   };
 
+  /** 編集モードを閉じ、編集中フォームを初期化する。 */
   const closeEdit = () => {
     setEditing(null);
     setEditTerm('');
     setEditDescription('');
   };
 
+  /** 編集中の辞書エントリを保存し、一覧へ反映する。 */
   const saveEdit = async () => {
     if (!editing) return;
 
@@ -138,6 +149,7 @@ export const DictionaryManagerModal: React.FC<DictionaryManagerModalProps> = ({
     }
   };
 
+  /** エントリ削除を確認後に実行する。 */
   const removeEntry = async (entry: DictionaryEntry) => {
     if (!window.confirm(`「${entry.term}」を削除しますか？`)) return;
     setDeletingId(entry.id);

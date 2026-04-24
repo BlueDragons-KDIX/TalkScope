@@ -1,3 +1,7 @@
+/**
+ * リアルタイム文字起こしを表示するウィジェット。
+ * ハイライト語のクリック、録音制御、デモ再生、ツールチップ表示を担当する。
+ */
 import React, { useRef, useEffect, useState, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { highlightTerms } from '@/domain/services/termDetection';
@@ -44,6 +48,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   const [hoveredPartIndex, setHoveredPartIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; showBelow: boolean } | null>(null);
 
+  /** ハイライト語に追従するツールチップ座標を算出する。 */
   const updateTooltipPos = useCallback((partIndex: number) => {
     const btn = termButtonRefs.current[partIndex];
     if (!btn || !scrollRef.current) {

@@ -29,6 +29,7 @@ export const DbTestPanel: React.FC<{ darkMode?: boolean }> = ({ darkMode: dk = t
     detail?: string;
   } | null>(null);
 
+  /** DBの主要CRUDを順に実行し、結果ログをまとめて可視化する。 */
   const runTest = async () => {
     setRunning(true);
     setResult(null);

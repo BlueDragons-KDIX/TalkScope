@@ -1,3 +1,7 @@
+/**
+ * 履歴一覧をモーダル表示するコンポーネント。
+ * 用語の再選択と履歴削除をオーバーレイUIで提供する。
+ */
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Term } from '@/domain/models/terms';

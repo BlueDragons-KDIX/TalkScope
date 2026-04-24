@@ -1,3 +1,7 @@
+/**
+ * レイアウトツリーの生成・更新を担うユーティリティ群。
+ * 画面プリセット作成、パネル移動、分割比率更新などの純粋関数を提供する。
+ */
 import { DropZone, LeafNode, LayoutNode, PanelId, SplitNode, newId } from '@/domain/models/layoutTypes';
 
 // ── ファクトリ ──────────────────────────────────────

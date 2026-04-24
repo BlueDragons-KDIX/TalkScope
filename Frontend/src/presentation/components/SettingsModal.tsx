@@ -1,3 +1,7 @@
+/**
+ * 表示設定と類似度フィルター設定を編集するモーダル。
+ * テーマ、ダークモード、しきい値関連のUI操作を一元化する。
+ */
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Settings, X, Moon, Sun, Palette, SlidersHorizontal, Loader2 } from 'lucide-react';

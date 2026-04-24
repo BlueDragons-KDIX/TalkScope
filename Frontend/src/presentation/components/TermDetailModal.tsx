@@ -1,3 +1,7 @@
+/**
+ * 用語詳細をモーダル表示するコンポーネント。
+ * 説明閲覧、コピー、外部リンク遷移を重視した詳細表示を提供する。
+ */
 import React, { useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Term, IT_TERMS } from '@/domain/models/terms';
@@ -13,6 +17,7 @@ interface TermDetailModalProps {
 export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose, onRelatedTermClick, darkMode = true }) => {
   const [copied, setCopied] = useState<'word' | 'desc' | null>(null);
 
+  /** 用語名をクリップボードへコピーする。 */
   const copyWord = useCallback(() => {
     if (!term) return;
     navigator.clipboard.writeText(term.word).then(() => {
@@ -21,6 +26,7 @@ export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose,
     });
   }, [term?.word]);
 
+  /** 用語説明をクリップボードへコピーする。 */
   const copyDesc = useCallback(() => {
     if (!term) return;
     navigator.clipboard.writeText(term.longDesc).then(() => {
@@ -32,6 +38,7 @@ export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose,
 
   const dk = darkMode;
 
+  /** 用語レベルを表示ラベルと色へ変換する。 */
   const getLevelLabel = (level: number) => {
     switch(level) {
       case 1: return { text: "初級", color: dk ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" : "bg-green-100 text-green-700" };

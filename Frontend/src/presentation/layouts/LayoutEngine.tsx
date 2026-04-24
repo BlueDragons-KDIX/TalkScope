@@ -1,3 +1,7 @@
+/**
+ * ワークスペースの分割レイアウトを描画・操作するエンジン。
+ * パネルのドラッグ移動、ドロップ位置判定、分割バーのリサイズを統合管理する。
+ */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { GripHorizontal, X } from 'lucide-react';
 import { DropZone, LayoutNode, PanelId } from '@/domain/models/layoutTypes';
@@ -123,6 +127,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, onLayoutChan
     }, [resizing, onLayoutChange]);
 
     // ── ドロップゾーン判定 ──
+    /** マウス座標から、対象パネルに対するドロップ方向を推定する。 */
     const calcZone = useCallback((e: React.DragEvent, el: HTMLElement): DropZone => {
         const r = el.getBoundingClientRect();
         const x = e.clientX - r.left, y = e.clientY - r.top;
@@ -135,6 +140,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, onLayoutChan
     }, []);
 
     // ── 再帰レンダリング ──
+    /** レイアウトツリーを再帰的に描画し、leaf/split 双方の操作UIを付与する。 */
     const renderNode = useCallback((node: LayoutNode): React.ReactNode => {
         if (node.type === 'leaf') {
             const isTarget = dragging !== null && dragging !== node.panelId && dropInfo?.panelId === node.panelId;
