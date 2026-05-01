@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
-import { useDemoStream } from './hooks/useDemoStream';
+import { useDemoStream } from '../debug/hooks/useDemoStream';
 import { useVectorSend } from '@/app/hooks/useVectorSend';
 import { useReferDict, type DictTermResult } from '@/app/hooks/useReferDict';
 import type { VectorPayload } from '@/app/utils/vectorSendWithOverlap';
 import { fetchThemeVector, type ThemeVectorResult } from '@/app/utils/themeVectorApi';
-import { DEMO_TEXT_INSTANT } from './demo/demo';
+import { DEMO_TEXT_INSTANT } from '../debug/demo/demo';
 import { TranscriptionView } from './components/TranscriptionView';
 import { BubbleCloud } from './components/BubbleCloud';
 import { TermDetailPanel } from './components/TermDetailPanel';
@@ -13,7 +13,7 @@ import { HistoryPanel } from './components/HistoryPanel';
 import { DictionaryManagerModal } from './components/DictionaryManagerModal';
 import { Term } from './data/terms';
 import { getAllPinnedTerms, addPinnedTerm, removePinnedTerm } from './db';
-import { extractTerms, countTermFrequencies } from './utils/termDetection';
+import { countTermFrequencies } from './utils/termDetection';
 import { Book, LayoutGrid, LibraryBig, Settings, Target } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
 import { Toaster, toast } from 'sonner';
@@ -261,22 +261,8 @@ const App: React.FC = () => {
   useEffect(() => { isPinnedRef.current = isPinned; }, [isPinned]);
   useEffect(() => { activeTermsRef.current = activeTerms; }, [activeTerms]);
 
-  useEffect(() => {
-    if (!transcript) return;
-    const extracted = extractTerms(transcript, apiTerms);
-    const now = Date.now();
-    
-    // まだ一度も画面に出ていない完全に新規の用語だけをフィルタリング
-    const completelyNewTerms = extracted.filter(t => !historicalTermIdsRef.current.has(t.id));
-    if (completelyNewTerms.length === 0) return;
-
-    completelyNewTerms.forEach(t => {
-      historicalTermIdsRef.current.add(t.id);
-      termTimestamps.current[t.id] = now;
-    });
-
-    setActiveTerms(prev => [...prev, ...completelyNewTerms]);
-  }, [transcript, apiTerms]);
+  // 用語はサーバーから受け取る（フロントエンド側での extractTerms は廃止）
+  // 将来: transcript をサーバーに送り、サーバーが用語を返したら setActiveTerms を呼ぶ
 
   // ── バブル削除アルゴリズム (1秒ごとに実行) ───────────────────
   useEffect(() => {

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Term, IT_TERMS } from '../data/terms';
+import { Term } from '../data/terms';
 import { X, ExternalLink, Hash, BookOpen, Layers, Star, Copy } from 'lucide-react';
 
 interface TermDetailPanelProps {
@@ -40,7 +40,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
   };
 
   const levelInfo = getLevelInfo(term.level);
-  const related = term.relatedTerms.map(w => IT_TERMS.find(t => t.word === w)).filter(Boolean) as Term[];
+  const related: Term[] = [];
   const [copied, setCopied] = useState<'word' | 'desc' | null>(null);
 
   const copyWord = useCallback(() => {
@@ -152,7 +152,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
                   <Hash size={9} />{r.word}
                 </button>
               ))}
-              {term.relatedTerms.filter(w => !IT_TERMS.find(t => t.word === w)).map(w => (
+              {term.relatedTerms.map(w => (
                 <span key={w} className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${dk ? 'border-slate-700 bg-slate-800/50 text-slate-500' : 'border-slate-100 bg-slate-50 text-slate-400'}`}>
                   #{w}
                 </span>

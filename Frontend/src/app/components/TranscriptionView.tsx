@@ -4,7 +4,7 @@ import { highlightTerms } from '../utils/termDetection';
 import { Term } from '../data/terms';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mic, Square, Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle, Star } from 'lucide-react';
-import { UseDemoStreamReturn } from '../hooks/useDemoStream';
+import { UseDemoStreamReturn } from '../../debug/hooks/useDemoStream';
 
 const TOOLTIP = { W: 208, H: 100, PAD: 8, GAP_ABOVE: 12 } as const;
 
