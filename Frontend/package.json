@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "verify:similarity": "bun run src/app/utils/verifySimilarity.ts"
+    "verify:similarity": "bun run src/shared/utils/verifySimilarity.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.3",
