@@ -18,7 +18,7 @@ interface TermState {
   clearActiveTerms: () => void
 }
 
-export const useTermStore = create<TermState>((set, get) => ({
+export const useTermStore = create<TermState>((set) => ({
   activeTerms: [],
   selectedTerm: null,
   searchHistory: [],
