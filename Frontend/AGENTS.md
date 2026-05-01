@@ -10,6 +10,7 @@
 | 優先度 | パス | 内容 |
 |--------|------|------|
 | 必須 | `Frontend/docs/orders/order-001.md` | 初回設計決定・リファクタリング方針 |
+| 推奨 | `Frontend/docs/orders/order-002.md` | ツールバー・デモ重要語・グローバルリセット等の追補指示 |
 | 必須 | `Frontend/docs/ADRs/` | 技術・設計の意思決定記録 |
 | 補足 | `Frontend/docs/tests/` | テスト仕様・結果 |
 
@@ -44,13 +45,14 @@ Frontend/src/
 │   └── storage/               # localStorage/IndexedDB
 ├── stores/                    # Zustandストア群
 ├── presentation/              # React UI
-│   ├── App.tsx                # フェーズ切り替えのみ担当（薄く保つ）
+│   ├── App.tsx                # フェーズ切替・グローバルツールバー（テスト／リセット／表示）。ロジックはストア／フックへ
 │   ├── phases/                # 発表中・発表後のシーン管理
 │   ├── windows/               # ウィンドウ種別（拡張可能）
 │   ├── layout/                # レイアウトエンジン
-│   ├── components/            # 汎用UIパーツ
-│   └── hooks/
-└── debug/                     # デバッグ専用（本番コードから完全分離）
+│   ├── components/            # 汎用UI・ツールバー用パーツ（例: TestFeaturesPopover）
+│   ├── context/               # デモストリーム等の React Context
+│   └── hooks/                 # useTranscription, useDemoImportantTermsSync 等
+└── debug/                     # デモデータ・デモ専用フック（ペイロードはここに寄せる）
 ```
 
 ---
@@ -58,8 +60,8 @@ Frontend/src/
 ## 設計原則
 
 - **文字起こしとメインシステムは完全に分離する**
-  - `TranscriptionWindow` はテキストを出力するだけ
-  - フロントエンド側での単語抽出は行わない
+  - `TranscriptionWindow` はテキストを表示・録音操作する（プレゼンレイヤではフッターのリセットは非表示）
+  - フロントエンド側での単語抽出は行わない（検証用は `debug/demo/mockImportantTerms` のモックのみ。詳細は ADR-007）
   - 将来: 文字起こし → サーバーへ送信 → サーバーで重要語抽出 → フロントへ反映
 - **バブル重要度はDI（依存性注入）で実装する**
   - `IImportanceStrategy` インターフェースを実装して差し替え可能にする
@@ -69,8 +71,9 @@ Frontend/src/
 - **フェーズ（シーン）はポリモーフィズムで拡張する**
   - `IPhase` インターフェースを実装して `phases/registry.ts` に登録する
   - 現在: `DuringPresentation`（発表中）/ `AfterPresentation`（発表後）
-- **デバッグコードは `debug/` に封じる**
-  - デモテキスト、テストボタン、開発用UI は `debug/` 以外に置かない
+- **デモ用のペイロード・アルゴリズムは `debug/` に寄せる**
+  - デモテキスト、`useDemoStream`、サーバー代替のモック重要語リストなどは `debug/demo/` に置く
+  - 画面上部ツールバーから開くポップアップ／モーダルなどのアプリシェルは `presentation/` に置いてよい（境界は ADR-007）
 - **不要な拡張性は持たせない**（将来のためだけにある抽象化は避ける）
 - 仕様や責務を**独自に広げる判断**が必要なときは、実装前に**担当者へ確認**する
 

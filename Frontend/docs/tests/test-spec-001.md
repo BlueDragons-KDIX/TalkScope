@@ -4,6 +4,8 @@
 テストランナー: Bun Test  
 対象ブランチ: `feature/refactor/phase7-integration`
 
+> **追記**: テスト件数の増分・デモ重要語・`resetSession` などは `test-spec-002.md` を参照。
+
 ---
 
 ## 結果サマリー
