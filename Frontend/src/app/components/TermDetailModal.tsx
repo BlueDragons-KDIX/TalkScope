@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Term, IT_TERMS } from '../data/terms';
+import { Term } from '../data/terms';
 import { X, ExternalLink, Hash, BookOpen, Layers, Copy } from 'lucide-react';
 
 interface TermDetailModalProps {
@@ -10,7 +10,7 @@ interface TermDetailModalProps {
   darkMode?: boolean;
 }
 
-export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose, onRelatedTermClick, darkMode = true }) => {
+export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose, onRelatedTermClick: _onRelatedTermClick, darkMode = true }) => {
   const [copied, setCopied] = useState<'word' | 'desc' | null>(null);
 
   const copyWord = useCallback(() => {
@@ -121,26 +121,17 @@ export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose,
                     <span>関連ワード</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {term.relatedTerms.map((word) => {
-                      const relatedTermObj = IT_TERMS.find(t => t.word === word);
-                      return (
-                        <button
-                          key={word}
-                          onClick={() => relatedTermObj && onRelatedTermClick(relatedTermObj)}
-                          className={`
-                            px-2.5 py-1 rounded-lg text-xs font-bold border transition-all
-                            ${relatedTermObj 
-                              ? (dk ? 'border-indigo-500/20 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20' : 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100')
-                              : (dk ? 'border-slate-800 bg-slate-800/50 text-slate-500 cursor-default' : 'border-slate-100 bg-slate-50 text-slate-400 cursor-default')}
-                          `}
-                        >
-                          <span className="flex items-center gap-1">
-                            <Hash size={10} />
-                            {word}
-                          </span>
-                        </button>
-                      );
-                    })}
+                    {term.relatedTerms.map((word) => (
+                      <span
+                        key={word}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${dk ? 'border-slate-800 bg-slate-800/50 text-slate-500' : 'border-slate-100 bg-slate-50 text-slate-400'}`}
+                      >
+                        <span className="flex items-center gap-1">
+                          <Hash size={10} />
+                          {word}
+                        </span>
+                      </span>
+                    ))}
                   </div>
                 </section>
               )}
