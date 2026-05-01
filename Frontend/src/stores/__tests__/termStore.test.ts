@@ -1,0 +1,71 @@
+import { describe, it, expect, beforeEach } from 'bun:test'
+import { useTermStore } from '../termStore'
+import type { Term } from '../../domain/entities/Term'
+
+const term1: Term = {
+  id: '1', word: 'React', kana: 'リアクト',
+  shortDesc: 'UIライブラリ', longDesc: '詳細',
+  category: 'Frontend', level: 1, relatedTerms: [],
+}
+const term2: Term = {
+  id: '2', word: 'Docker', kana: 'ドッカー',
+  shortDesc: 'コンテナ', longDesc: '詳細',
+  category: 'Infra', level: 2, relatedTerms: [],
+}
+
+describe('termStore', () => {
+  beforeEach(() => {
+    useTermStore.setState({
+      activeTerms: [],
+      selectedTerm: null,
+      searchHistory: [],
+      pinnedTermIds: new Set(),
+      termClickWeights: {},
+    })
+  })
+
+  it('用語を追加できる', () => {
+    useTermStore.getState().addTerms([term1])
+    expect(useTermStore.getState().activeTerms).toHaveLength(1)
+  })
+
+  it('重複IDの用語は追加されない', () => {
+    useTermStore.getState().addTerms([term1, term1])
+    expect(useTermStore.getState().activeTerms).toHaveLength(1)
+  })
+
+  it('用語を選択できる', () => {
+    useTermStore.getState().addTerms([term1])
+    useTermStore.getState().selectTerm(term1)
+    expect(useTermStore.getState().selectedTerm?.id).toBe('1')
+  })
+
+  it('ピン留めできる', () => {
+    useTermStore.getState().togglePin('1')
+    expect(useTermStore.getState().pinnedTermIds.has('1')).toBe(true)
+  })
+
+  it('ピン留め解除できる', () => {
+    useTermStore.getState().togglePin('1')
+    useTermStore.getState().togglePin('1')
+    expect(useTermStore.getState().pinnedTermIds.has('1')).toBe(false)
+  })
+
+  it('クリック数を記録できる', () => {
+    useTermStore.getState().incrementClickWeight('1')
+    useTermStore.getState().incrementClickWeight('1')
+    expect(useTermStore.getState().termClickWeights['1']).toBe(2)
+  })
+
+  it('検索履歴に追加できる', () => {
+    useTermStore.getState().addToHistory(term1)
+    useTermStore.getState().addToHistory(term2)
+    expect(useTermStore.getState().searchHistory).toHaveLength(2)
+  })
+
+  it('履歴は重複を追加しない', () => {
+    useTermStore.getState().addToHistory(term1)
+    useTermStore.getState().addToHistory(term1)
+    expect(useTermStore.getState().searchHistory).toHaveLength(1)
+  })
+})
