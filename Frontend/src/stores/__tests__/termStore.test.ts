@@ -68,4 +68,21 @@ describe('termStore', () => {
     useTermStore.getState().addToHistory(term1)
     expect(useTermStore.getState().searchHistory).toHaveLength(1)
   })
+
+  it('stripDemoImportantTerms は demo-important- の用語だけ除去する', () => {
+    const demoTerm: Term = {
+      id: 'demo-important-react',
+      word: 'React',
+      kana: '',
+      shortDesc: 'デモ',
+      longDesc: 'デモ',
+      category: 'Frontend',
+      level: 1,
+      relatedTerms: [],
+    }
+    useTermStore.getState().addTerms([term1, demoTerm])
+    useTermStore.getState().stripDemoImportantTerms()
+    expect(useTermStore.getState().activeTerms).toHaveLength(1)
+    expect(useTermStore.getState().activeTerms[0]?.id).toBe('1')
+  })
 })

@@ -87,6 +87,11 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     this.notify()
   }
 
+  setTranscriptExternal(text: string): void {
+    this.transcript = text
+    this.notify()
+  }
+
   /** React hook から変更を購読するための登録 */
   subscribe(handler: ChangeHandler): () => void {
     this.listeners.add(handler)

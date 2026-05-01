@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Term } from '../domain/entities/Term'
+import { DEMO_IMPORTANT_TERM_ID_PREFIX } from '../debug/demo/mockImportantTerms'
 
 interface TermState {
   activeTerms: Term[]
@@ -10,6 +11,8 @@ interface TermState {
 
   addTerms: (terms: Term[]) => void
   removeTermById: (id: string) => void
+  /** デモ重要語マーキングで注入した用語だけ除去（prefix は mockImportantTerms と一致させる） */
+  stripDemoImportantTerms: () => void
   selectTerm: (term: Term | null) => void
   togglePin: (termId: string) => void
   incrementClickWeight: (termId: string) => void
@@ -39,6 +42,12 @@ export const useTermStore = create<TermState>((set) => ({
 
   removeTermById: (id) => set((state) => ({
     activeTerms: state.activeTerms.filter(t => t.id !== id),
+  })),
+
+  stripDemoImportantTerms: () => set((state) => ({
+    activeTerms: state.activeTerms.filter(
+      t => !t.id.startsWith(DEMO_IMPORTANT_TERM_ID_PREFIX),
+    ),
   })),
 
   selectTerm: (term) => set({ selectedTerm: term }),

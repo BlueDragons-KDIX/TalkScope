@@ -1,11 +1,18 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { BubbleCloud } from '../../../app/components/BubbleCloud'
 import { useTermStore } from '../../../stores/termStore'
+import { useTranscriptStore } from '../../../stores/transcriptStore'
+import { countTermFrequencies } from '../../../app/utils/termDetection'
 import type { WindowProps } from '../IWindowDefinition'
 import type { Term } from '../../../domain/entities/Term'
 
 export const BubbleCloudWindow: React.FC<WindowProps> = ({ darkMode = true }) => {
+  const transcript = useTranscriptStore(s => s.transcript)
   const activeTerms = useTermStore(s => s.activeTerms)
+  const termFrequencies = useMemo(
+    () => countTermFrequencies(transcript, activeTerms as Term[]),
+    [transcript, activeTerms],
+  )
   const termClickWeights = useTermStore(s => s.termClickWeights)
   const isPinned = useTermStore(s => s.pinnedTermIds)
   const selectTerm = useTermStore(s => s.selectTerm)
@@ -23,6 +30,7 @@ export const BubbleCloudWindow: React.FC<WindowProps> = ({ darkMode = true }) =>
     <BubbleCloud
       activeTerms={activeTerms as any}
       termWeights={termClickWeights}
+      termFrequencies={termFrequencies}
       onTermClick={handleTermClick}
       darkMode={darkMode}
       isPinned={isPinned}

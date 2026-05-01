@@ -4,7 +4,9 @@ import { useTranscriptStore } from '../../stores/transcriptStore'
 
 // シングルトンサービス（アプリ全体で一つ）
 let _service: WebSpeechTranscriptionService | null = null
-const getService = () => {
+
+/** アプリ全体で共有する文字起こしサービス（デモツールバーなどフック外からも利用） */
+export function getTranscriptionService(): WebSpeechTranscriptionService {
   if (!_service) _service = new WebSpeechTranscriptionService()
   return _service
 }
@@ -14,7 +16,7 @@ export function useTranscription() {
   const setStatus = useTranscriptStore(s => s.setStatus)
   const transcript = useTranscriptStore(s => s.transcript)
   const status = useTranscriptStore(s => s.status)
-  const serviceRef = useRef(getService())
+  const serviceRef = useRef(getTranscriptionService())
 
   useEffect(() => {
     const service = serviceRef.current
