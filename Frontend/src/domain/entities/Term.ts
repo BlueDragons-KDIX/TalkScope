@@ -1,5 +1,6 @@
 export type TermCategory = 'Frontend' | 'Backend' | 'Infra' | 'AI/Data' | 'General'
-export type TermLevel = 1 | 2 | 3
+/** 1: 初級, 2: 中級, 3: 上級 */
+export type TermLevel = number
 
 export interface Term {
   id: string

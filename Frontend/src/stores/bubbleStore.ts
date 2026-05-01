@@ -15,7 +15,7 @@ interface BubbleState {
   clearBubbles: () => void
 }
 
-export const useBubbleStore = create<BubbleState>((set, get) => ({
+export const useBubbleStore = create<BubbleState>((set) => ({
   bubbles: [],
   bubbleTimestamps: {},
 
