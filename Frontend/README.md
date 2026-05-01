@@ -22,6 +22,10 @@ bun run dev
 - 開発サーバー: `http://localhost:5173`
 - 推奨ブラウザ: Chrome 系（Web Speech API 利用のため）
 
+### Transcript Focus Lab（解析試作）
+
+本番の Vite アプリとは別に、ブラウザだけで動く重要語スコアリングの試作があります。`transcript-focus-lab/index.html` を開いて利用します（手順は `transcript-focus-lab/README.md`）。
+
 ## テスト
 
 ```bash

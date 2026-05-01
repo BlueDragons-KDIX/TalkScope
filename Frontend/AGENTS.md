@@ -29,6 +29,8 @@
 
 ### ディレクトリ構造
 
+- **`transcript-focus-lab/`** — Transcript Focus Lab（静的 HTML/JS の解析試作。旧リポジトリルートの `test/`）
+
 ```
 Frontend/src/
 ├── domain/                    # 型・インターフェース定義のみ（外部依存なし）
