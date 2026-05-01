@@ -10,7 +10,12 @@ interface LayoutState {
   loadLayout: (phaseId: string) => void
 }
 
-const repository = new LayoutRepository()
+// 遅延初期化: localStorage は呼び出し時に初めてアクセスする
+let _repository: LayoutRepository | null = null
+const getRepository = () => {
+  if (!_repository) _repository = new LayoutRepository()
+  return _repository
+}
 
 export const useLayoutStore = create<LayoutState>((set, get) => ({
   layouts: {},
@@ -23,11 +28,11 @@ export const useLayoutStore = create<LayoutState>((set, get) => ({
 
   saveLayout: (phaseId) => {
     const layout = get().layouts[phaseId]
-    if (layout) repository.save(phaseId, layout)
+    if (layout) getRepository().save(phaseId, layout)
   },
 
   loadLayout: (phaseId) => {
-    const layout = repository.load(phaseId)
+    const layout = getRepository().load(phaseId)
     if (layout) set((state) => ({
       layouts: { ...state.layouts, [phaseId]: layout },
     }))
