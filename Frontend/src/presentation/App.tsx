@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
-import { Toaster } from 'sonner'
-import { Palette } from 'lucide-react'
+import React, { useCallback, useEffect, useState } from 'react'
+import { Toaster, toast } from 'sonner'
+import { Palette, RotateCcw } from 'lucide-react'
 import { DuringPresentation } from './phases/DuringPresentation'
 import { AfterPresentation } from './phases/AfterPresentation'
 import { usePhaseStore } from '../stores/phaseStore'
@@ -13,6 +13,9 @@ import { useDemoStream } from '../debug/hooks/useDemoStream'
 import { getTranscriptionService } from './hooks/useTranscription'
 import { SettingsModal } from '../app/components/SettingsModal'
 import { useDemoImportantTermsSync } from './hooks/useDemoImportantTermsSync'
+import { useTranscriptStore } from '../stores/transcriptStore'
+import { useTermStore } from '../stores/termStore'
+import { useBubbleStore } from '../stores/bubbleStore'
 
 // ウィンドウを一度だけ登録
 let _registered = false
@@ -42,6 +45,17 @@ const App: React.FC = () => {
     document.documentElement.classList.toggle('dark', darkMode)
   }, [darkMode])
 
+  const resetAllWindows = useCallback(() => {
+    demoStream.stopStream()
+    const svc = getTranscriptionService()
+    svc.stopListening()
+    svc.clearTranscript()
+    useTranscriptStore.getState().clear()
+    useTermStore.getState().resetSession()
+    useBubbleStore.getState().clearBubbles()
+    toast.info('すべてのウィンドウをリセットしました')
+  }, [demoStream])
+
   const dk = darkMode
 
   return (
@@ -69,6 +83,18 @@ const App: React.FC = () => {
 
           <div className="ml-auto flex items-center gap-2">
             <TestFeaturesPopover darkMode={darkMode} />
+            <button
+              type="button"
+              onClick={resetAllWindows}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-colors ${dk
+                ? 'text-slate-400 hover:text-red-400 bg-slate-800/50 hover:bg-red-500/10 border border-slate-700/50 hover:border-red-500/40'
+                : 'text-slate-600 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200'}`}
+              title="文字起こし・用語・履歴などをすべてクリアします"
+              aria-label="すべてのウィンドウをリセット"
+            >
+              <RotateCcw size={14} />
+              リセット
+            </button>
             <button
               type="button"
               onClick={() => setAppearanceOpen(true)}

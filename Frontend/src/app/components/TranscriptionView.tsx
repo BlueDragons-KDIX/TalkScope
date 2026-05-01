@@ -22,6 +22,8 @@ interface TranscriptionViewProps {
   demoStream?: UseDemoStreamReturn;
   /** false のとき空状態・フッターのデモ操作 UI を隠す（ツールバーのポップアップ側に寄せる） */
   showEmbeddedDemoControls?: boolean;
+  /** false のときフッターのリセットボタンを隠す（グローバルツールバー側に寄せる） */
+  showEmbeddedResetButton?: boolean;
   darkMode?: boolean;
   /** API で発見された動的用語（ハイライト対象に含める） */
   apiTerms?: Term[];
@@ -39,6 +41,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   onLoadDemo,
   demoStream,
   showEmbeddedDemoControls = true,
+  showEmbeddedResetButton = true,
   darkMode = true,
   apiTerms = [],
 }) => {
@@ -266,22 +269,24 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
         <div className="flex items-center justify-center gap-5">
 
           {/* リセットボタン */}
-          <div className="flex flex-col items-center gap-1.5">
-            <motion.button
-              onClick={onClearTranscript}
-              whileTap={{ scale: 0.92 }}
-              whileHover={{ scale: 1.06 }}
-              className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-colors shadow-lg ${
-                dk
-                  ? 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-red-500/10 hover:border-red-500/60 hover:text-red-400'
-                  : 'bg-white border-slate-300 text-slate-400 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
-              }`}
-              title="録音終了・リセット"
-            >
-              <RotateCcw size={20} />
-            </motion.button>
-            <span className={`text-[10px] font-bold ${dk ? 'text-slate-600' : 'text-slate-400'}`}>リセット</span>
-          </div>
+          {showEmbeddedResetButton && onClearTranscript && (
+            <div className="flex flex-col items-center gap-1.5">
+              <motion.button
+                onClick={onClearTranscript}
+                whileTap={{ scale: 0.92 }}
+                whileHover={{ scale: 1.06 }}
+                className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-colors shadow-lg ${
+                  dk
+                    ? 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-red-500/10 hover:border-red-500/60 hover:text-red-400'
+                    : 'bg-white border-slate-300 text-slate-400 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
+                }`}
+                title="録音終了・リセット"
+              >
+                <RotateCcw size={20} />
+              </motion.button>
+              <span className={`text-[10px] font-bold ${dk ? 'text-slate-600' : 'text-slate-400'}`}>リセット</span>
+            </div>
+          )}
 
           {/* 録音開始/中断ボタン（メイン） */}
           <div className="flex flex-col items-center gap-1.5">

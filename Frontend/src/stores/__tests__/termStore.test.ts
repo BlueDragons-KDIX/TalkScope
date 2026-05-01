@@ -69,6 +69,21 @@ describe('termStore', () => {
     expect(useTermStore.getState().searchHistory).toHaveLength(1)
   })
 
+  it('resetSession で用語・選択・履歴・ピン・重みを初期化できる', () => {
+    useTermStore.getState().addTerms([term1])
+    useTermStore.getState().selectTerm(term1)
+    useTermStore.getState().addToHistory(term2)
+    useTermStore.getState().togglePin('1')
+    useTermStore.getState().incrementClickWeight('1')
+    useTermStore.getState().resetSession()
+    const s = useTermStore.getState()
+    expect(s.activeTerms).toHaveLength(0)
+    expect(s.selectedTerm).toBeNull()
+    expect(s.searchHistory).toHaveLength(0)
+    expect(s.pinnedTermIds.size).toBe(0)
+    expect(Object.keys(s.termClickWeights)).toHaveLength(0)
+  })
+
   it('stripDemoImportantTerms は demo-important- の用語だけ除去する', () => {
     const demoTerm: Term = {
       id: 'demo-important-react',

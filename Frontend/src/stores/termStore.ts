@@ -19,6 +19,8 @@ interface TermState {
   addToHistory: (term: Term) => void
   clearHistory: () => void
   clearActiveTerms: () => void
+  /** 用語・選択・履歴・ピン・クリック重みをまとめて初期化（グローバルリセット用） */
+  resetSession: () => void
 }
 
 export const useTermStore = create<TermState>((set) => ({
@@ -74,4 +76,12 @@ export const useTermStore = create<TermState>((set) => ({
   clearHistory: () => set({ searchHistory: [] }),
 
   clearActiveTerms: () => set({ activeTerms: [] }),
+
+  resetSession: () => set({
+    activeTerms: [],
+    selectedTerm: null,
+    searchHistory: [],
+    pinnedTermIds: new Set(),
+    termClickWeights: {},
+  }),
 }))
