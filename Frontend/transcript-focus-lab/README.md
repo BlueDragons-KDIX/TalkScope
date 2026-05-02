@@ -4,7 +4,7 @@
 
 ## 使い方
 
-1. `index.html` をブラウザで開く
+1. `Frontend/transcript-focus-lab/index.html` をブラウザで開く（本ディレクトリ直下の `index.html`）
 2. `録音開始` で文字起こし、またはテキストを直接入力
 3. `分野キーワード`（カンマ区切り可）を指定
 4. `TF-IDF を使う` チェックをON/OFFして `テキスト解析`（比較可能）

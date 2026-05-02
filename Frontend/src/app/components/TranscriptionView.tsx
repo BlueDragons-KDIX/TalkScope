@@ -4,7 +4,7 @@ import { highlightTerms } from '../utils/termDetection';
 import { Term } from '../data/terms';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mic, Square, Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle, Star } from 'lucide-react';
-import { UseDemoStreamReturn } from '../hooks/useDemoStream';
+import { UseDemoStreamReturn } from '../../debug/hooks/useDemoStream';
 
 const TOOLTIP = { W: 208, H: 100, PAD: 8, GAP_ABOVE: 12 } as const;
 
@@ -20,6 +20,10 @@ interface TranscriptionViewProps {
   onLoadDemo?: () => void;
   /** 非同期ストリーミングデモの制御オブジェクト（コア機能とは独立） */
   demoStream?: UseDemoStreamReturn;
+  /** false のとき空状態・フッターのデモ操作 UI を隠す（ツールバーのポップアップ側に寄せる） */
+  showEmbeddedDemoControls?: boolean;
+  /** false のときフッターのリセットボタンを隠す（グローバルツールバー側に寄せる） */
+  showEmbeddedResetButton?: boolean;
   darkMode?: boolean;
   /** API で発見された動的用語（ハイライト対象に含める） */
   apiTerms?: Term[];
@@ -36,6 +40,8 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   onTogglePin,
   onLoadDemo,
   demoStream,
+  showEmbeddedDemoControls = true,
+  showEmbeddedResetButton = true,
   darkMode = true,
   apiTerms = [],
 }) => {
@@ -154,29 +160,33 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                 {isListening ? '聞いています...' : '音声入力待機中'}
               </p>
               <p className={`text-xs mt-1 ${dk ? 'text-slate-700' : 'text-slate-300'}`}>
-                マイクボタンを押して開始、またはデモを試してください
+                {showEmbeddedDemoControls
+                  ? 'マイクボタンを押して開始、またはデモを試してください'
+                  : 'マイクボタンを押して開始。デモは画面上部の「テスト」から実行できます'}
               </p>
             </div>
 
             {/* Demo buttons (in empty state) */}
-            <div className="flex flex-col gap-2 items-center w-full max-w-[200px]">
-              {onLoadDemo && (
-                <button
-                  onClick={onLoadDemo}
-                  className={`flex items-center gap-1.5 w-full justify-center px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${dk ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-700' : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'}`}
-                >
-                  <Play size={11} />即時デモ
-                </button>
-              )}
-              {demoStream && (
-                <button
-                  onClick={() => demoStream.startStream()}
-                  className={`flex items-center gap-1.5 w-full justify-center px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${dk ? 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border-purple-500/30' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200'}`}
-                >
-                  <FastForward size={11} />ライブデモ（長文）
-                </button>
-              )}
-            </div>
+            {showEmbeddedDemoControls && (
+              <div className="flex flex-col gap-2 items-center w-full max-w-[200px]">
+                {onLoadDemo && (
+                  <button
+                    onClick={onLoadDemo}
+                    className={`flex items-center gap-1.5 w-full justify-center px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${dk ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-700' : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'}`}
+                  >
+                    <Play size={11} />即時デモ
+                  </button>
+                )}
+                {demoStream && (
+                  <button
+                    onClick={() => demoStream.startStream()}
+                    className={`flex items-center gap-1.5 w-full justify-center px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${dk ? 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border-purple-500/30' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200'}`}
+                  >
+                    <FastForward size={11} />ライブデモ（長文）
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="whitespace-pre-wrap font-medium">
@@ -259,22 +269,24 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
         <div className="flex items-center justify-center gap-5">
 
           {/* リセットボタン */}
-          <div className="flex flex-col items-center gap-1.5">
-            <motion.button
-              onClick={onClearTranscript}
-              whileTap={{ scale: 0.92 }}
-              whileHover={{ scale: 1.06 }}
-              className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-colors shadow-lg ${
-                dk
-                  ? 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-red-500/10 hover:border-red-500/60 hover:text-red-400'
-                  : 'bg-white border-slate-300 text-slate-400 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
-              }`}
-              title="録音終了・リセット"
-            >
-              <RotateCcw size={20} />
-            </motion.button>
-            <span className={`text-[10px] font-bold ${dk ? 'text-slate-600' : 'text-slate-400'}`}>リセット</span>
-          </div>
+          {showEmbeddedResetButton && onClearTranscript && (
+            <div className="flex flex-col items-center gap-1.5">
+              <motion.button
+                onClick={onClearTranscript}
+                whileTap={{ scale: 0.92 }}
+                whileHover={{ scale: 1.06 }}
+                className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-colors shadow-lg ${
+                  dk
+                    ? 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-red-500/10 hover:border-red-500/60 hover:text-red-400'
+                    : 'bg-white border-slate-300 text-slate-400 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
+                }`}
+                title="録音終了・リセット"
+              >
+                <RotateCcw size={20} />
+              </motion.button>
+              <span className={`text-[10px] font-bold ${dk ? 'text-slate-600' : 'text-slate-400'}`}>リセット</span>
+            </div>
+          )}
 
           {/* 録音開始/中断ボタン（メイン） */}
           <div className="flex flex-col items-center gap-1.5">
@@ -320,7 +332,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
           </div>
 
           {/* ライブデモボタン＋速度スライダー（右側） */}
-          {demoStream && (
+          {demoStream && showEmbeddedDemoControls && (
             <div className="flex flex-col items-center gap-2">
               {/* 速度スライダー: pos 0(遅)〜100(速), pos30≒3518ms */}
               {(() => {
