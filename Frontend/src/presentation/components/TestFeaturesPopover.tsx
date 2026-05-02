@@ -16,6 +16,8 @@ import { useDemoImportantMarkingStore } from '../../stores/demoImportantMarkingS
 
 interface Props {
   darkMode?: boolean
+  /** ポップオーバーをトリガーに対して左寄せ / 右寄せ */
+  align?: 'left' | 'right'
 }
 
 /** ms→スライダー位置（TranscriptionView と同じカーブ） */
@@ -27,7 +29,7 @@ function posToMs(pos: number): number {
   return Math.round(5000 - (pos / 100) * (5000 - 60))
 }
 
-export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true }) => {
+export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 'right' }) => {
   const [open, setOpen] = useState(false)
   const demoStream = useDemoTools()
   const demoMarkingEnabled = useDemoImportantMarkingStore(s => s.enabled)
@@ -58,19 +60,25 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true }) => {
     toast.info('ライブデモを停止しました')
   }
 
+  const panelPos = align === 'left' ? 'left-0 right-auto' : 'right-0 left-auto'
+  const focusRing =
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-2'
+  const ringOffset = dk ? 'focus-visible:ring-offset-[#0d0e1a]' : 'focus-visible:ring-offset-white'
+
   return (
     <div className="relative">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-colors ${dk
-          ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/25'
+        title="開発者向けテスト（デモ・検証）"
+        className={`flex size-9 shrink-0 items-center justify-center rounded-full transition-colors ${focusRing} ${ringOffset} ${dk
+          ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30'
           : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'}`}
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-label="開発者向けテストを開く"
       >
-        <FlaskConical size={12} />
-        テスト
+        <FlaskConical size={16} strokeWidth={2} />
       </button>
 
       {open && (
@@ -81,7 +89,7 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true }) => {
             onClick={() => setOpen(false)}
           />
           <div
-            className={`absolute right-0 top-full mt-1 z-[70] w-[min(92vw,280px)] rounded-xl border shadow-2xl p-3 ${dk
+            className={`absolute ${panelPos} top-full mt-1 z-[70] w-[min(92vw,280px)] rounded-xl border shadow-2xl p-3 ${dk
               ? 'bg-[#0d0e1a] border-slate-700'
               : 'bg-white border-slate-200'}`}
             role="dialog"

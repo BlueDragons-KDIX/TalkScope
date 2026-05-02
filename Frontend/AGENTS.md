@@ -12,6 +12,7 @@
 | 必須 | `Frontend/docs/orders/order-001.md` | 初回設計決定・リファクタリング方針 |
 | 推奨 | `Frontend/docs/orders/order-002.md` | ツールバー・デモ重要語・グローバルリセット等の追補指示 |
 | 必須 | `Frontend/docs/ADRs/` | 技術・設計の意思決定記録 |
+| 推奨 | `Frontend/docs/ADRs/adr-008.md` | プレゼンヘッダー・フェーズ遷移ボタン・発表後アクセント色の方針 |
 | 補足 | `Frontend/docs/tests/` | テスト仕様・結果 |
 
 ---
@@ -47,11 +48,12 @@ Frontend/src/
 │   └── storage/               # localStorage/IndexedDB
 ├── stores/                    # Zustandストア群
 ├── presentation/              # React UI
-│   ├── App.tsx                # フェーズ切替・グローバルツールバー（テスト／リセット／表示）。ロジックはストア／フックへ
+│   ├── App.tsx                # フェーズ切替・アクセント（発表後は補色）・モーダル／トースト。ツールバーは子へ委譲
 │   ├── phases/                # 発表中・発表後のシーン管理
 │   ├── windows/               # ウィンドウ種別（拡張可能）
 │   ├── layout/                # レイアウトエンジン
-│   ├── components/            # 汎用UI・ツールバー用パーツ（例: TestFeaturesPopover）
+│   ├── components/            # 汎用UI・`PresentationAppHeader`・`TestFeaturesPopover` 等
+│   ├── utils/                 # プレゼン用ユーティリティ（例: `oppositeThemeColor.ts`）
 │   ├── context/               # デモストリーム等の React Context
 │   └── hooks/                 # useTranscription, useDemoImportantTermsSync 等
 └── debug/                     # デモデータ・デモ専用フック（ペイロードはここに寄せる）
