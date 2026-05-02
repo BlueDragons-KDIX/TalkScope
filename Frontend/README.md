@@ -61,7 +61,8 @@ make docker-clean
 ## 現在の主要機能（プレゼンレイヤ）
 
 - **発表中／発表後フェーズ**とフェーズ別レイアウト（永続化は `LayoutRepository`）
-- **グローバルツールバー**: テストポップアップ（デモテキスト・ライブデモ・デモ重要語マーキング）、全ウィンドウリセット、表示設定（ダークモード・アクセント）、発表終了／復帰
+- **グローバルツールバー**（`PresentationAppHeader`）: 設定モーダル（ダークモード・アクセント）、全ウィンドウリセット、レイアウトプリセット（発表後は表示のみ・無効）、同一サイズのピル型で「発表終了」／「もどる」を切替。開発者向けテストポップアップは開発ビルド時のみ左側に表示（`import.meta.env.DEV`）
+- **アクセント色**: 発表中は設定色、発表後は補色に近いテーマへ自動切替（`getOppositeThemeColor`／詳細は `docs/ADRs/adr-008.md`）
 - **音声認識**（`ja-JP`）とリアルタイム文字起こし（`WebSpeechTranscriptionService` → `transcriptStore`）
 - **用語のハイライト・バブル**（`termStore`；将来はサーバー由来。検証用モックは `src/debug/demo/mockImportantTerms.ts`）
 - **検索履歴・詳細パネル**（ウィンドウ分割で表示）
@@ -73,7 +74,7 @@ make docker-clean
 ```txt
 Frontend/
 ├── docs/
-│   ├── ADRs/           # 設計判断（例: adr-007 ツールバーとデモ責務分割）
+│   ├── ADRs/           # 設計判断（例: adr-007 ツールバー、adr-008 ヘッダーとアクセント切替）
 │   ├── orders/         # 指示の要約
 │   └── tests/          # テスト仕様メモ
 ├── src/
