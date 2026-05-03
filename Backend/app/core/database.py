@@ -27,10 +27,10 @@ class Database:
             )
             return
 
-        db_uri = db_url.replace("postgresql://", "cockroachdb://")
+        # db_uri = db_url.replace("postgresql://", "cockroachdb://")
         try:
             self.engine = create_engine(
-                db_uri,
+                db_url,
                 connect_args={"application_name": "docs_simplecrud_sqlalchemy"},
             )
             self.SessionLocal = sessionmaker(bind=self.engine)
