@@ -14,6 +14,7 @@ from pathlib import Path
 load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
 
 from app.api import router
+from app.services.idf_runtime import init_idf_table
 
 logger = logging.getLogger(__name__)
 
@@ -21,16 +22,20 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
     """アプリの起動・終了時に実行されるライフスパンイベント。"""
-    # 起動時: 明示的に有効化された場合のみ DB 初期化を実行する。
+    # 起動時: 明示的に有効化された場合のみ DB 初期化を実行する（term_idf 作成のため）。
     db_init_enabled = os.environ.get("ENABLE_DB_INIT", "").lower() in {"1", "true", "yes"}
     if db_init_enabled and os.environ.get("DATABASE_URL"):
-        from app.core.database import db
-        db.init_db()
+        from app.core.database import db as app_db
+
+        app_db.init_db()
         logger.info("DB 初期化完了")
     elif os.environ.get("DATABASE_URL"):
         logger.info("DATABASE_URL は設定済みだが ENABLE_DB_INIT が無効のためスキップ")
     else:
         logger.warning("DATABASE_URL 未設定のため、DB 初期化をスキップ")
+
+    # term_idf テーブルを利用するので init_db を先に済ませ、その後プロセス内 IDF をロードする。
+    init_idf_table()
     yield
     # 終了時: 必要に応じてクリーンアップ
 
@@ -44,7 +49,7 @@ app = fastapi.FastAPI(
         " フロント連携時は /analysis/vectorize を利用してください。"
     ),
     openapi_tags=[
-        {"name": "analysis", "description": "テキスト解析・ベクトル化API"},
+        {"name": "analysis", "description": "テキスト解析・ベクトル化・用語スコア・テーマEMA"},
         {"name": "dictionary", "description": "単語の意味概要検索API"},
         {"name": "hoge", "description": "サンプルAPI"},
     ],
