@@ -4,7 +4,13 @@
 
 `Backend/AGENTS.md` は人間が読みやすい入口として保ち、実装方針・調査メモ・機能単位の判断材料は必要に応じてこの配下へ増やします。
 
+## 指示ファイルについて
+
+.codex/instructions.md を参照すること
+
 ## 現在の主な対象
+
+ここは現在作業として注目している箇所について記載しています。状況に応じて随時変更すること。
 
 - `refer_dictionary_endpoint` 周辺の改善
 - 関連 service / schema / test の整理
