@@ -1,6 +1,6 @@
 # FastAPI 開発ガイド（このプロジェクト向け）
 
-このドキュメントは、LexiFlow の Backend を実装・改修する際のガイドです。  
+このドキュメントは、TalkScope の Backend を実装・改修する際のガイドです。  
 方針は「小規模でシンプルに保ちつつ、後から拡張しやすくする」です。
 
 ## 1. 基本方針
@@ -11,7 +11,25 @@
 - すべての公開 API に `response_model` を付ける
 - 例外は `HTTPException` か共通例外ハンドラで返し、レスポンス形式を揃える
 
-## 1.1 依存管理（uv）
+## 1.0 今後の主な変更対象
+
+- 当面は `refer_dictionary_endpoint` に関する実装を中心に変更する
+- 対象範囲は主に以下とする
+  - `app/api/endpoints/analysis.py` の `refer_dictionary_endpoint`
+  - `app/services/refer_dictionary.py`
+  - `app/schemas/analysis.py` の `ReferDictionary*` スキーマ
+  - 関連テスト（`tests/test_refer_dictionary_endpoint.py` など）
+- 既存の辞書管理 API や他のエンドポイントは、明示的な必要がある場合だけ触る
+
+## 1.1 詳細ドキュメントの置き場所
+
+- 人間が読みやすいように、この `AGENTS.md` は入口と共通ルールに絞る
+- 詳しい方針や作業メモは `Backend/.codex/` 配下に追加していく
+- まず読むドキュメント:
+  - `Backend/.codex/README.md`
+  - `Backend/.codex/refer-dictionary-endpoint.md`
+
+## 1.2 依存管理（uv）
 
 - Python 依存管理は `uv` を使用する
 - 依存定義は `pyproject.toml` を正とする
