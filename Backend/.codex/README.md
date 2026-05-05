@@ -6,7 +6,7 @@
 
 ## 指示ファイルについて
 
-.codex/instructions.md を参照すること
+`.codex/instructions.md` を参照すること
 
 ## 現在の主な対象
 
