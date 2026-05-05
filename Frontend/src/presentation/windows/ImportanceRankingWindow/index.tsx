@@ -18,6 +18,7 @@ const RANK_THROTTLE_MS = 160
 export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ darkMode = true }) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [visibleCount, setVisibleCount] = useState(6)
+  const [filterMode, setFilterMode] = useState<'all' | 'starred'>('all')
 
   const transcript = useTranscriptStore(s => s.transcript)
   const activeTerms = useTermStore(s => s.activeTerms)
@@ -58,7 +59,12 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
     return rankTermsByImportance(throttledTerms, signals)
   }, [throttledTerms, termFrequencies, throttledWeights])
 
-  const visible = ranked.slice(0, visibleCount)
+  const filteredRanked = useMemo(() => {
+    if (filterMode === 'all') return ranked
+    return ranked.filter(row => pinnedTermIds.has(row.term.id))
+  }, [filterMode, ranked, pinnedTermIds])
+
+  const visible = filteredRanked.slice(0, visibleCount)
   const dk = darkMode
 
   const onTermClick = (term: Term) => {
@@ -73,19 +79,45 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
     >
       <div className={`h-full rounded-lg border flex flex-col ${dk ? 'border-slate-700/70 bg-slate-900/30' : 'border-slate-200 bg-slate-50/70'}`}>
         <div className={`h-11 px-3 flex items-center justify-between border-b ${dk ? 'border-slate-700/80' : 'border-slate-200'}`}>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <BarChart3 size={14} className={dk ? 'text-indigo-300' : 'text-indigo-600'} />
             <span className="text-xs font-bold">重要度ランキング</span>
           </div>
-          <span className={`text-[10px] font-mono ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
-            {visible.length}/{ranked.length}
-          </span>
+          <div className="flex items-center gap-2">
+            <div className={`rounded-md p-0.5 border ${dk ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white'}`}>
+              <button
+                type="button"
+                onClick={() => setFilterMode('all')}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                  filterMode === 'all'
+                    ? dk ? 'bg-indigo-500/30 text-indigo-200' : 'bg-indigo-100 text-indigo-700'
+                    : dk ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                全件
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterMode('starred')}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                  filterMode === 'starred'
+                    ? dk ? 'bg-yellow-500/25 text-yellow-300' : 'bg-yellow-100 text-yellow-700'
+                    : dk ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                スター
+              </button>
+            </div>
+            <span className={`text-[10px] font-mono ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+              {visible.length}/{filteredRanked.length}
+            </span>
+          </div>
         </div>
 
         <div className="flex-1 overflow-hidden px-2 py-1.5">
           {visible.length === 0 ? (
             <div className={`h-full flex items-center justify-center text-xs ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
-              用語がまだありません
+              {filterMode === 'starred' ? 'スター付き用語がありません' : '用語がまだありません'}
             </div>
           ) : (
             <ol className="flex flex-col gap-1">
