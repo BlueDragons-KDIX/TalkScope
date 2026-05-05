@@ -14,6 +14,11 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
   }
 
   private initRecognition(): void {
+    if (typeof window === 'undefined') {
+      this.status = 'error'
+      return
+    }
+
     const SpeechRecognition =
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition
@@ -27,6 +32,12 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     recognition.continuous = true
     recognition.interimResults = true
     recognition.lang = 'ja-JP'
+
+    recognition.onstart = () => {
+      this.isRunning = true
+      this.status = 'listening'
+      this.notify()
+    }
 
     recognition.onresult = (event: any) => {
       let current = ''
@@ -62,14 +73,33 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
   }
 
   startListening(): void {
-    if (!this.recognition || this.isRunning) return
+    if (this.isRunning) return
+    if (!this.recognition) this.initRecognition()
+    if (!this.recognition) {
+      this.status = 'error'
+      this.notify()
+      return
+    }
+
     this.status = 'listening'
     this.isRunning = true
     try {
       this.recognition.start()
     } catch {
-      this.status = 'error'
-      this.isRunning = false
+      // ブラウザ状態で start() が失敗するケースがあるため、1回だけ再初期化して再試行する。
+      this.initRecognition()
+      if (!this.recognition) {
+        this.status = 'error'
+        this.isRunning = false
+        this.notify()
+        return
+      }
+      try {
+        this.recognition.start()
+      } catch {
+        this.status = 'error'
+        this.isRunning = false
+      }
     }
     this.notify()
   }
