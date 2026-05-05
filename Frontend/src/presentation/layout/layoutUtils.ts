@@ -7,19 +7,24 @@ const S = (direction: 'h' | 'v', ratio: number, a: LayoutNode, b: LayoutNode): S
 
 // ── 発表中フェーズのデフォルトレイアウト ──
 export const makeDefaultLayout = (): LayoutNode =>
-  S('h', 0.4, L('transcription'), S('h', 0.58, L('bubbleCloud'), S('v', 0.55, L('detail'), L('history'))))
+  S(
+    'h',
+    0.36,
+    L('transcription'),
+    S('h', 0.54, L('bubbleCloud'), S('v', 0.44, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))),
+  )
 
 export const makeLeftRightLayout = (): LayoutNode =>
-  S('h', 0.5, L('transcription'), S('v', 0.5, L('bubbleCloud'), S('h', 0.5, L('detail'), L('history'))))
+  S('h', 0.4, L('transcription'), S('v', 0.38, L('bubbleCloud'), S('h', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))))
 
 export const make2x2Layout = (): LayoutNode =>
-  S('v', 0.5, S('h', 0.5, L('transcription'), L('bubbleCloud')), S('h', 0.5, L('detail'), L('history')))
+  S('v', 0.5, S('h', 0.5, L('transcription'), L('bubbleCloud')), S('h', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history'))))
 
 export const makeHorizontalLayout = (): LayoutNode =>
-  S('h', 0.25, L('transcription'), S('h', 0.333, L('bubbleCloud'), S('h', 0.5, L('detail'), L('history'))))
+  S('h', 0.24, L('transcription'), S('h', 0.316, L('bubbleCloud'), S('h', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))))
 
 export const makeVerticalLayout = (): LayoutNode =>
-  S('v', 0.25, L('transcription'), S('v', 0.333, L('bubbleCloud'), S('v', 0.5, L('detail'), L('history'))))
+  S('v', 0.22, L('transcription'), S('v', 0.32, L('bubbleCloud'), S('v', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))))
 
 // ── 発表後フェーズのデフォルトレイアウト ──
 export const makeAfterLayout = (): LayoutNode =>
