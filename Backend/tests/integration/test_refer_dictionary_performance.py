@@ -2,7 +2,9 @@ import pytest
 import time
 from fastapi.testclient import TestClient
 from main import app
-from app.core.database import db
+from app.core.database import get_database
+
+db = get_database()
 
 client = TestClient(app)
 

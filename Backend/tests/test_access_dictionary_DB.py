@@ -14,9 +14,10 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from app.core.database import db
+from app.core.database import get_database
 from app.crud.dictionary import create_dictionary, delete_dictionary, read_dictionary_by_term
 
+db = get_database()
 
 # 指定語彙ごとに create_dictionary(term, description, meaning_vector=None) を呼び出す。
 _TEST_CASES: list[tuple[str, str]] = [

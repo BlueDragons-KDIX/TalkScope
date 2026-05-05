@@ -4,7 +4,9 @@ from fastapi.testclient import TestClient
 
 from main import app
 from app.crud.dictionary import read_dictionary_by_term, delete_dictionary
-from app.core.database import db
+from app.core.database import get_database
+
+db = get_database()
 
 # 統合テストは外部環境（DB, LLM）に依存するため、マークをつけて分離する
 pytestmark = pytest.mark.integration

@@ -40,9 +40,10 @@ from typing import Any, TypedDict
 from app.services.text_analysis import morphological_analysis, vectorize_pretokenized_words
 from app.services.dictionary import lookup_term_summary
 from app.crud.dictionary import read_dictionary_by_term, create_dictionary
-from app.core.database import db
+from app.core.database import get_database
 
 logger = logging.getLogger(__name__)
+db = get_database()
 
 # ---------------------------------------------------------------------------
 # DB 書き込み直列化セマフォ（遅延初期化）

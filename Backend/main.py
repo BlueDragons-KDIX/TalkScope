@@ -9,6 +9,7 @@ import fastapi
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from pathlib import Path
+from config.config import get_database_url_env_key
 
 # Backend/.env を起動時に読み込む（既存の環境変数は上書きしない）。
 load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
@@ -23,14 +24,16 @@ async def lifespan(app: fastapi.FastAPI):
     """アプリの起動・終了時に実行されるライフスパンイベント。"""
     # 起動時: 明示的に有効化された場合のみ DB 初期化を実行する。
     db_init_enabled = os.environ.get("ENABLE_DB_INIT", "").lower() in {"1", "true", "yes"}
-    if db_init_enabled and os.environ.get("DATABASE_URL"):
-        from app.core.database import db
+    database_url_env_key = get_database_url_env_key()
+    if db_init_enabled:
+        from app.core.database import get_database
+        db = get_database()
         db.init_db()
         logger.info("DB 初期化完了")
-    elif os.environ.get("DATABASE_URL"):
-        logger.info("DATABASE_URL は設定済みだが ENABLE_DB_INIT が無効のためスキップ")
+    elif os.environ.get(database_url_env_key):
+        logger.info("DB URL は設定済みだが ENABLE_DB_INIT が無効のためスキップ")
     else:
-        logger.warning("DATABASE_URL 未設定のため、DB 初期化をスキップ")
+        logger.warning("%s 未設定のため、DB 初期化をスキップ", database_url_env_key)
     yield
     # 終了時: 必要に応じてクリーンアップ
 

@@ -1,8 +1,15 @@
 from __future__ import annotations
 
-from app.core.database import tx
+from app.core.database import get_transaction_manager
 from app.models.dictionary import Dictionary
 from sqlalchemy.orm import Session
+
+
+def _get_tx():
+    tx = get_transaction_manager()
+    if tx is None:
+        raise RuntimeError("DB is not available")
+    return tx
 
 
 def create_dictionary(
@@ -21,7 +28,7 @@ def create_dictionary(
         session.add(entry)
         session.flush()
         return entry.id
-    return tx.run(_create)
+    return _get_tx().run(_create)
 
 
 def read_dictionary_by_id(id: int) -> Dictionary | None:
@@ -33,7 +40,7 @@ def read_dictionary_by_id(id: int) -> Dictionary | None:
             session.expunge(entry)
         return entry
 
-    return tx.run(_read)
+    return _get_tx().run(_read)
 
 
 def read_dictionary_by_term(term: str) -> Dictionary | None:
@@ -45,7 +52,7 @@ def read_dictionary_by_term(term: str) -> Dictionary | None:
             session.expunge(entry)  # セッションから切り離し、属性を保持
         return entry
 
-    return tx.run(_read)
+    return _get_tx().run(_read)
 
 
 def list_dictionaries(
@@ -71,7 +78,7 @@ def list_dictionaries(
             session.expunge(row)
         return rows, total
 
-    return tx.run(_list)
+    return _get_tx().run(_list)
 
 
 def update_dictionary(
@@ -96,7 +103,7 @@ def update_dictionary(
         session.expunge(entry)
         return entry
 
-    return tx.run(_update)
+    return _get_tx().run(_update)
 
 
 def delete_dictionary(id: int) -> bool:
@@ -109,4 +116,4 @@ def delete_dictionary(id: int) -> bool:
         session.delete(entry)
         return True
 
-    return tx.run(_delete)
+    return _get_tx().run(_delete)

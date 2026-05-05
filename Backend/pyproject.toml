@@ -25,3 +25,8 @@ dependencies = [
 dev = [
     "pytest>=8.2.0",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that use external services such as DB or LLM",
+]
