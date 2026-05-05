@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { BarChart3 } from 'lucide-react'
+import { BarChart3, Star } from 'lucide-react'
 import { useTermStore } from '../../../stores/termStore'
 import { useTranscriptStore } from '../../../stores/transcriptStore'
 import type { Term } from '../../../domain/entities/Term'
@@ -24,7 +24,8 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   const termClickWeights = useTermStore(s => s.termClickWeights)
   const selectTerm = useTermStore(s => s.selectTerm)
   const addToHistory = useTermStore(s => s.addToHistory)
-  const incrementClickWeight = useTermStore(s => s.incrementClickWeight)
+  const pinnedTermIds = useTermStore(s => s.pinnedTermIds)
+  const togglePin = useTermStore(s => s.togglePin)
 
   const throttledTranscript = useThrottledValue(transcript, RANK_THROTTLE_MS)
   const throttledTerms = useThrottledValue(activeTerms as Term[], RANK_THROTTLE_MS)
@@ -63,7 +64,6 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   const onTermClick = (term: Term) => {
     selectTerm(term)
     addToHistory(term)
-    incrementClickWeight(term.id)
   }
 
   return (
@@ -91,23 +91,42 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
             <ol className="flex flex-col gap-1">
               {visible.map((row, index) => (
                 <li key={row.term.id}>
-                  <button
-                    type="button"
-                    onClick={() => onTermClick(row.term)}
-                    className={`w-full h-[46px] rounded-md px-2 text-left border transition-colors flex items-center gap-2 ${
+                  <div
+                    className={`w-full h-[46px] rounded-md px-2 border transition-colors flex items-center gap-2 ${
                       dk
                         ? 'border-slate-700 bg-slate-800/50 hover:bg-slate-800 text-slate-200'
                         : 'border-slate-200 bg-white hover:bg-slate-100 text-slate-700'
                     }`}
                   >
-                    <span className={`w-6 text-center text-[11px] font-black ${dk ? 'text-indigo-300' : 'text-indigo-600'}`}>
-                      {index + 1}
-                    </span>
-                    <span className="flex-1 min-w-0 truncate text-xs font-bold">{row.term.word}</span>
-                    <span className={`text-[10px] font-mono ${dk ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {row.score.toFixed(2)}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => onTermClick(row.term)}
+                      className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                    >
+                      <span className={`w-6 text-center text-[11px] font-black ${dk ? 'text-indigo-300' : 'text-indigo-600'}`}>
+                        {index + 1}
+                      </span>
+                      <span className="flex-1 min-w-0 truncate text-xs font-bold">{row.term.word}</span>
+                      <span className={`text-[10px] font-mono ${dk ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {row.score.toFixed(2)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => togglePin(row.term.id)}
+                      className={`p-1 rounded transition-colors ${
+                        pinnedTermIds.has(row.term.id)
+                          ? 'text-yellow-400'
+                          : dk
+                            ? 'text-slate-500 hover:text-slate-300'
+                            : 'text-slate-400 hover:text-slate-600'
+                      }`}
+                      aria-label="スターを切り替え"
+                      title="スターを切り替え"
+                    >
+                      <Star size={14} fill={pinnedTermIds.has(row.term.id) ? 'currentColor' : 'none'} />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ol>
