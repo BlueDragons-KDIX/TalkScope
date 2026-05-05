@@ -2,6 +2,7 @@ from fastapi.logger import logger
 
 import Backend.app.services.refer_dictionary as rd
 import Backend.app.services.text_analysis as txt_ana
+import Backend.app.crud.dictionary as crud_dict
 
 # ================================= Service ======================================
 
@@ -25,11 +26,11 @@ async def refer_dictionary(text: str) -> list[rd.DictionaryEntry]:
 
         10. 各termでbest sense選択
 
-
+    注意事項：LLMで1単語に付き複数の意味の生成は、MVPでは実装しない。将来的に必要になったら実装する。
     """
-    # TODO: エンベディングと形態素・DB検索の並列化の検討
+    # TODO: エンベディングと形態素・DB検索の並列化の検討 (しばらくは実装に着手しない)
     # 入力テキストのembeddingを先に計算しておく（意味的な近さの計算に使うため）
-    test_embedding = await _compute_text_embedding(text)
+    # test_embedding = await _compute_text_embedding(text)
 
     # 形態素解析で検索対象の抽出
     search_targets = rd._extract_search_targets(text)
@@ -37,12 +38,12 @@ async def refer_dictionary(text: str) -> list[rd.DictionaryEntry]:
         return []
     
     # dedup（複数の形態素が同じ単語を指す場合があるため）
-    pass
+    unique_terms = list(set(search_targets))
 
     # DB検索(バッチで検索)
-    pass
+    results_term = search_dictionary(unique_terms)
 
-    # hitはbest sense選択して返す
+    # hitはbest sense選択して返す (今は1単語1意味の想定なのでそのまま返す)
     pass
 
     # missの場合
@@ -100,7 +101,24 @@ def _compute_text_embedding(text: str) -> list[float]:
     return [0 for _ in range(300)] # ダミー
 
 
-def best_sense_selection(term_infos: list[TermInfo], text_embedding: list[float]) -> list[rd.DictionaryEntry]:
+def search_dictionary(terms: list[tuple[str,...]]) -> list[TermInfo]:
+    """
+    DBから複数の用語情報を検索する関数
+    複合語を連結した文字列で検索する
+    Args:
+        terms: 検索する用語のリスト
+    Returns:
+        term_infos: 検索結果の用語情報のリスト
+    """
+    try:
+        result = crud_dict.search_sense_dictionary(["".join(term_tuple) for term_tuple in terms])
+    except Exception as e:
+        logger.exception("DB検索に失敗: %s\n フォールバックとして空の結果を返します。", e)
+        return []
+    return [TermInfo(term=entry.term, sense=[(entry.description, entry.meaning_vector)]) for entry in result]
+
+
+def _best_sense_selection(term_infos: list[TermInfo], text_embedding: list[float]) -> list[rd.DictionaryEntry]:
     """
         DBから複数エントリがヒットした場合の意味選択ロジック
         Args:

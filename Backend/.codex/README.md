@@ -12,8 +12,9 @@
 
 ここは現在作業として注目している箇所について記載しています。状況に応じて随時変更すること。
 
-- `refer_dictionary_endpoint` 周辺の改善
-- 関連 service / schema / test の整理
+- `refer_dictionary_v1.py` での次期 refer_dictionary 処理フロー試作
+- 複合語タプルの dedup と DB 一括検索（`WHERE term IN (...)`）の導入準備
+- DB hit 結果を `TermInfo` に変換し、意味選択ロジックへ接続するための整理
 - 既存 API 仕様を壊さない範囲での段階的な修正
 
 ## ドキュメント一覧

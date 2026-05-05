@@ -117,3 +117,22 @@ def delete_dictionary(id: int) -> bool:
         return True
 
     return _get_tx().run(_delete)
+
+
+def search_sense_dictionary(terms: list[str]) -> list[Dictionary]:
+    """terms に一致する辞書エントリをまとめて取得する。"""
+    if not terms:
+        return []
+
+    def _search(session: Session) -> list[Dictionary]:
+        results = (
+            session.query(Dictionary)
+            .filter(Dictionary.term.in_(terms))
+            .all()
+        )
+        for entry in results:
+            session.expunge(entry)
+        return results
+
+    return _get_tx().run(_search)
+
