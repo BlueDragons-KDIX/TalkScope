@@ -125,7 +125,7 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
               step={1}
               value={rowSizeSlider}
               onChange={(e) => setRowSizeSlider(Number(e.target.value))}
-              className={`w-28 h-1.5 rounded-full appearance-none cursor-pointer ${dk ? 'accent-cyan-400' : 'accent-cyan-600'}`}
+              className={`w-28 h-1.5 rounded-full appearance-none cursor-pointer ${dk ? 'accent-violet-400' : 'accent-violet-600'}`}
               style={{ background: dk ? '#334155' : '#cbd5e1' }}
               title={`要素サイズ: ${rowSizeSlider}`}
             />
