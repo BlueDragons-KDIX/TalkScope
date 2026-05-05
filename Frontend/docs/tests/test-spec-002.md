@@ -74,3 +74,29 @@
 | 4 | マップにないキーはそのまま返す | 未知キーは変更しない | ✅ |
 
 テストランナー実行時の総数は `bun test` の出力に従う（本追記で +4 ケース）。
+
+---
+
+## 追加（2026-05-05 追記）— 重要度ランキングウィンドウ
+
+### 4. presentation/utils — importanceRanking.test.ts（新規）
+
+**目的**: 重要度ランキング用の合成スコアと表示件数計算を固定する。
+
+| # | テスト名 | 期待結果 | 結果 |
+|---|---------|---------|------|
+| 1 | 重要度スコア降順でソートする | score の降順で並ぶ | ✅ |
+| 2 | シグナル未定義は 0 扱い | frequency/clickWeight が 0 | ✅ |
+| 3 | ウィンドウ高さから表示可能件数を算出 | 最低 1 件以上を返す | ✅ |
+
+### パフォーマンス・Go/No-Go 判定メモ
+
+- 実装方針:
+  - `ImportanceRankingWindow` は `transcript` の生値ではなく `useThrottledValue`（160ms）を使って再計算頻度を制御
+  - 表示は `visibleCount` まで `slice` し、過剰描画を防止
+- 自動検証:
+  - `bun test src/presentation/utils/__tests__/importanceRanking.test.ts` 通過
+  - `bun run build` 通過
+- 判定:
+  - 現時点では **Go（継続）**。既存機能へ直接高頻度再描画を追加しない設計で導入済み
+  - 手動で録音中の体感遅延が確認された場合は、`importanceRanking` ウィンドウをレイアウトから外して即時無効化する
