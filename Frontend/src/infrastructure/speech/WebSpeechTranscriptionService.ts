@@ -1,6 +1,15 @@
 import type { ITranscriptionService, TranscriptionStatus } from '../../domain/interfaces/ITranscriptionService'
 
 type ChangeHandler = () => void
+type TranscriptUploadMode = 'disabled' | 'local' | 'remote'
+type UploadTranscriptPayload = {
+  transcript: string
+  language: string
+  recordedAt: string
+}
+
+const DEFAULT_TRANSCRIPT_UPLOAD_URL = 'http://localhost:8000/transcript'
+const DEFAULT_UPLOAD_MODE: TranscriptUploadMode = 'disabled'
 
 export class WebSpeechTranscriptionService implements ITranscriptionService {
   private transcript = ''
@@ -64,6 +73,60 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     this.recognition = recognition
   }
 
+  private getUploadUrl(): string {
+    const raw = import.meta.env.VITE_TRANSCRIPT_UPLOAD_URL
+    const trimmed = typeof raw === 'string' ? raw.trim() : ''
+    return trimmed || DEFAULT_TRANSCRIPT_UPLOAD_URL
+  }
+
+  private getUploadMode(): TranscriptUploadMode {
+    const raw = import.meta.env.VITE_TRANSCRIPT_UPLOAD_MODE
+    const mode = typeof raw === 'string' ? raw.trim().toLowerCase() : ''
+    if (mode === 'local' || mode === 'remote' || mode === 'disabled') {
+      return mode
+    }
+    return DEFAULT_UPLOAD_MODE
+  }
+
+  private buildUploadPayload(): UploadTranscriptPayload | null {
+    const text = this.transcript.trim()
+    if (!text) return null
+    return {
+      transcript: text,
+      language: 'ja-JP',
+      recordedAt: new Date().toISOString(),
+    }
+  }
+
+  private async uploadTranscript(): Promise<void> {
+    const mode = this.getUploadMode()
+    if (mode === 'disabled') {
+      if (import.meta.env.DEV) {
+        console.log('[transcription] upload skipped (mode=disabled)')
+      }
+      return
+    }
+    const payload = this.buildUploadPayload()
+    if (!payload) return
+    const url = this.getUploadUrl()
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok && import.meta.env.DEV) {
+        console.warn('[transcription] upload failed', res.status, await res.text())
+      } else if (import.meta.env.DEV) {
+        console.log(`[transcription] upload success (mode=${mode})`, url)
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('[transcription] upload error', error)
+      }
+    }
+  }
+
   getStatus(): TranscriptionStatus {
     return this.status
   }
@@ -109,6 +172,7 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     this.isRunning = false
     this.status = 'idle'
     try { this.recognition.stop() } catch { /* ignore */ }
+    void this.uploadTranscript()
     this.notify()
   }
 
