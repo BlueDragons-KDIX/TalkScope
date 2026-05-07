@@ -280,6 +280,27 @@ class TestLoadIdfTableFromJson:
         finally:
             path.unlink(missing_ok=True)
 
+    def test_min_idf_keeps_high_only(self) -> None:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
+            json.dump({"a": 1.0, "b": 5.0}, f)
+            path = Path(f.name)
+        try:
+            t = load_idf_table_from_json(path, min_idf=3.0)
+            assert t.lookup("b") == pytest.approx(5.0)
+            assert t.mean_idf == pytest.approx(5.0)
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_min_idf_filters_all_raises(self) -> None:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8") as f:
+            json.dump({"a": 1.0}, f)
+            path = Path(f.name)
+        try:
+            with pytest.raises(ValueError):
+                load_idf_table_from_json(path, min_idf=10.0)
+        finally:
+            path.unlink(missing_ok=True)
+
 
 class TestAdjacentBigramCounts:
     def test_filters_single_char_by_default(self) -> None:

@@ -25,7 +25,6 @@ __all__ = [
     "debug_session_count",
     "get_theme",
     "morph_tokens_for_scoring",
-    "reset_session_theme",
     "scoring_lemmas_in_order",
     "set_theme",
     "update_theme_ema_chunk",
@@ -64,7 +63,11 @@ from app.services.text_analysis import morphological_analysis, vectorize_sentenc
 
 
 def morph_tokens_for_scoring(text: str) -> list[dict[str, Any]]:
-    """既存の形態素結果に、スコープ（名詞系・表層長・代名詞除外）を適用したトークン列。"""
+    """スコア計算に必要となる対象となる形態素だけを抽出する。(名詞・固有名詞のみ、代名詞は除外)
+
+    Sudachi/GiNZa 経由の分析結果へ **名詞系・短文除外・代名詞除外**などのフィルタをかけ、
+    ``base_form`` を確定させた辞書リストを返す（以降 PMI・回数計算が同じ規則を共有する）。
+    """
     out: list[dict[str, Any]] = []
     for t in morphological_analysis(text):
         pos = t.get("pos") or ""
@@ -83,12 +86,16 @@ def morph_tokens_for_scoring(text: str) -> list[dict[str, Any]]:
 
 
 def scoring_lemmas_in_order(text: str) -> list[str]:
-    """同一発話内のスコープ通過トークンの基本形を出現順に返す。"""
+    """チャンク内で用語スコア対象となる語順の並びが知りたいときのヘルパー。
+
+    中身は :func:`morph_tokens_for_scoring` を通過したトークンの ``base_form`` のみで、順序は原文に沿う。
+    bigram／窓カウントをチャンクで 1 回だけ取るときの入力に使う。
+    """
     return [m["base_form"] for m in morph_tokens_for_scoring(text)]
 
 
 def adjacent_bigrams_for_scoring_text(text: str) -> dict[tuple[str, str], int]:
-    """スコープ通過語の ``base_form`` 列に対する隣接 bigram 回数。"""
+    """単一チャンク内での隣接共起カウント（PMI／PPMI バフの材料）。"""
     lemmas = scoring_lemmas_in_order(text)
     return adjacent_bigram_counts(lemmas, filter_surface=lambda _: True)
 
@@ -101,10 +108,10 @@ def update_theme_ema_chunk(
     normalize_sentence: bool = True,
     min_content_tokens: int = 2,
 ) -> tuple[list[float] | None, bool, dict[str, Any]]:
-    """1 チャンクのテキストでテーマベクトルを EMA 更新する。
+    """1チャンクぶんの文章ベクトルをEMAで既存テーマになじませる。(DBは使わない)
 
-    戻り値:
-        (更新後または従前のテーマ, 更新したか, 診断用メタデータ)
+    相槌のみ・短文などはゲートで更新をスキップする。Embedding は vectorize_sentence に委ねる。
+    戻り値は (テーマベクトル, 書き換えが起きたか, ログ用キー)。
     """
     approx_content = len(morph_tokens_for_scoring(text))
     skip = should_skip_theme_update(text, approx_content, min_content_tokens=min_content_tokens)
@@ -138,10 +145,17 @@ def compute_term_score_additive(
     ppmi_weight: float = 0.2,
     debuffs: Mapping[str, float] | None = None,
 ) -> dict[str, Any]:
-    """素点（回数軸）＋バフ（テーマ類似・IDF・PPMI）を加算合成。
+    """
+    1用語ぶんの素点と各種バフを足し込み最終値を決める関数。
 
-    ``chunk_adjacent_bigrams`` が与えられたときは PMI 用カウントにそれだけを使う（バッチ全体で
-    形態素 1 回に揃えるため）。``None`` のときは ``chunk_text_for_bigrams`` から従来どおり構築する。
+    - **素点**: ``occurrence_count`` を ``count_axis_weight`` に通した値。
+    - **テーマ類似バフ**: 任意のセッション／override テーマベクトルと ``term_vector`` の類似。
+    - **IDF バフ**: ``idf_table`` が非 ``None`` かつ ``idf_weight != 0`` のときのみ。
+      テーブルは通常 ``idf_runtime.get_idf_table()``（起動時に DB ``term_idf`` または JSON から構築済み）。
+    - **PPMI バフ**: 渡されたチャンク内 bigram カウントに基づく（隣接か窓かは上位の ``compute_term_scores_for_request`` が決める）。
+
+    ``chunk_adjacent_bigrams`` が与えられたときは PMI 入力にのみそれを使い、バッチ API で
+    形態素解析をチャンクあたり 1 回に抑える。
     """
     base = count_axis_weight(occurrence_count, cap=count_cap)
     buffs: dict[str, float] = {}
@@ -181,23 +195,32 @@ def compute_term_score_additive(
 
 
 # ── インメモリ・テーマセッション ───────────────────────────────────────
+#
+# ``POST .../theme/chunk`` で更新したテーマベクトルを、クライアントが発行する session_id で保持する。
+# 単一プロセスのみ有効・複数ワーカー間は共有しない（本番の共有ストアは別タスク）。
 
 _lock = Lock()
 _sessions: dict[str, list[float]] = {}
 
 
 def get_theme(session_id: str) -> list[float] | None:
+    """セッションに保存済みのテーマベクトルを返す（未設定なら ``None``）。コピーなのでミュータブル変更はしないこと。"""
     with _lock:
         v = _sessions.get(session_id)
         return None if v is None else list(v)
 
 
 def set_theme(session_id: str, vector: list[float]) -> None:
+    """チャンク EMA で得たテーマベクトルを ``session_id`` キーで上書き保存する。"""
     with _lock:
         _sessions[session_id] = list(vector)
 
 
 def clear_theme(session_id: str) -> bool:
+    """当該 ``session_id`` のテーマを削除する。削除したら ``True``、元から無ければ ``False``。
+
+    ``POST .../theme/session/reset`` からも直接呼ばれる（リセット専用ラッパは持たない）。
+    """
     with _lock:
         if session_id in _sessions:
             del _sessions[session_id]
@@ -206,7 +229,7 @@ def clear_theme(session_id: str) -> bool:
 
 
 def debug_session_count() -> int:
-    """テスト／診断用。"""
+    """インメモリに保持している **テーマセッション数**（``_sessions`` のキー数）。テスト・監視用途。"""
     with _lock:
         return len(_sessions)
 
@@ -221,6 +244,7 @@ def clear_all_sessions() -> None:
 
 
 def apply_theme_chunk(req: ThemeChunkRequest) -> ThemeChunkResponse:
+    """``POST .../theme/chunk`` 用のオーケストレーション更新・インメモリ保存・レスポンス組み立て。"""
     prev = get_theme(req.session_id)
     new_theme, updated, diagnostics = update_theme_ema_chunk(
         req.text,
@@ -250,6 +274,11 @@ def compute_term_scores_for_request(
     weights: TermScoreWeights,
     debuffs: dict[str, float] | None,
 ) -> TermScoreBatchResponse:
+    """``POST .../score/terms`` 用：**複数用語をまとめて**スコアし PPMI 用 bigram はチャンク 1 回分だけ算出する。
+
+    セッションに紐づくテーマは ``use_session_theme`` とオーバーライドで選択。
+    **IDF は** ``get_idf_table()`` のシングルトン（DB 読み込みは起動時のみ）をすべての語に共通で渡す。
+    """
     theme: list[float] | None = None
     if use_session_theme:
         theme = theme_vector_override if theme_vector_override is not None else get_theme(session_id)
@@ -268,6 +297,7 @@ def compute_term_scores_for_request(
         else:
             shared_bigrams = adjacent_bigram_counts(lemmas, filter_surface=lambda _: True)
 
+    # 起動時に DB(JSON) で構築済み。リクエストごとには DB に触れない。
     idf_table_loaded = get_idf_table()
 
     results: list[TermScoreResult] = []
@@ -293,6 +323,10 @@ def compute_term_scores_for_request(
 
 
 def _score_raw_to_term_result(raw: dict[str, object]) -> TermScoreResult:
+    """:func:`compute_term_score_additive` の連結辞書を、API の ``TermScoreResult`` に正規化する。
+
+    buffs／debuffs は数値のみに落とし、欠損キーは既定値になる。
+    """
     buffs = raw.get("buffs")
     debuffs_raw = raw.get("debuffs")
     if not isinstance(buffs, dict):
@@ -316,7 +350,3 @@ def _score_raw_to_term_result(raw: dict[str, object]) -> TermScoreResult:
         debuffs=ds,
         final=_nf(raw.get("final")),
     )
-
-
-def reset_session_theme(session_id: str) -> bool:
-    return clear_theme(session_id)

@@ -142,7 +142,7 @@ Cloud Run へのデプロイ手順は以下を参照してください。
 
 - `POST /analysis/score/terms`
   - 複数用語の **素点＋バフ**（テーマ類似・PPMI 等）を一括計算。サーバのセッション済みテーマを使うか `theme_vector_override` で上書き可能
-  - **IDF バフ**: 主として DB の `term_idf` に投入したデータを起動時に読み込む。開発用のみ `IDF_JSON_PATH` の JSON があればフォールバックになる。詳細は `Backend/docs/IDF_DATA_PIPELINE.md`
+  - **IDF バフ**: DB の `term_idf` を起動時に読み込む（オプション `TERM_IDF_LOAD_MIN_VALUE` でその IDF 以上の語だけに間引ける）。開発用は `IDF_JSON_PATH`。詳細は `Backend/docs/IDF_DATA_PIPELINE.md`
   - `weights.pmi_cooccurrence`: `"adjacent"`（既定）または `"window"`（窓は `pmi_window_max_distance`、既定 4）
   - 各用語には `term_vector`（テーマと同一次元）が必須
 

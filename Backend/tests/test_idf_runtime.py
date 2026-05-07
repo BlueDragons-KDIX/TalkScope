@@ -78,10 +78,24 @@ def test_init_invalid_json(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> N
     assert idf_runtime.get_idf_table() is None
 
 
-def test_init_alias_from_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_json_skips_below_min_idf(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(idf_runtime, "_load_idf_lookup_from_database", lambda: None)
+    monkeypatch.setenv("TERM_IDF_LOAD_MIN_VALUE", "2.5")
     p = tmp_path / "idf.json"
-    p.write_text(json.dumps({"x": 1.0}), encoding="utf-8")
+    p.write_text(json.dumps({"低": 0.5, "高": 4.0, "ギリ": 2.5}), encoding="utf-8")
     monkeypatch.setenv("IDF_JSON_PATH", str(p))
-    idf_runtime.init_idf_table_from_env()
-    assert idf_runtime.get_idf_table() is not None
+    idf_runtime.init_idf_table()
+    t = idf_runtime.get_idf_table()
+    assert t is not None
+    assert t.lookup("高") == pytest.approx(4.0)
+    assert t.lookup("ギリ") == pytest.approx(2.5)
+
+
+def test_json_min_idf_filters_all_yields_none(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(idf_runtime, "_load_idf_lookup_from_database", lambda: None)
+    monkeypatch.setenv("TERM_IDF_LOAD_MIN_VALUE", "100")
+    p = tmp_path / "idf.json"
+    p.write_text(json.dumps({"a": 1.0}), encoding="utf-8")
+    monkeypatch.setenv("IDF_JSON_PATH", str(p))
+    idf_runtime.init_idf_table()
+    assert idf_runtime.get_idf_table() is None

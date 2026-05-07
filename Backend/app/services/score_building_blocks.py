@@ -224,8 +224,12 @@ class IdfLookupTable:
         return v
 
 
-def load_idf_table_from_json(path: str | Path) -> IdfLookupTable:
-    """語→IDF の JSON（オブジェクトのキーが語・値が数値）を読み ``IdfLookupTable`` を返す。"""
+def load_idf_table_from_json(path: str | Path, *, min_idf: float | None = None) -> IdfLookupTable:
+    """単語とIDF の JSON（キーが単語、値がIDF）を読み、 IdfLookupTableを返す。(開発用)
+
+    ``min_idf`` を指定すると **その値以上の IDF だけ**を載せる（語彙を間引いてメモリを抑える）。
+    フィルタ後が空だれば ``ValueError``。
+    """
     p = Path(path)
     raw = json.loads(p.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
@@ -234,7 +238,10 @@ def load_idf_table_from_json(path: str | Path) -> IdfLookupTable:
     for k, v in raw.items():
         if isinstance(v, bool) or not isinstance(v, (int, float)):
             raise ValueError(f"語 {k!r} の IDF 値が不正です（数値が必要です）")
-        table[str(k)] = float(v)
+        fv = float(v)
+        table[str(k)] = fv
+    if min_idf is not None:
+        table = {k: v for k, v in table.items() if v >= min_idf}
     return IdfLookupTable(table)
 
 
