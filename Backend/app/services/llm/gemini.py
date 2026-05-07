@@ -1,3 +1,5 @@
+# <<<< Author: Codex (TODO: 未添削) >>>>>
+
 from __future__ import annotations
 
 import json
