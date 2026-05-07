@@ -13,6 +13,9 @@ const DEFAULT_UPLOAD_MODE: TranscriptUploadMode = 'disabled'
 
 export class WebSpeechTranscriptionService implements ITranscriptionService {
   private transcript = ''
+  private finalTranscript = ''
+  private interimTranscript = ''
+  private finalizedResultIndices = new Set<number>()
   private status: TranscriptionStatus = 'idle'
   private recognition: any = null
   private isRunning = false
@@ -49,12 +52,32 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     }
 
     recognition.onresult = (event: any) => {
-      let current = ''
-      for (let i = 0; i < event.results.length; i++) {
-        const text: string = event.results[i][0].transcript
-        current += event.results[i].isFinal ? text + '。\n' : text
+      let nextInterim = ''
+      const start = typeof event.resultIndex === 'number' ? event.resultIndex : 0
+
+      for (let i = start; i < event.results.length; i++) {
+        const result = event.results[i]
+        const text: string = result?.[0]?.transcript ?? ''
+        const normalized = text.trim()
+        if (!normalized) continue
+
+        if (result.isFinal) {
+          // 同じ result index の確定文を重複追加しない
+          if (!this.finalizedResultIndices.has(i)) {
+            this.finalTranscript += `${normalized}。\n`
+            this.finalizedResultIndices.add(i)
+          }
+        } else {
+          nextInterim += text
+        }
       }
-      this.transcript = current
+
+      // 不正確でも文字を残したい要件のため、途中文字列が短くなる更新では縮めない
+      const nextInterimTrimmed = nextInterim.trim()
+      if (nextInterimTrimmed.length >= this.interimTranscript.trim().length) {
+        this.interimTranscript = nextInterim
+      }
+      this.transcript = `${this.finalTranscript}${this.interimTranscript}`
       this.notify()
     }
 
@@ -178,11 +201,17 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
 
   clearTranscript(): void {
     this.transcript = ''
+    this.finalTranscript = ''
+    this.interimTranscript = ''
+    this.finalizedResultIndices.clear()
     this.notify()
   }
 
   setTranscriptExternal(text: string): void {
     this.transcript = text
+    this.finalTranscript = text
+    this.interimTranscript = ''
+    this.finalizedResultIndices.clear()
     this.notify()
   }
 
