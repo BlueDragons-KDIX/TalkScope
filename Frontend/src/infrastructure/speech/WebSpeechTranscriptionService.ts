@@ -1,4 +1,4 @@
-import type { ITranscriptionService, TranscriptionStatus } from '../../domain/interfaces/ITranscriptionService'
+import type { ITranscriptionService, MicrophoneDevice, TranscriptionStatus } from '../../domain/interfaces/ITranscriptionService'
 
 type ChangeHandler = () => void
 type TranscriptUploadMode = 'disabled' | 'local' | 'remote'
@@ -19,10 +19,14 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
   private status: TranscriptionStatus = 'idle'
   private recognition: any = null
   private isRunning = false
+  private microphones: MicrophoneDevice[] = []
+  private selectedMicrophoneId = ''
+  private selectedMicStream: MediaStream | null = null
   private listeners = new Set<ChangeHandler>()
 
   constructor() {
     this.initRecognition()
+    void this.refreshMicrophones()
   }
 
   private initRecognition(): void {
@@ -150,6 +154,65 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     }
   }
 
+  getAvailableMicrophones(): MicrophoneDevice[] {
+    return this.microphones
+  }
+
+  getSelectedMicrophoneId(): string {
+    return this.selectedMicrophoneId
+  }
+
+  setSelectedMicrophone(deviceId: string): void {
+    this.selectedMicrophoneId = deviceId
+    this.notify()
+  }
+
+  async refreshMicrophones(): Promise<void> {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) {
+      this.microphones = []
+      this.selectedMicrophoneId = ''
+      this.notify()
+      return
+    }
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const audioInputs = devices
+        .filter(d => d.kind === 'audioinput')
+        .map((d, i) => ({
+          deviceId: d.deviceId,
+          label: d.label || `マイク ${i + 1}`,
+        }))
+      this.microphones = audioInputs
+      if (!audioInputs.some(d => d.deviceId === this.selectedMicrophoneId)) {
+        this.selectedMicrophoneId = audioInputs[0]?.deviceId ?? ''
+      }
+      this.notify()
+    } catch {
+      this.microphones = []
+      this.selectedMicrophoneId = ''
+      this.notify()
+    }
+  }
+
+  private async prepareSelectedMicrophone(): Promise<void> {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
+    if (!this.selectedMicrophoneId) return
+    try {
+      this.selectedMicStream?.getTracks().forEach(track => track.stop())
+      this.selectedMicStream = await navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: { exact: this.selectedMicrophoneId } },
+      })
+      await this.refreshMicrophones()
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('[transcription] selected mic prepare failed', err)
+    }
+  }
+
+  private releaseSelectedMicrophone(): void {
+    this.selectedMicStream?.getTracks().forEach(track => track.stop())
+    this.selectedMicStream = null
+  }
+
   getStatus(): TranscriptionStatus {
     return this.status
   }
@@ -169,6 +232,7 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
 
     this.status = 'listening'
     this.isRunning = true
+    void this.prepareSelectedMicrophone()
     try {
       this.recognition.start()
     } catch {
@@ -195,6 +259,7 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     this.isRunning = false
     this.status = 'idle'
     try { this.recognition.stop() } catch { /* ignore */ }
+    this.releaseSelectedMicrophone()
     void this.uploadTranscript()
     this.notify()
   }

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { WebSpeechTranscriptionService } from '../../infrastructure/speech/WebSpeechTranscriptionService'
 import { useTranscriptStore } from '../../stores/transcriptStore'
+import type { MicrophoneDevice } from '../../domain/interfaces/ITranscriptionService'
 
 // シングルトンサービス（アプリ全体で一つ）
 let _service: WebSpeechTranscriptionService | null = null
@@ -17,12 +18,17 @@ export function useTranscription() {
   const transcript = useTranscriptStore(s => s.transcript)
   const status = useTranscriptStore(s => s.status)
   const serviceRef = useRef(getTranscriptionService())
+  const [microphones, setMicrophones] = useState<MicrophoneDevice[]>(serviceRef.current.getAvailableMicrophones())
+  const [selectedMicrophoneId, setSelectedMicrophoneId] = useState(serviceRef.current.getSelectedMicrophoneId())
 
   useEffect(() => {
     const service = serviceRef.current
+    void service.refreshMicrophones()
     const unsubscribe = service.subscribe(() => {
       setTranscript(service.getTranscript())
       setStatus(service.getStatus())
+      setMicrophones(service.getAvailableMicrophones())
+      setSelectedMicrophoneId(service.getSelectedMicrophoneId())
     })
     return unsubscribe
   }, [setTranscript, setStatus])
@@ -31,6 +37,10 @@ export function useTranscription() {
     transcript,
     status,
     isListening: status === 'listening',
+    microphones,
+    selectedMicrophoneId,
+    refreshMicrophones: () => serviceRef.current.refreshMicrophones(),
+    selectMicrophone: (deviceId: string) => serviceRef.current.setSelectedMicrophone(deviceId),
     startListening: () => serviceRef.current.startListening(),
     stopListening: () => serviceRef.current.stopListening(),
     clearTranscript: () => {

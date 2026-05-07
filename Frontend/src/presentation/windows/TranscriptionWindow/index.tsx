@@ -8,7 +8,16 @@ import type { Term } from '../../../domain/entities/Term'
 
 export const TranscriptionWindow: React.FC<WindowProps> = ({ darkMode = true }) => {
   const demoStream = useDemoTools()
-  const { transcript, isListening, startListening, stopListening } = useTranscription()
+  const {
+    transcript,
+    isListening,
+    startListening,
+    stopListening,
+    microphones,
+    selectedMicrophoneId,
+    refreshMicrophones,
+    selectMicrophone,
+  } = useTranscription()
   const selectTerm = useTermStore(s => s.selectTerm)
   const togglePin = useTermStore(s => s.togglePin)
   const isPinned = useTermStore(s => s.pinnedTermIds)
@@ -24,6 +33,10 @@ export const TranscriptionWindow: React.FC<WindowProps> = ({ darkMode = true }) 
       transcript={transcript}
       isListening={isListening}
       onToggleListening={handleToggleListening}
+      microphones={microphones}
+      selectedMicrophoneId={selectedMicrophoneId}
+      onRefreshMicrophones={refreshMicrophones}
+      onSelectMicrophone={selectMicrophone}
       showEmbeddedResetButton={false}
       onTermClick={(term: Term) => selectTerm(term)}
       onTermHover={() => {}}
