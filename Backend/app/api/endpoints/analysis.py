@@ -1,4 +1,6 @@
 import fastapi
+from fastapi.responses import StreamingResponse
+
 
 from app.schemas.analysis import (
     ReferDictionaryRequest,
@@ -11,6 +13,7 @@ from app.schemas.analysis import (
 )
 from app.services.text_analysis import vectorize_content_tokens, vectorize_sentence
 from app.services.refer_dictionary import refer_dictionary
+import app.services.refer_dictionary_v1 as rf_dict_v1
 
 router = fastapi.APIRouter()
 
@@ -116,3 +119,26 @@ async def refer_dictionary_endpoint(
         text=body.text,
         entries=[ReferDictionaryEntry(**e) for e in entries],
     )
+
+
+@router.post(
+    "/refer_dictionary_get_scores", # もっと適したエンドポイント名があれば変更する
+    summary="テキスト中の名詞を辞書検索し、意味を取得して関連スコアを計算する",
+    description=(
+        "SSEを採用し、スコア計算が完了したエントリから順次クライアントに送信する形式を想定。"
+        "入力テキストを形態素解析して名詞を抽出し、各名詞の意味をDB またはLLM から取得します。"
+        " DB にキャッシュがあればそちらを返し、なければ LLM で生成して DB に登録します。"
+        " さらに、各意味候補に対して入力テキストとの関連スコアも計算して返します。"
+    ),
+    responses={
+        200: {"description": "辞書検索成功"},
+        422: {"description": "入力バリデーションエラー（text が空など）"},
+    },
+)
+async def refer_dictionary_get_scores(
+    body: ReferDictionaryRequest,
+) -> StreamingResponse:
+    return StreamingResponse(
+        content=rf_dict_v1.service_analyze_text(body.text), 
+        media_type="text/event-stream"
+        )

@@ -2,10 +2,11 @@ from typing import AsyncGenerator
 
 from fastapi.logger import logger
 
-import Backend.app.services.refer_dictionary as rd
-import Backend.app.services.text_analysis as txt_ana
-import Backend.app.crud.dictionary as crud_dict
-import Backend.app.services.llm as llm
+import app.services.refer_dictionary as rd
+import app.services.text_analysis as txt_ana
+import app.crud.dictionary as crud_dict
+import app.services.llm as llm
+import app.services.enbedding as embedding_model
 
 # ================================ endpoint_service ======================================
 async def service_analyze_text(text: str):
@@ -106,7 +107,6 @@ def _compute_text_embedding(text: str) -> list[float]:
     """
     入力テキストのembeddingを計算する関数
     外部APIを呼び出してembeddingを計算する想定
-    フォールバックとして平均値を返す実装も入れておく
     Args:
         text: 入力テキスト
     Returns:
@@ -114,15 +114,11 @@ def _compute_text_embedding(text: str) -> list[float]:
     """
     try:
         pass
-        # embedding = _call_embedding_api(text)
-        # return embedding
+        embedding = embedding_model.call_embedding_api(text)
+        return embedding
     except Exception as e:
-        logger.exception("Embedding APIの呼び出しに失敗: %s\n フォールバックとしてspaCyを使用します。", e)
-        # フォールバック: textanalyze
-        fallback_embedding = txt_ana.vectorize_sentence(text=text)
-        return fallback_embedding
-    logger.warning("Embedding APIの呼び出しに失敗しましたが、フォールバックも実装されていないため、ゼロベクトルを返します。")
-    return [0 for _ in range(300)] # ダミー
+        logger.exception("Embedding APIの呼び出しに失敗: %s\n ゼロベクトルを返します。", e)
+        return [0 for _ in range(300)] # ダミー
 
 
 def _search_dictionary(terms: list[str]) -> list[TermInfo]:
@@ -152,7 +148,8 @@ def _best_sense_selection(term_infos: list[TermInfo], text_embedding: list[float
         Returns:
             best_info: term_infosの中でtext_embeddingに最も意味的に近い
     """
-    
+    # TODO: text_embeddingとterm_infosの意味ベクトルを比較して最も近いものを選ぶロジックを実装する（現状は単純に先頭の意味を選ぶ）
+    # また、ゼロベクトルを想定したハンドリングも必要(スコア計算も同じく)
     return [
         rd.DictionaryEntry(
             term=term_info.term, 
@@ -210,4 +207,3 @@ def _build_prompts(terms: list[str], group_size: int = 10) -> list[str]:
 
 
 # ========================================================================
-
