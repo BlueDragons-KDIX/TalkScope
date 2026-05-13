@@ -13,3 +13,6 @@ import os
 def get_database_url_env_key() -> str:
     """DB接続文字列を読む環境変数名を返す。"""
     return os.environ.get("DATABASE_ENV_KEY", "DATABASE_URL")
+
+
+ZERO_VECTOR_300: list[float] = [0.0] * 300  # 300次元のゼロベクトル

@@ -1,13 +1,15 @@
-import time
 from typing import AsyncGenerator
 
 from fastapi.logger import logger
 
+from config.config import ZERO_VECTOR_300
 import app.services.refer_dictionary as rd
-import app.services.text_analysis as txt_ana
 import app.crud.dictionary as crud_dict
 import app.services.llm as llm
-import app.services.enbedding as embedding_model
+from app.services.enbedding import spacy_enbedding as sp_emb
+from typing import Callable
+
+# 
 
 # ================================ endpoint_service ======================================
 async def service_analyze_text(text: str):
@@ -18,6 +20,23 @@ async def service_analyze_text(text: str):
         # 結果の整形
         pass
 
+# ========================== Model ===================================
+
+class TermInfo:
+    """
+    DBからヒットした用語情報を表すクラス
+    Args:
+        term: 用語
+        sense: 用語の意味のリスト。各意味は (説明, embedding) のタプル
+    """
+    def __init__(self, term: str, sense: list[tuple[str, list[float]]]):
+        self.term : str = term
+        self.sense : list[tuple[str, list[float]]] = sense
+
+# ========================== Protocols / Type Aliases ===============================
+
+# embedding APIを呼び出す関数の型定義
+CallableEmbeddingAPIProtocol = Callable[[str], list[float]]
 
 # ================================= Service ======================================
 
@@ -45,7 +64,7 @@ async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry]
     """
     # TODO: エンベディングと形態素・DB検索の並列化の検討 (しばらくは実装に着手しない)
     # 入力テキストのembeddingを先に計算しておく（意味的な近さの計算に使うため）
-    # test_embedding = await _compute_text_embedding(text)
+    # test_embedding = await _compute_text_embedding(sp_emb.call_embedding_api, text)
 
     # 形態素解析で検索対象の抽出
     search_targets = rd._extract_search_targets(text)
@@ -68,16 +87,7 @@ async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry]
     
     # missした用語の意味候補をLLMで生成
     result_senses = _generate_senses_for_terms(terms_db_miss, group_size=10)
-    
-    # senceそれぞれをエンベディング
-    results_terms: list[TermInfo] = []
-    for term, senses in result_senses.items():
-        term_info = TermInfo(term=term, sense=[])
-        for sense in senses:
-            embedding = await _compute_text_embedding(sense)
-            # DB保存のためのオブジェクトを作る
-            term_info.sense.append((sense, embedding))
-        results_terms.append(term_info)
+    results_terms = _embed_terms(sp_emb.call_embedding_api, result_senses)
     
     # TODO: DB保存をスレッドに分離して並列化し、書き込みの確認をせずにreturnすることも検討
     # DB保存
@@ -85,37 +95,38 @@ async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry]
     # 最後にbest sense選択して返す
     yield _best_sense_selection(term_infos=results_terms, text_embedding=[], source="llm")
 
-# ========================== Model ===================================
-
-class TermInfo:
-    """
-    DBからヒットした用語情報を表すクラス
-    Args:
-        term: 用語
-        sense: 用語の意味のリスト。各意味は (説明, embedding) のタプル
-    """
-    def __init__(self, term: str, sense: list[tuple[str, list[float]]]):
-        self.term : str = term
-        self.sence : list[tuple[str, list[float]]] = sense
 
 # =========================== Domain ===================================
 
-def _compute_text_embedding(text: str) -> list[float]:
+def _compute_text_embedding(call_embedding_api: CallableEmbeddingAPIProtocol, text: str) -> list[float]:
     """
     入力テキストのembeddingを計算する関数
     外部APIを呼び出してembeddingを計算する想定
     Args:
+        embedding_model: embeddingモデルのcall_embedding_api関数
         text: 入力テキスト
     Returns:
         embedding: テキストの意味を表すベクトル
     """
     try:
-        pass
-        embedding = embedding_model.call_embedding_api(text)
+        embedding = call_embedding_api(text)
         return embedding
     except Exception as e:
         logger.exception("Embedding APIの呼び出しに失敗: %s\n ゼロベクトルを返します。", e)
-        return [0 for _ in range(300)] # ダミー
+        return ZERO_VECTOR_300.copy()
+
+def _embed_terms(call_embedding_api: CallableEmbeddingAPIProtocol, terms: dict[str, list[str]]) -> list[TermInfo]:
+    """用語のリストを受け取り、各用語の意味テキストをembeddingを計算する関数"""
+    results_terms: list[TermInfo] = []
+    # 用語ごとに意味のembeddingを計算する
+    for term, senses in terms.items():
+        term_info = TermInfo(term=term, sense=[])
+        for sense in senses:
+            embedding = _compute_text_embedding(call_embedding_api, sense)
+            # DB保存のためのオブジェクトを作る
+            term_info.sense.append((sense, embedding))
+        results_terms.append(term_info)
+    return results_terms
 
 
 def _search_dictionary(terms: list[str]) -> list[TermInfo]:
@@ -167,8 +178,8 @@ def _best_sense_selection(term_infos: list[TermInfo], text_embedding: list[float
     return [
         rd.DictionaryEntry(
             term=term_info.term, 
-            description=term_info.sence[0][0], 
-            meaning_vector=term_info.sence[0][1],
+            description=term_info.sense[0][0], 
+            meaning_vector=term_info.sense[0][1],
             source=source,
         ) \
         for term_info in term_infos
