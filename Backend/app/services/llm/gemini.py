@@ -18,8 +18,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ---------------------------------------------------------------------------
 # 公開関数
 # ---------------------------------------------------------------------------
-def generate_senses(prompt: str) -> dict[str, Any]:
-    """Geminiを呼び出して、用語ごとの意味候補をJSONとして返す。
+def generate_json(prompt: str) -> dict[str, list[str]]:
+    """Geminiを呼び出して、用語ごとの意味候補JSONを返す。
 
     この関数は「LLM呼び出しの薄い入口」として使う。
     後でmodels層に詰め替える前提なので、この段階ではPydanticなどの
@@ -137,11 +137,14 @@ def _extract_text(payload_json: dict[str, Any]) -> str:
     )
 
 
-def _parse_json_response(response_text: str) -> dict[str, Any]:
-    """Geminiが返したJSON文字列をdictに変換する。
+def _parse_json_response(response_text: str) -> dict[str, list[str]]:
+    """Geminiが返したJSON文字列を意味候補dictに変換する。
 
-    今はmodelsへの詰め替え前なので、ここでは「JSONオブジェクトであること」
-    だけを保証する。用語名や意味配列の厳密な検証は、後続のmodels定義後に寄せる。
+    想定形式:
+      {
+          "単語": ["意味1", "意味2", "意味3"],
+            ...
+      }
     """
     try:
         parsed = json.loads(response_text)
@@ -156,5 +159,25 @@ def _parse_json_response(response_text: str) -> dict[str, Any]:
             status_code=502,
             detail="Gemini upstream returned invalid JSON",
         )
+    print(f"DEBUG: Parsed Gemini JSON: {parsed}")
 
-    return parsed
+    result: dict[str, list[str]] = {}
+    for term, senses in parsed.items():
+        if not isinstance(term, str) or not isinstance(senses, list):
+            raise fastapi.HTTPException(
+                status_code=502,
+                detail="Gemini upstream returned invalid JSON",
+            )
+
+        normalized_senses: list[str] = []
+        for sense in senses:
+            if not isinstance(sense, str):
+                raise fastapi.HTTPException(
+                    status_code=502,
+                    detail="Gemini upstream returned invalid JSON",
+                )
+            normalized_senses.append(sense)
+
+        result[term] = normalized_senses
+
+    return result

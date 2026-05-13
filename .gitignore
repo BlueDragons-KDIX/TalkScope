@@ -53,3 +53,5 @@ __pycache__/
 
 .claude/
 .claire/
+
+AGENTS_custom_rule.md

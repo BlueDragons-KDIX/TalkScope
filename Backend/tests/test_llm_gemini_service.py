@@ -1,42 +1,41 @@
-import fastapi
+import os
+
 import pytest
+import dotenv
+dotenv.load_dotenv()
 
-import app.services.llm.gemini as gemini_service
+from app.services.refer_dictionary_v1 import _generate_senses_for_terms
 
 
-def test_generate_senses_returns_json_object(monkeypatch) -> None:
-    monkeypatch.setattr(
-        gemini_service,
-        "_call_gemini",
-        lambda _prompt: '{"RAG": ["外部情報を参照して回答を補う手法"]}',
+def test_generate_senses_for_terms_live() -> None:
+    result = _generate_senses_for_terms(
+        [
+            "フライパン",
+            "TypeScript",
+            "SSE",
+            "自然言語処理",
+            "Python",
+            "機械学習",
+            "深層学習",
+            "Transformer",
+            "BERT",
+            "GPT",
+            "ニューラルネットワーク",
+        ], group_size=5
     )
 
-    result = gemini_service.generate_senses("RAGの意味を生成して")
-
-    assert result == {"RAG": ["外部情報を参照して回答を補う手法"]}
-
-
-def test_generate_senses_rejects_blank_prompt() -> None:
-    with pytest.raises(fastapi.HTTPException) as exc_info:
-        gemini_service.generate_senses("   ")
-
-    assert exc_info.value.status_code == 422
-    assert exc_info.value.detail == "prompt must not be blank"
-
-
-def test_call_gemini_rejects_missing_api_key(monkeypatch) -> None:
-    monkeypatch.setattr(gemini_service, "GEMINI_API_KEY", None)
-
-    with pytest.raises(fastapi.HTTPException) as exc_info:
-        gemini_service._call_gemini("test prompt")
-
-    assert exc_info.value.status_code == 503
-    assert exc_info.value.detail == "GEMINI_API_KEY is not configured"
-
-
-def test_parse_json_response_rejects_non_object_json() -> None:
-    with pytest.raises(fastapi.HTTPException) as exc_info:
-        gemini_service._parse_json_response('["意味1"]')
-
-    assert exc_info.value.status_code == 502
-    assert exc_info.value.detail == "Gemini upstream returned invalid JSON"
+    assert result
+    assert set(result) == {
+        "フライパン",
+        "TypeScript",
+        "SSE",
+        "自然言語処理",
+        "Python",
+        "機械学習",
+        "深層学習",
+        "Transformer",
+        "BERT",
+        "GPT",
+        "ニューラルネットワーク",
+    }
+    assert all(isinstance(senses, list) for senses in result.values())

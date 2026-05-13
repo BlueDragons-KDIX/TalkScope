@@ -1,3 +1,3 @@
-from .gemini import generate_senses
+from .gemini import generate_json
 
-__all__ = ["generate_senses"]
+__all__ = ["generate_json"]

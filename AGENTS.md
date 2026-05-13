@@ -12,6 +12,9 @@ Frontend固有のアーキテクチャ・コーディング規則・ドキュメ
 **Backend/ 配下で作業する場合は必ず `Backend/AGENTS.md` も参照してください。**
 Backend固有の実装ルールは `Backend/AGENTS.md` に集約し、詳細な開発方針や今後増える補足ドキュメントは `Backend/.codex/` 配下から辿れるようにします。
 
+## 現環境でのルール
+`AGENTS_custom_rule.md` があれば、必ず参照してください。
+
 ## 目的
 
 LexiFlow は、会話を文字起こしし、文脈上重要な語や専門語を抽出・強調して、

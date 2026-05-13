@@ -1,3 +1,4 @@
+import time
 from typing import AsyncGenerator
 
 from fastapi.logger import logger
@@ -65,12 +66,8 @@ async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry]
     # missの場合
     terms_db_miss = [term for term in unique_joined_terms if term not in {r.term for r in results_term}] 
     
-    # プロンプト生成
-    prompts = _build_prompts(terms_db_miss, group_size=10)
-    
-    # 各グループごとにLLMで回答
-    for prompt in prompts:
-        result_senses: dict[str, list[str]] = llm.generate_senses(prompt)
+    # missした用語の意味候補をLLMで生成
+    result_senses = _generate_senses_for_terms(terms_db_miss, group_size=10)
     
     # senceそれぞれをエンベディング
     results_terms: list[TermInfo] = []
@@ -138,6 +135,23 @@ def _search_dictionary(terms: list[str]) -> list[TermInfo]:
     return [TermInfo(term=entry.term, sense=[(entry.description, entry.meaning_vector)]) for entry in result]
 
 
+def _generate_senses_for_terms(terms: list[str], group_size: int = 10) -> dict[str, list[str]]:
+    """
+    辞書参照用に、用語ごとの意味候補をLLMで生成する。
+    Args:
+        terms: 意味候補を生成する用語のリスト
+        group_size: 一度にLLMへ渡す用語数
+    Returns:
+        result_senses: 用語をキー、意味候補の配列を値にした辞書
+    """
+    result_senses: dict[str, list[str]] = {}
+    prompts = _build_prompts(terms, group_size=group_size)
+
+    for prompt in prompts:
+        result_senses.update(llm.generate_json(prompt))
+    return result_senses
+
+
 def _best_sense_selection(term_infos: list[TermInfo], text_embedding: list[float], source: str) -> list[rd.DictionaryEntry]:
     """
         DBから複数エントリがヒットした場合の意味選択ロジック
@@ -189,13 +203,19 @@ def _build_prompts(terms: list[str], group_size: int = 10) -> list[str]:
             - 出力はJSONのみとし、説明文は出さないでください
             - JSONのキーは入力された単語と完全に一致させてください
 
-            出力形式:
+            出力形式(JSON):
             {{
-            "単語": [
+            "単語1": [
                 "意味1",
                 "意味2",
                 "意味3"
-            ]
+            ],
+            "単語2": [
+                "意味1",
+                "意味2",
+                "意味3"
+            ],
+                       ...
             }}
             
             単語:
