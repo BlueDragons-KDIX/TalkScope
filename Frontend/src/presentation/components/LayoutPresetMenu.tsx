@@ -14,6 +14,7 @@ import {
   removeUserWindowFromDockedLayout,
 } from '../layout/layoutUtils'
 import { getLayoutSelectableWindows } from '../windows/registry'
+import { useAccentTheme } from '../../theme/AccentThemeContext'
 
 const PRESETS = [
   { key: 'default', label: 'デフォルト', make: makeDefaultLayout },
@@ -37,7 +38,7 @@ interface Props {
 }
 
 const focusRing =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2'
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent-rgb)/0.45)] focus-visible:ring-offset-2'
 
 export const LayoutPresetMenu: React.FC<Props> = ({
   darkMode = true,
@@ -49,6 +50,7 @@ export const LayoutPresetMenu: React.FC<Props> = ({
 }) => {
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  const { rgb } = useAccentTheme()
   const setLayout = useLayoutStore(s => s.setLayout)
   const layout = useLayoutStore(s => s.layouts[phaseId])
   const menuPos = menuAlign === 'right' ? 'right-0 left-auto' : 'left-0'
@@ -107,7 +109,7 @@ export const LayoutPresetMenu: React.FC<Props> = ({
 
   const dk = darkMode
   const rowHover = dk ? 'hover:bg-slate-800/80' : 'hover:bg-slate-50'
-  const chk = dk ? 'accent-indigo-500 border-slate-600' : 'accent-indigo-600 border-slate-300'
+  const chk = dk ? 'border-slate-600' : 'border-slate-300'
 
   return (
     <div
@@ -158,6 +160,7 @@ export const LayoutPresetMenu: React.FC<Props> = ({
                 <input
                   type="checkbox"
                   className={`size-4 shrink-0 rounded border ${chk}`}
+                  style={{ accentColor: `rgb(${rgb})` }}
                   checked={activeIds.has(def.id)}
                   onChange={e => {
                     e.stopPropagation()

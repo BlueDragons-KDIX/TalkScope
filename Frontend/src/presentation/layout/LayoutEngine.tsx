@@ -8,15 +8,7 @@ import {
   SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX,
   SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
 } from '../constants/systemControlWindow'
-
-const ACCENT_RGB: Record<string, string> = {
-  blue: '59,130,246',
-  indigo: '99,102,241',
-  purple: '168,85,247',
-  rose: '244,63,94',
-  emerald: '16,185,129',
-  orange: '249,115,22',
-}
+import { getAccentRgb } from '../../theme/accentTokens'
 
 const DropOverlay: React.FC<{ zone: DropZone; rgb: string }> = ({ zone, rgb }) => {
   const base: React.CSSProperties = {
@@ -87,10 +79,13 @@ export interface LayoutEngineProps {
 export const LayoutEngine: React.FC<LayoutEngineProps> = ({
   layout, onLayoutChange, darkMode, themeColor = 'indigo', onClose,
 }) => {
-  const accentRgb = ACCENT_RGB[themeColor] ?? ACCENT_RGB['indigo']
-  const borderStyle = `2px solid rgba(${accentRgb},0.6)`
-  const headerBg = `rgba(${accentRgb},0.07)`
+  const accentRgb = getAccentRgb(themeColor)
+  const borderStyle = `2px solid rgba(${accentRgb},0.72)`
+  const headerBg = `rgba(${accentRgb},${darkMode ? 0.18 : 0.12})`
   const dotColor = `rgba(${accentRgb},1)`
+  const panelGlow = darkMode
+    ? `0 0 0 1px rgba(${accentRgb},0.14), 0 12px 40px rgba(${accentRgb},0.1)`
+    : `0 0 0 1px rgba(${accentRgb},0.18), 0 10px 36px rgba(${accentRgb},0.08)`
 
   const [dragging, setDragging] = useState<string | null>(null)
   const [dropInfo, setDropInfo] = useState<{ windowId: string; zone: DropZone } | null>(null)
@@ -143,6 +138,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
             position: 'relative', display: 'flex', flexDirection: 'column',
             width: '100%', height: '100%',
             overflow: 'hidden', border: borderStyle, borderRadius: 6,
+            boxShadow: panelGlow,
             ...leafMin,
           }}
         >
@@ -150,8 +146,8 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
             draggable
             onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragging(node.windowId) }}
             onDragEnd={() => { setDragging(null); setDropInfo(null) }}
-            className={`flex items-center gap-1.5 px-2.5 py-1 flex-shrink-0 cursor-grab active:cursor-grabbing select-none border-b ${darkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
-            style={{ backgroundColor: headerBg, borderBottomColor: `rgba(${accentRgb},0.3)` }}
+            className={`flex items-center gap-1.5 px-2.5 py-1 flex-shrink-0 cursor-grab active:cursor-grabbing select-none border-b font-semibold ${darkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
+            style={{ backgroundColor: headerBg, borderBottomColor: `rgba(${accentRgb},0.42)` }}
           >
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
             <GripHorizontal size={10} className="opacity-40 flex-shrink-0" />
@@ -166,11 +162,23 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
               </button>
             )}
           </div>
-          <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-            {WindowComponent
-              ? <WindowComponent windowId={node.windowId} darkMode={darkMode} />
-              : <div className="p-4 text-sm text-slate-400">ウィンドウ未登録: {node.windowId}</div>
-            }
+          <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+            <div className="relative z-0 h-full min-h-0 overflow-hidden">
+              {WindowComponent
+                ? <WindowComponent windowId={node.windowId} darkMode={darkMode} />
+                : <div className="p-4 text-sm text-slate-400">ウィンドウ未登録: {node.windowId}</div>
+              }
+            </div>
+            {/* テーマカラーのごく薄い背景ティント（コンテンツ上・操作は透過） */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background: darkMode
+                  ? `radial-gradient(115% 90% at 50% -5%, rgba(${accentRgb},0.13) 0%, rgba(${accentRgb},0.045) 38%, transparent 68%)`
+                  : `radial-gradient(110% 85% at 50% -5%, rgba(${accentRgb},0.1) 0%, rgba(${accentRgb},0.035) 42%, transparent 70%)`,
+              }}
+            />
           </div>
           {dragging !== null && dragging !== node.windowId && (
             <div
@@ -237,7 +245,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
       </div>
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dragging, dropInfo, darkMode, accentRgb, borderStyle, headerBg, dotColor, calcZone, onLayoutChange, onClose])
+  }, [dragging, dropInfo, darkMode, accentRgb, borderStyle, headerBg, dotColor, panelGlow, calcZone, onLayoutChange, onClose])
 
   return (
     <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>

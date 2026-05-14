@@ -9,6 +9,8 @@ import {
   type DictionaryEntry,
   updateDictionaryEntry,
 } from '@/app/utils/dictionaryApi';
+import { useAccentTheme } from '../../theme/AccentThemeContext';
+import { accentRgba, micStartButtonStyle } from '../../theme/accentStyles';
 
 interface DictionaryManagerModalProps {
   isOpen: boolean;
@@ -34,6 +36,7 @@ export const DictionaryManagerModal: React.FC<DictionaryManagerModalProps> = ({
   darkMode = true,
 }) => {
   const dk = darkMode;
+  const { rgb } = useAccentTheme();
   const [entries, setEntries] = useState<DictionaryEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState('');
@@ -168,7 +171,7 @@ export const DictionaryManagerModal: React.FC<DictionaryManagerModalProps> = ({
         <div className={`px-5 py-4 border-b ${dk ? 'border-slate-800/70' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <BookOpenText size={16} className="text-indigo-400" />
+              <BookOpenText size={16} style={{ color: accentRgba(rgb, dk ? 0.85 : 0.72) }} />
               <h2 className="text-sm sm:text-base font-black">単語管理</h2>
               <span className={`text-[11px] font-mono ${dk ? 'text-slate-500' : 'text-slate-500'}`}>
                 total: {total}
@@ -207,11 +210,8 @@ export const DictionaryManagerModal: React.FC<DictionaryManagerModalProps> = ({
               <button
                 onClick={handleBulkRegister}
                 disabled={registering}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-                  dk
-                    ? 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50'
-                    : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50'
-                }`}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold transition-[filter] flex items-center gap-1.5 text-white hover:brightness-110 disabled:opacity-50"
+                style={micStartButtonStyle(rgb, dk)}
               >
                 {registering ? <Loader2 size={13} className="animate-spin" /> : null}
                 登録実行
@@ -377,7 +377,8 @@ export const DictionaryManagerModal: React.FC<DictionaryManagerModalProps> = ({
               <button
                 onClick={() => void saveEdit()}
                 disabled={savingEdit}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-white flex items-center gap-1.5 transition-[filter] hover:brightness-110 disabled:opacity-50"
+                style={micStartButtonStyle(rgb, dk)}
               >
                 {savingEdit ? <Loader2 size={12} className="animate-spin" /> : null}
                 保存

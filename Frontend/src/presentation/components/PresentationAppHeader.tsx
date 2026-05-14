@@ -2,6 +2,8 @@ import React from 'react'
 import { Settings } from 'lucide-react'
 import { LayoutPresetMenu } from './LayoutPresetMenu'
 import { TestFeaturesPopover } from './TestFeaturesPopover'
+import { useAccentTheme } from '../../theme/AccentThemeContext'
+import { accentRgba } from '../../theme/accentStyles'
 
 export interface PresentationAppHeaderProps {
   darkMode: boolean
@@ -10,7 +12,7 @@ export interface PresentationAppHeaderProps {
 }
 
 const focusRing =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2'
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent-rgb)/0.45)] focus-visible:ring-offset-2'
 
 /**
  * プレゼンレイヤのヘッダー（ブランド・フェーズ・レイアウト・設定・開発テスト）。
@@ -21,6 +23,7 @@ export const PresentationAppHeader: React.FC<PresentationAppHeaderProps> = ({
   onOpenAppearance,
 }) => {
   const dk = darkMode
+  const { rgb } = useAccentTheme()
   const isDuring = currentPhaseId === 'during'
   const ringOffset = dk ? 'focus-visible:ring-offset-[#0d0e1a]' : 'focus-visible:ring-offset-white'
   const settingsPill = dk
@@ -39,17 +42,25 @@ export const PresentationAppHeader: React.FC<PresentationAppHeaderProps> = ({
         >
           TALKSCOPE
         </span>
-        <span
-          className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${isDuring
-            ? dk
-              ? 'bg-emerald-500/20 text-emerald-400'
-              : 'bg-emerald-100 text-emerald-700'
-            : dk
-              ? 'bg-violet-500/20 text-violet-400'
-              : 'bg-violet-100 text-violet-700'}`}
-        >
-          {isDuring ? '発表中' : '発表後'}
-        </span>
+        {isDuring ? (
+          <span
+            className={`shrink-0 text-xs font-bold px-2.5 py-1 rounded-full ${
+              dk ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
+            }`}
+          >
+            発表中
+          </span>
+        ) : (
+          <span
+            className="shrink-0 text-xs font-bold px-2.5 py-1 rounded-full"
+            style={{
+              backgroundColor: accentRgba(rgb, dk ? 0.22 : 0.12),
+              color: accentRgba(rgb, dk ? 0.94 : 0.88),
+            }}
+          >
+            発表後
+          </span>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2" aria-label="ツールバー">

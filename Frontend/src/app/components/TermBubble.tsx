@@ -5,6 +5,8 @@ import { Term } from '../data/terms';
 import { Info, Star } from 'lucide-react';
 import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
 import { scaledContentFontPx } from '../utils/contentFontScale';
+import { useAccentTheme } from '../../theme/AccentThemeContext';
+import { accentRgba } from '../../theme/accentStyles';
 
 const TOOLTIP = { W: 176, H: 120, PAD: 8, GAP_ABOVE: 12 } as const;
 
@@ -37,6 +39,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   mapContainerRef,
 }) => {
   const contentFontScale = useContentFontScaleStore(s => s.scale);
+  const { rgb } = useAccentTheme();
   const [isHovered, setIsHovered] = useState(false);
   const [isShowingDesc, setIsShowingDesc] = useState(false);
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; showBelow: boolean } | null>(null);
@@ -283,8 +286,8 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
         >
             <div className="flex items-center gap-1.5 mb-1">
               <span
-                className={`font-bold ${dk ? 'text-indigo-400' : 'text-indigo-500'}`}
-                style={{ fontSize: scaledContentFontPx(9, contentFontScale) }}
+                className="font-bold"
+                style={{ fontSize: scaledContentFontPx(9, contentFontScale), color: accentRgba(rgb, dk ? 0.92 : 0.88) }}
               >
                 {term.category}
               </span>
@@ -313,8 +316,8 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
               {term.shortDesc}
             </p>
             <div
-              className={`mt-1.5 font-medium flex items-center gap-1 ${dk ? 'text-indigo-400' : 'text-indigo-500'}`}
-              style={{ fontSize: scaledContentFontPx(9, contentFontScale) }}
+              className="mt-1.5 font-medium flex items-center gap-1"
+              style={{ fontSize: scaledContentFontPx(9, contentFontScale), color: accentRgba(rgb, dk ? 0.88 : 0.82) }}
             >
               <Info size={8} /> クリックで詳細
             </div>

@@ -15,6 +15,7 @@ import { useTranscriptStore } from '../stores/transcriptStore'
 import { useTermStore } from '../stores/termStore'
 import { useBubbleStore } from '../stores/bubbleStore'
 import { getOppositeThemeColor } from './utils/oppositeThemeColor'
+import { AccentThemeProvider } from '../theme/AccentThemeContext'
 
 // ウィンドウを一度だけ登録
 let _registered = false
@@ -68,6 +69,7 @@ const App: React.FC = () => {
         }}
       >
         <DemoImportantTermsBridge />
+        <AccentThemeProvider themeColor={phaseAccentColor}>
         <div
           className={`w-screen h-screen flex flex-col overflow-hidden ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}
         >
@@ -94,6 +96,7 @@ const App: React.FC = () => {
 
           <Toaster position="bottom-right" theme={darkMode ? 'dark' : 'light'} />
         </div>
+        </AccentThemeProvider>
       </PresentationShellProvider>
     </DemoToolsProvider>
   )

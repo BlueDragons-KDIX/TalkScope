@@ -9,6 +9,8 @@ import type { MicrophoneDevice, TranscriptionMode } from '../../domain/interface
 import { RecordingToolbar } from '../../presentation/components/RecordingToolbar';
 import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
 import { scaledContentFontPx } from '../utils/contentFontScale';
+import { useAccentTheme } from '../../theme/AccentThemeContext';
+import { accentRgba, accentRgbSolid, accentSliderStyle, termChipStyle } from '../../theme/accentStyles';
 
 const TOOLTIP = { W: 208, H: 100, PAD: 8, GAP_ABOVE: 12 } as const;
 
@@ -67,6 +69,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const termButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const contentFontScale = useContentFontScaleStore(s => s.scale);
+  const { rgb } = useAccentTheme();
   const [hoveredPartIndex, setHoveredPartIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; showBelow: boolean } | null>(null);
 
@@ -170,10 +173,28 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
       >
         {!transcript ? (
           <div className={`h-full flex flex-col items-center justify-center text-center gap-3 ${dk ? 'text-slate-600' : 'text-slate-300'}`}>
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${
-              isListening ? (dk ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-indigo-300 bg-indigo-50') : (dk ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50')
-            }`}>
-              <Radio size={28} className={isListening ? (dk ? 'text-indigo-400' : 'text-indigo-500') : (dk ? 'text-slate-600' : 'text-slate-300')} />
+            <div
+              className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${
+                isListening ? '' : (dk ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50')
+              }`}
+              style={
+                isListening
+                  ? {
+                      borderColor: accentRgba(rgb, dk ? 0.55 : 0.45),
+                      backgroundColor: accentRgba(rgb, dk ? 0.12 : 0.08),
+                    }
+                  : undefined
+              }
+            >
+              <Radio
+                size={28}
+                style={
+                  isListening
+                    ? { color: accentRgbSolid(rgb) }
+                    : undefined
+                }
+                className={isListening ? '' : (dk ? 'text-slate-600' : 'text-slate-300')}
+              />
             </div>
             <div>
               <p className={`text-sm font-bold ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -227,11 +248,8 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                       }}
                       onMouseEnter={() => { setHoveredPartIndex(index); onTermHover(term); }}
                       onMouseLeave={() => { setHoveredPartIndex(null); onTermHover(null); }}
-                      className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-all font-bold ${
-                        dk
-                          ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/35 border border-indigo-500/30'
-                          : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                      }`}
+                      className="px-1.5 py-0.5 rounded-md cursor-pointer transition-[filter,transform] font-bold hover:brightness-110"
+                      style={termChipStyle(dk, rgb)}
                     >
                       {part.content}
                     </button>
@@ -242,7 +260,13 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
               return <span key={index}>{part.content}</span>;
             })}
             {isListening && (
-              <span className={`inline-block w-0.5 h-4 ml-0.5 ${dk ? 'bg-indigo-400 shadow-lg shadow-indigo-400/50' : 'bg-indigo-500'} animate-pulse align-middle rounded-full`} />
+              <span
+                className="inline-block w-0.5 h-4 ml-0.5 animate-pulse align-middle rounded-full"
+                style={{
+                  backgroundColor: accentRgbSolid(rgb),
+                  boxShadow: dk ? `0 0 12px ${accentRgba(rgb, 0.55)}` : `0 0 8px ${accentRgba(rgb, 0.35)}`,
+                }}
+              />
             )}
             {isStreaming && (
               <span className={`inline-block w-0.5 h-4 ml-0.5 bg-purple-400 animate-pulse align-middle rounded-full`} />
@@ -271,8 +295,11 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
             )}
             <div className="flex items-center gap-2 mb-1.5">
               <span
-                className={`font-bold ${dk ? 'text-indigo-400' : 'text-indigo-300'}`}
-                style={{ fontSize: scaledContentFontPx(10, contentFontScale) }}
+                className="font-bold"
+                style={{
+                  fontSize: scaledContentFontPx(10, contentFontScale),
+                  color: accentRgba(rgb, dk ? 0.92 : 0.85),
+                }}
               >
                 {hoveredTerm.category}
               </span>
@@ -374,9 +401,12 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                       value={pos}
                       onChange={e => demoStream.setIntervalMs(posToMs(Number(e.target.value)))}
                       className={`w-full h-1.5 rounded-full appearance-none cursor-pointer ${
-                        isStreaming ? 'accent-purple-500' : (dk ? 'accent-slate-500' : 'accent-slate-400')
+                        isStreaming ? 'accent-purple-500' : ''
                       }`}
-                      style={{ background: dk ? '#1e293b' : '#e2e8f0' }}
+                      style={{
+                        background: dk ? '#1e293b' : '#e2e8f0',
+                        ...(isStreaming ? {} : accentSliderStyle(rgb)),
+                      }}
                       title={`速度: ${demoStream.intervalMs}ms (${pos}/100)`}
                     />
                     <div className={`flex justify-between text-[8px] font-bold ${dk ? 'text-slate-700' : 'text-slate-300'}`}>

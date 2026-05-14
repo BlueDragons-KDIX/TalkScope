@@ -13,6 +13,8 @@ import {
 import type { WindowProps } from '../IWindowDefinition'
 import { useContentFontScaleStore } from '../../../stores/contentFontScaleStore'
 import { scaledContentFontPx } from '../../../app/utils/contentFontScale'
+import { useAccentTheme } from '../../../theme/AccentThemeContext'
+import { accentRgba, accentRgbSolid, accentSliderStyle } from '../../../theme/accentStyles'
 
 const RANK_THROTTLE_MS = 160
 const MIN_ROW_HEIGHT = 50
@@ -33,6 +35,7 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   const togglePin = useTermStore(s => s.togglePin)
 
   const contentFontScale = useContentFontScaleStore(s => s.scale)
+  const { rgb } = useAccentTheme()
 
   const throttledTranscript = useThrottledValue(transcript, RANK_THROTTLE_MS)
   const throttledTerms = useThrottledValue(activeTerms as Term[], RANK_THROTTLE_MS)
@@ -102,9 +105,17 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
                 onClick={() => setFilterMode('all')}
                 className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
                   filterMode === 'all'
-                    ? dk ? 'bg-indigo-500/30 text-indigo-200' : 'bg-indigo-100 text-indigo-700'
+                    ? ''
                     : dk ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'
                 }`}
+                style={
+                  filterMode === 'all'
+                    ? {
+                        backgroundColor: accentRgba(rgb, dk ? 0.32 : 0.14),
+                        color: accentRgba(rgb, dk ? 0.96 : 0.88),
+                      }
+                    : undefined
+                }
               >
                 重要度順
               </button>
@@ -130,8 +141,8 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
               step={1}
               value={rowSizeSlider}
               onChange={(e) => setRowSizeSlider(Number(e.target.value))}
-              className={`w-28 h-1.5 rounded-full appearance-none cursor-pointer ${dk ? 'accent-violet-400' : 'accent-violet-600'}`}
-              style={{ background: dk ? '#334155' : '#cbd5e1' }}
+              className="w-28 h-1.5 rounded-full appearance-none cursor-pointer"
+              style={{ background: dk ? '#334155' : '#cbd5e1', ...accentSliderStyle(rgb) }}
               title={`要素サイズ: ${rowSizeSlider}`}
             />
             <span className={`text-[10px] font-mono ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -180,11 +191,22 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
                       className="flex items-center gap-2 flex-1 min-w-0 text-left"
                     >
                       <span
-                        className={`w-8 h-8 shrink-0 rounded-full border text-center text-[12px] font-black leading-[30px] ${
+                        className="w-8 h-8 shrink-0 rounded-full border text-center text-[12px] font-black leading-[30px]"
+                        style={
                           dk
-                            ? 'text-indigo-100 border-indigo-300/70 bg-gradient-to-b from-indigo-500/80 to-indigo-700/80 shadow-[0_0_12px_rgba(99,102,241,0.45)]'
-                            : 'text-indigo-800 border-indigo-300 bg-gradient-to-b from-indigo-100 to-indigo-200 shadow-[0_1px_6px_rgba(79,70,229,0.22)]'
-                        }`}
+                            ? {
+                                color: accentRgba(rgb, 0.96),
+                                borderColor: accentRgba(rgb, 0.55),
+                                background: `linear-gradient(to bottom, ${accentRgba(rgb, 0.75)}, ${accentRgba(rgb, 0.45)})`,
+                                boxShadow: `0 0 14px ${accentRgba(rgb, 0.4)}`,
+                              }
+                            : {
+                                color: accentRgba(rgb, 0.95),
+                                borderColor: accentRgba(rgb, 0.4),
+                                background: `linear-gradient(to bottom, ${accentRgba(rgb, 0.18)}, ${accentRgba(rgb, 0.32)})`,
+                                boxShadow: `0 1px 8px ${accentRgba(rgb, 0.22)}`,
+                              }
+                        }
                       >
                         {index + 1}
                       </span>
@@ -203,8 +225,11 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
                         </span>
                         <span className={`mt-1 block h-1.5 w-full rounded-full ${dk ? 'bg-slate-700' : 'bg-slate-200'}`}>
                           <span
-                            className={`block h-1.5 rounded-full ${dk ? 'bg-indigo-400' : 'bg-indigo-500'}`}
-                            style={{ width: `${Math.max(8, Math.min(100, (row.score / maxVisibleScore) * 100))}%` }}
+                            className="block h-1.5 rounded-full"
+                            style={{
+                              width: `${Math.max(8, Math.min(100, (row.score / maxVisibleScore) * 100))}%`,
+                              backgroundColor: accentRgbSolid(rgb),
+                            }}
                           />
                         </span>
                       </span>

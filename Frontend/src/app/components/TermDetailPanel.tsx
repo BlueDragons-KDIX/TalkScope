@@ -3,6 +3,8 @@ import { Term } from '../data/terms';
 import { X, ExternalLink, Hash, BookOpen, Layers, Star, Copy } from 'lucide-react';
 import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
 import { scaledContentFontPx } from '../utils/contentFontScale';
+import { useAccentTheme } from '../../theme/AccentThemeContext';
+import { accentRgba, micStartButtonStyle } from '../../theme/accentStyles';
 
 interface TermDetailPanelProps {
   term: Term | null;
@@ -23,6 +25,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
 }) => {
   const dk = darkMode;
   const contentFontScale = useContentFontScaleStore(s => s.scale);
+  const { rgb } = useAccentTheme();
 
   if (!term) {
     return (
@@ -131,14 +134,15 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
         <section>
-          <div className={`flex items-center justify-between gap-2 mb-2 text-xs font-bold ${dk ? 'text-indigo-400' : 'text-indigo-600'}`}>
+          <div className="flex items-center justify-between gap-2 mb-2 text-xs font-bold" style={{ color: accentRgba(rgb, dk ? 0.9 : 0.82) }}>
             <span className="flex items-center gap-1.5">
               <BookOpen size={13} /><span>説明</span>
             </span>
             <button
               onClick={copyDesc}
               title="説明をコピー"
-              className={`p-1.5 rounded-lg transition-colors shrink-0 ${dk ? 'hover:bg-slate-800 text-indigo-400/80 hover:text-indigo-400' : 'hover:bg-slate-100 text-indigo-600/80 hover:text-indigo-600'}`}
+              className={`p-1.5 rounded-lg transition-colors shrink-0 ${dk ? 'hover:bg-slate-800' : 'hover:bg-slate-100'}`}
+              style={{ color: accentRgba(rgb, dk ? 0.85 : 0.75) }}
             >
               <Copy size={13} />
             </button>
@@ -154,7 +158,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
 
         {related.length > 0 && (
           <section className="hidden">
-            <div className={`flex items-center gap-1.5 mb-2 text-xs font-bold ${dk ? 'text-indigo-400' : 'text-indigo-600'}`}>
+            <div className="flex items-center gap-1.5 mb-2 text-xs font-bold" style={{ color: accentRgba(rgb, dk ? 0.9 : 0.82) }}>
               <Layers size={13} /><span>関連ワード</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -162,7 +166,12 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
                 <button
                   key={r.id}
                   onClick={() => onRelatedTermClick(r)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all flex items-center gap-1 ${dk ? 'border-indigo-500/20 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20' : 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all flex items-center gap-1 ${dk ? 'hover:brightness-110' : 'hover:brightness-95'}`}
+                  style={{
+                    borderColor: accentRgba(rgb, dk ? 0.35 : 0.28),
+                    backgroundColor: accentRgba(rgb, dk ? 0.14 : 0.08),
+                    color: accentRgba(rgb, dk ? 0.95 : 0.88),
+                  }}
                 >
                   <Hash size={9} />{r.word}
                 </button>
@@ -192,7 +201,8 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
             href={term.externalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-[filter] hover:brightness-110 text-white"
+            style={micStartButtonStyle(rgb, dk)}
           >
             公式サイト<ExternalLink size={11} />
           </a>

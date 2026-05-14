@@ -13,6 +13,8 @@ import { DEMO_TEXT_INSTANT } from '../../debug/demo/demo'
 import { useDemoTools } from '../context/DemoToolsContext'
 import { getTranscriptionService } from '../hooks/useTranscription'
 import { useDemoImportantMarkingStore } from '../../stores/demoImportantMarkingStore'
+import { useAccentTheme } from '../../theme/AccentThemeContext'
+import { accentRgbSolid, accentSliderStyle } from '../../theme/accentStyles'
 
 interface Props {
   darkMode?: boolean
@@ -34,6 +36,7 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
   const demoStream = useDemoTools()
   const demoMarkingEnabled = useDemoImportantMarkingStore(s => s.enabled)
   const setDemoMarkingEnabled = useDemoImportantMarkingStore(s => s.setEnabled)
+  const { rgb } = useAccentTheme()
   const dk = darkMode
 
   const isStreaming = demoStream.status === 'playing'
@@ -114,7 +117,8 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
                         role="switch"
                         aria-checked={demoMarkingEnabled}
                         onClick={() => setDemoMarkingEnabled(!demoMarkingEnabled)}
-                        className={`w-10 h-5 rounded-full shrink-0 relative transition-colors ${demoMarkingEnabled ? 'bg-indigo-600' : dk ? 'bg-slate-600' : 'bg-slate-200'}`}
+                        className={`w-10 h-5 rounded-full shrink-0 relative transition-colors ${demoMarkingEnabled ? '' : dk ? 'bg-slate-600' : 'bg-slate-200'}`}
+                        style={demoMarkingEnabled ? { backgroundColor: accentRgbSolid(rgb) } : undefined}
                       >
                         <span
                           className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${demoMarkingEnabled ? 'left-[22px]' : 'left-0.5'}`}
@@ -208,8 +212,11 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
                     step={1}
                     value={pos}
                     onChange={e => demoStream.setIntervalMs(posToMs(Number(e.target.value)))}
-                    className={`w-full h-1.5 rounded-full appearance-none cursor-pointer ${isStreaming ? 'accent-purple-500' : dk ? 'accent-slate-500' : 'accent-slate-400'}`}
-                    style={{ background: dk ? '#1e293b' : '#e2e8f0' }}
+                    className={`w-full h-1.5 rounded-full appearance-none cursor-pointer ${isStreaming ? 'accent-purple-500' : ''}`}
+                    style={{
+                      background: dk ? '#1e293b' : '#e2e8f0',
+                      ...(isStreaming ? {} : accentSliderStyle(rgb)),
+                    }}
                   />
                 </div>
               </div>
