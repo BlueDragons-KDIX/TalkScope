@@ -92,6 +92,7 @@ export function useTranscription() {
     transcript,
     status,
     isListening: status === 'listening',
+    isPaused: status === 'paused',
     microphones,
     selectedMicrophoneId,
     refreshMicrophones: () => void getTranscriptionService().refreshMicrophones(),
@@ -104,6 +105,9 @@ export function useTranscription() {
     },
     stopListening: () => {
       getTranscriptionService().stopListening()
+    },
+    pauseListening: () => {
+      getTranscriptionService().pauseListening()
     },
     clearTranscript: () => {
       getTranscriptionService().clearTranscript()

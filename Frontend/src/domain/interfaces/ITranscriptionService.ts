@@ -1,4 +1,4 @@
-export type TranscriptionStatus = 'idle' | 'listening' | 'error'
+export type TranscriptionStatus = 'idle' | 'listening' | 'paused' | 'error'
 export type TranscriptionMode = 'fast' | 'accurate'
 export type MicrophoneDevice = {
   deviceId: string
@@ -10,6 +10,7 @@ export interface ITranscriptionService {
   getTranscript(): string
   startListening(): void
   stopListening(): void
+  pauseListening(): void
   getAvailableMicrophones(): MicrophoneDevice[]
   getSelectedMicrophoneId(): string
   setSelectedMicrophone(deviceId: string): void
