@@ -24,6 +24,8 @@ interface Props {
   menuAlign?: 'left' | 'right'
   /** true のとき表示は維持するが操作不可（発表後など） */
   disabled?: boolean
+  /** 操作ドックなど狭い場所向けの小さめトリガー */
+  compact?: boolean
 }
 
 const focusRing =
@@ -34,6 +36,7 @@ export const LayoutPresetMenu: React.FC<Props> = ({
   phaseId,
   menuAlign = 'right',
   disabled = false,
+  compact = false,
 }) => {
   const [open, setOpen] = useState(false)
   const setLayout = useLayoutStore(s => s.setLayout)
@@ -60,13 +63,13 @@ export const LayoutPresetMenu: React.FC<Props> = ({
         aria-label={disabled ? 'レイアウトプリセット（発表後は利用不可）' : 'レイアウトプリセットを開く'}
         aria-expanded={!disabled && open}
         aria-disabled={disabled}
-        className={`relative z-0 flex size-10 shrink-0 items-center justify-center rounded-full transition-colors ${focusRing} ${ringOffset} ${darkMode
+        className={`relative z-0 flex shrink-0 items-center justify-center rounded-full transition-colors ${compact ? 'size-8' : 'size-10'} ${focusRing} ${ringOffset} ${darkMode
           ? 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'} ${disabled
           ? 'pointer-events-none opacity-[0.42] saturate-50'
           : ''}`}
       >
-        <LayoutGrid size={18} strokeWidth={2} />
+        <LayoutGrid size={compact ? 15 : 18} strokeWidth={2} />
       </button>
       {disabled ? (
         <span

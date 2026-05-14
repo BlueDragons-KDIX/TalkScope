@@ -7,7 +7,7 @@ const S = (direction: 'h' | 'v', ratio: number, a: LayoutNode, b: LayoutNode): S
   ({ type: 'split', id: newNodeId(), direction, ratio, a, b })
 
 /** 左列に削除不可の操作ウィンドウを付与する（発表中レイアウト用） */
-export function attachSystemControlDock(inner: LayoutNode, dockRatio = 0.16): LayoutNode {
+export function attachSystemControlDock(inner: LayoutNode, dockRatio = 0.17): LayoutNode {
   return S('h', dockRatio, L(SYSTEM_CONTROL_WINDOW_ID), inner)
 }
 
