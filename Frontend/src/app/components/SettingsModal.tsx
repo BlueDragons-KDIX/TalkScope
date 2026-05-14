@@ -1,8 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings, X, Moon, Sun, Palette, SlidersHorizontal, Loader2, Mic } from 'lucide-react';
+import { Settings, X, Moon, Sun, Palette, SlidersHorizontal, Loader2, Mic, Type } from 'lucide-react';
 import { useTranscription } from '../../presentation/hooks/useTranscription';
 import type { TranscriptionMode } from '../../domain/interfaces/ITranscriptionService';
+import {
+  CONTENT_FONT_SCALE_MAX,
+  CONTENT_FONT_SCALE_MIN,
+  useContentFontScaleStore,
+} from '../../stores/contentFontScaleStore';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -46,6 +51,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   similarityReady = false,
 }) => {
   const { mode, setMode, microphones, selectedMicrophoneId, selectMicrophone, refreshMicrophones } = useTranscription();
+  const contentFontScale = useContentFontScaleStore(s => s.scale);
+  const setContentFontScale = useContentFontScaleStore(s => s.setScale);
 
   if (!isOpen) return null;
 
@@ -131,6 +138,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     ))}
                   </div>
                 </div>
+              </section>
+
+              <section>
+                <div className={`flex items-center gap-1.5 mb-2.5 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+                  <Type size={12} /> 用語の表示
+                </div>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold">文字サイズ</span>
+                  <span className={`text-[10px] font-mono font-bold ${dk ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {Math.round(contentFontScale * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={Math.round(CONTENT_FONT_SCALE_MIN * 100)}
+                  max={Math.round(CONTENT_FONT_SCALE_MAX * 100)}
+                  step={5}
+                  value={Math.round(contentFontScale * 100)}
+                  onChange={(e) => setContentFontScale(Number(e.target.value) / 100)}
+                  className={`mb-1.5 w-full cursor-pointer accent-indigo-500 ${dk ? 'opacity-95' : ''}`}
+                  aria-valuemin={Math.round(CONTENT_FONT_SCALE_MIN * 100)}
+                  aria-valuemax={Math.round(CONTENT_FONT_SCALE_MAX * 100)}
+                  aria-valuenow={Math.round(contentFontScale * 100)}
+                  aria-label="用語と説明の文字サイズ"
+                />
+                <p className={`text-[10px] leading-snug ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+                  各ウィンドウ内の重要語・説明文のみ拡大／縮小します。ウィンドウタイトルやこの設定画面の文字サイズは変わりません。
+                </p>
               </section>
 
               {/* 文字起こし（モード・マイク）— 操作ドックの詳細はここに集約 */}
