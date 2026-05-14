@@ -33,7 +33,7 @@ cd Frontend
 bun test
 ```
 
-テスト仕様のまとめは `docs/tests/test-spec-001.md`（ベース）および `docs/tests/test-spec-002.md`（追補）を参照。
+テスト仕様のまとめは `docs/tests/test-spec-001.md`（ベース）、`test-spec-002.md`（追補）、**`test-spec-003.md`（2026-05-14 マージ分・PR #26〜#29）** を参照。
 
 ## Docker で起動
 
