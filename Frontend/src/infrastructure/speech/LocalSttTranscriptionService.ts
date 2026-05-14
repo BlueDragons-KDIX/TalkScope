@@ -8,6 +8,7 @@ export class LocalSttTranscriptionService implements ITranscriptionService {
   private transcript = ''
   private status: TranscriptionStatus = 'idle'
   private isRunning = false
+  private isPausing = false
   private microphones: MicrophoneDevice[] = []
   private selectedMicrophoneId = ''
   private selectedMicStream: MediaStream | null = null
@@ -125,6 +126,12 @@ export class LocalSttTranscriptionService implements ITranscriptionService {
           this.notify()
         }
         this.recorder.onstop = () => {
+          if (this.isPausing) {
+            this.isPausing = false
+            this.releaseResources()
+            this.chunks = []
+            return
+          }
           void this.transcribeRecordedAudio()
         }
         this.recorder.start()
@@ -146,6 +153,20 @@ export class LocalSttTranscriptionService implements ITranscriptionService {
     try {
       this.recorder?.stop()
     } catch {
+      this.releaseResources()
+    }
+  }
+
+  pauseListening(): void {
+    if (!this.isRunning) return
+    this.isPausing = true
+    this.isRunning = false
+    this.status = 'paused'
+    this.notify()
+    try {
+      this.recorder?.stop()
+    } catch {
+      this.isPausing = false
       this.releaseResources()
     }
   }
