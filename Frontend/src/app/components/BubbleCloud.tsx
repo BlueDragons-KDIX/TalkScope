@@ -13,6 +13,8 @@ import {
 } from '../utils/mockVectors';
 import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
 import { scaledContentFontPx } from '../utils/contentFontScale';
+import { useAccentTheme } from '../../theme/AccentThemeContext';
+import { accentRgba, accentSliderStyle, micStartButtonStyle, termChipStyle } from '../../theme/accentStyles';
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
   Frontend: { bg: 'bg-blue-500/20',    text: 'text-blue-300',    border: 'border-blue-500/30',    dot: '#60a5fa' },
@@ -69,6 +71,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   onCategoryFilterChange,
 }) => {
   const dk = darkMode;
+  const { rgb } = useAccentTheme();
   const contentFontScale = useContentFontScaleStore(s => s.scale);
   const categories = ['ALL', 'ピン中', ...Object.keys(CATEGORY_COLORS)];
 
@@ -318,7 +321,8 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
               step={0.1}
               value={bubbleScale}
               onChange={(e) => setBubbleScale(Number(e.target.value))}
-              className={`flex-1 h-1.5 rounded-full appearance-none cursor-pointer accent-indigo-500 min-w-0 ${dk ? 'bg-slate-700' : 'bg-slate-200'}`}
+              className={`flex-1 h-1.5 rounded-full appearance-none cursor-pointer min-w-0 ${dk ? 'bg-slate-700' : 'bg-slate-200'}`}
+              style={accentSliderStyle(rgb)}
             />
             <span className={`text-[10px] font-mono font-bold tabular-nums shrink-0 ${dk ? 'text-slate-400' : 'text-slate-600'}`}>
               {Math.round(bubbleScale * 100)}%
@@ -362,12 +366,11 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                             e.preventDefault();
                             onTogglePin(term.id);
                           }}
-                          className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-all font-bold text-left ${
-                            dk
-                              ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/35 border border-indigo-500/30'
-                              : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                          }`}
-                          style={{ fontSize: scaledContentFontPx(12, contentFontScale) }}
+                          className="px-1.5 py-0.5 rounded-md cursor-pointer transition-[filter] font-bold text-left hover:brightness-110"
+                          style={{
+                            ...termChipStyle(dk, rgb),
+                            fontSize: scaledContentFontPx(12, contentFontScale),
+                          }}
                         >
                           {term.word}
                         </button>
@@ -473,7 +476,10 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black">切換え間隔</span>
-                  <span className={`text-lg font-black tabular-nums ${isAutoPlay ? 'text-indigo-400' : dk ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span
+                    className={`text-lg font-black tabular-nums ${isAutoPlay ? '' : dk ? 'text-slate-400' : 'text-slate-500'}`}
+                    style={isAutoPlay ? { color: accentRgba(rgb, dk ? 0.95 : 0.85) } : undefined}
+                  >
                     {intervalSec}<span className="text-xs font-bold ml-0.5">秒</span>
                   </span>
                 </div>
@@ -490,8 +496,11 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                     disabled={activeTerms.length === 0}
                     className={`w-full h-2.5 rounded-full appearance-none cursor-pointer ${
                       activeTerms.length === 0 ? 'cursor-not-allowed opacity-40' : ''
-                    } ${isAutoPlay ? 'accent-indigo-500' : (dk ? 'accent-slate-500' : 'accent-slate-400')}`}
-                    style={{ background: dk ? '#1e293b' : '#e2e8f0' }}
+                    }`}
+                    style={{
+                      background: dk ? '#1e293b' : '#e2e8f0',
+                      ...(activeTerms.length === 0 ? {} : accentSliderStyle(rgb)),
+                    }}
                   />
                 </div>
 
@@ -512,7 +521,10 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                   >
                     <ChevronDown size={14} className="mx-auto" />
                   </button>
-                  <span className={`text-xs font-mono font-black w-10 text-center ${isAutoPlay ? 'text-indigo-400' : dk ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span
+                    className={`text-xs font-mono font-black w-10 text-center ${isAutoPlay ? '' : dk ? 'text-slate-400' : 'text-slate-500'}`}
+                    style={isAutoPlay ? { color: accentRgba(rgb, dk ? 0.95 : 0.85) } : undefined}
+                  >
                     {intervalSec}s
                   </span>
                   <button
@@ -539,10 +551,17 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                 whileHover={{ scale: 1.06 }}
                 title="間隔の設定"
                 className={`w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-lg text-xs font-black transition-colors ${
-                  showSlider
-                    ? (dk ? 'bg-indigo-600/30 border-indigo-500/60 text-indigo-300' : 'bg-indigo-50 border-indigo-300 text-indigo-600')
-                    : (dk ? 'bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-500' : 'bg-white border-slate-300 text-slate-500 hover:border-slate-400')
+                  showSlider ? '' : (dk ? 'bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-500' : 'bg-white border-slate-300 text-slate-500 hover:border-slate-400')
                 }`}
+                style={
+                  showSlider
+                    ? {
+                        backgroundColor: accentRgba(rgb, dk ? 0.28 : 0.12),
+                        borderColor: accentRgba(rgb, dk ? 0.55 : 0.45),
+                        color: accentRgba(rgb, dk ? 0.95 : 0.9),
+                      }
+                    : undefined
+                }
               >
                 {intervalSec}s
               </motion.button>
@@ -553,24 +572,38 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                 disabled={activeTerms.length === 0}
                 whileTap={{ scale: 0.92 }}
                 whileHover={{ scale: activeTerms.length === 0 ? 1 : 1.06 }}
-                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl relative transition-colors ${
+                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl relative transition-[filter] ${
                   activeTerms.length === 0
                     ? (dk ? 'bg-slate-800 border-2 border-slate-700 text-slate-700 cursor-not-allowed' : 'bg-slate-100 border-2 border-slate-200 text-slate-300 cursor-not-allowed')
                     : isAutoPlay
-                      ? (dk ? 'bg-indigo-600 text-white shadow-indigo-600/40 hover:bg-indigo-500' : 'bg-indigo-600 text-white shadow-indigo-500/30 hover:bg-indigo-500')
-                      : (dk ? 'bg-slate-800 border-2 border-slate-600 text-slate-300 hover:border-indigo-500/60 hover:text-indigo-300' : 'bg-white border-2 border-slate-300 text-slate-500 hover:border-indigo-400 hover:text-indigo-500')
+                      ? 'border-2 border-transparent text-white hover:brightness-110'
+                      : (dk ? 'bg-slate-800 border-2 border-slate-600 text-slate-300 cursor-pointer hover:brightness-110' : 'bg-white border-2 border-slate-300 text-slate-500 cursor-pointer hover:brightness-110')
                 }`}
+                style={
+                  activeTerms.length === 0
+                    ? undefined
+                    : isAutoPlay
+                      ? micStartButtonStyle(rgb, dk)
+                      : {
+                          borderColor: accentRgba(rgb, dk ? 0.48 : 0.35),
+                          color: accentRgba(rgb, dk ? 0.92 : 0.82),
+                        }
+                }
                 title={isAutoPlay ? '自動切換えを停止' : '自動切換えを開始'}
               >
                 {isAutoPlay && (
-                  <span className="absolute inset-0 rounded-full bg-indigo-400 animate-ping opacity-20 pointer-events-none" />
+                  <span
+                    className="absolute inset-0 rounded-full animate-ping opacity-20 pointer-events-none"
+                    style={{ backgroundColor: accentRgba(rgb, 0.45) }}
+                  />
                 )}
                 {isAutoPlay ? <Pause size={22} fill="currentColor" /> : <Shuffle size={22} />}
               </motion.button>
             </div>
-            <span className={`text-[10px] font-bold ${
-              isAutoPlay ? 'text-indigo-400' : dk ? 'text-slate-600' : 'text-slate-400'
-            }`}>
+            <span
+              className={`text-[10px] font-bold ${isAutoPlay ? '' : dk ? 'text-slate-600' : 'text-slate-400'}`}
+              style={isAutoPlay ? { color: accentRgba(rgb, dk ? 0.95 : 0.88) } : undefined}
+            >
               {isAutoPlay ? '切換え中' : '自動切換え'}
             </span>
           </div>
