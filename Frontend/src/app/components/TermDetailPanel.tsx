@@ -26,6 +26,23 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
   const dk = darkMode;
   const contentFontScale = useContentFontScaleStore(s => s.scale);
   const { rgb } = useAccentTheme();
+  const [copied, setCopied] = useState<'word' | 'desc' | null>(null);
+
+  const copyWord = useCallback(() => {
+    if (!term) return;
+    void navigator.clipboard.writeText(term.word).then(() => {
+      setCopied('word');
+      setTimeout(() => setCopied(null), 800);
+    });
+  }, [term]);
+
+  const copyDesc = useCallback(() => {
+    if (!term) return;
+    void navigator.clipboard.writeText(term.longDesc).then(() => {
+      setCopied('desc');
+      setTimeout(() => setCopied(null), 800);
+    });
+  }, [term]);
 
   if (!term) {
     return (
@@ -47,21 +64,6 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
 
   const levelInfo = getLevelInfo(term.level);
   const related: Term[] = [];
-  const [copied, setCopied] = useState<'word' | 'desc' | null>(null);
-
-  const copyWord = useCallback(() => {
-    navigator.clipboard.writeText(term.word).then(() => {
-      setCopied('word');
-      setTimeout(() => setCopied(null), 800);
-    });
-  }, [term.word]);
-
-  const copyDesc = useCallback(() => {
-    navigator.clipboard.writeText(term.longDesc).then(() => {
-      setCopied('desc');
-      setTimeout(() => setCopied(null), 800);
-    });
-  }, [term.longDesc]);
 
   return (
     <div className={`h-full flex flex-col overflow-hidden ${dk ? 'bg-[#0d0e1a]' : 'bg-white'}`}>
