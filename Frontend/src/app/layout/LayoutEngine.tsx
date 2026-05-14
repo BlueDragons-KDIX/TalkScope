@@ -177,8 +177,19 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, onLayoutChan
                     </div>
 
                     {/* パネルコンテンツ */}
-                    <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-                        {panels[node.panelId]}
+                    <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+                        <div className="relative z-0 h-full min-h-0 overflow-hidden">
+                            {panels[node.panelId]}
+                        </div>
+                        <div
+                            aria-hidden
+                            className="pointer-events-none absolute inset-0 z-[1]"
+                            style={{
+                                background: dk
+                                    ? `radial-gradient(115% 90% at 50% -5%, rgba(${accentRgb},0.13) 0%, rgba(${accentRgb},0.045) 38%, transparent 68%)`
+                                    : `radial-gradient(110% 85% at 50% -5%, rgba(${accentRgb},0.1) 0%, rgba(${accentRgb},0.035) 42%, transparent 70%)`,
+                            }}
+                        />
                     </div>
 
                     {/* ドラッグ中: ドロップゾーンオーバーレイ */}

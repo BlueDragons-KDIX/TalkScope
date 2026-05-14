@@ -162,11 +162,23 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
               </button>
             )}
           </div>
-          <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-            {WindowComponent
-              ? <WindowComponent windowId={node.windowId} darkMode={darkMode} />
-              : <div className="p-4 text-sm text-slate-400">ウィンドウ未登録: {node.windowId}</div>
-            }
+          <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+            <div className="relative z-0 h-full min-h-0 overflow-hidden">
+              {WindowComponent
+                ? <WindowComponent windowId={node.windowId} darkMode={darkMode} />
+                : <div className="p-4 text-sm text-slate-400">ウィンドウ未登録: {node.windowId}</div>
+              }
+            </div>
+            {/* テーマカラーのごく薄い背景ティント（コンテンツ上・操作は透過） */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-[1]"
+              style={{
+                background: darkMode
+                  ? `radial-gradient(115% 90% at 50% -5%, rgba(${accentRgb},0.13) 0%, rgba(${accentRgb},0.045) 38%, transparent 68%)`
+                  : `radial-gradient(110% 85% at 50% -5%, rgba(${accentRgb},0.1) 0%, rgba(${accentRgb},0.035) 42%, transparent 70%)`,
+              }}
+            />
           </div>
           {dragging !== null && dragging !== node.windowId && (
             <div
