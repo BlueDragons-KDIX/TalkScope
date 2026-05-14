@@ -13,7 +13,7 @@
 | 推奨 | `Frontend/docs/orders/order-002.md` | ツールバー・デモ重要語・グローバルリセット等の追補指示 |
 | 必須 | `Frontend/docs/ADRs/` | 技術・設計の意思決定記録 |
 | 推奨 | `Frontend/docs/ADRs/adr-008.md` | プレゼンヘッダー・フェーズ遷移ボタン・発表後アクセント色の方針 |
-| 補足 | `Frontend/docs/tests/` | テスト仕様・結果 |
+| 補足 | `Frontend/docs/tests/` | テスト仕様・結果（`test-spec-001.md` 〜） |
 
 ---
 
