@@ -11,6 +11,8 @@ import {
   type RankingSignal,
 } from '../../utils/importanceRanking'
 import type { WindowProps } from '../IWindowDefinition'
+import { useContentFontScaleStore } from '../../../stores/contentFontScaleStore'
+import { scaledContentFontPx } from '../../../app/utils/contentFontScale'
 
 const RANK_THROTTLE_MS = 160
 const MIN_ROW_HEIGHT = 50
@@ -30,13 +32,16 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   const pinnedTermIds = useTermStore(s => s.pinnedTermIds)
   const togglePin = useTermStore(s => s.togglePin)
 
+  const contentFontScale = useContentFontScaleStore(s => s.scale)
+
   const throttledTranscript = useThrottledValue(transcript, RANK_THROTTLE_MS)
   const throttledTerms = useThrottledValue(activeTerms as Term[], RANK_THROTTLE_MS)
   const throttledWeights = useThrottledValue(termClickWeights, RANK_THROTTLE_MS)
   const rowHeight = Math.round(
     MIN_ROW_HEIGHT + (rowSizeSlider / 100) * (MAX_ROW_HEIGHT - MIN_ROW_HEIGHT),
   )
-  const wordFontSize = Math.round(15 + (rowSizeSlider / 100) * 12)
+  const wordFontSizeBase = Math.round(15 + (rowSizeSlider / 100) * 12)
+  const wordFontSize = scaledContentFontPx(wordFontSizeBase, contentFontScale)
 
   useEffect(() => {
     const el = containerRef.current
@@ -190,7 +195,10 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
                         >
                           {row.term.word}
                         </span>
-                        <span className={`block text-[10px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+                        <span
+                          className={`block ${dk ? 'text-slate-500' : 'text-slate-400'}`}
+                          style={{ fontSize: scaledContentFontPx(10, contentFontScale) }}
+                        >
                           Lv.{row.term.level} / {row.term.category}
                         </span>
                         <span className={`mt-1 block h-1.5 w-full rounded-full ${dk ? 'bg-slate-700' : 'bg-slate-200'}`}>
