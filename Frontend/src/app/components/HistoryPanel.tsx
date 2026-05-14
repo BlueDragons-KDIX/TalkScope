@@ -3,6 +3,8 @@ import { Term } from '../data/terms';
 import { History, Trash2, ChevronRight, Search } from 'lucide-react';
 import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
 import { scaledContentFontPx } from '../utils/contentFontScale';
+import { useAccentTheme } from '../../theme/AccentThemeContext';
+import { accentRgba } from '../../theme/accentStyles';
 
 const CATEGORY_DOT: Record<string, string> = {
   Frontend: '#60a5fa',
@@ -23,6 +25,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick
   const [search, setSearch] = useState('');
   const dk = darkMode;
   const contentFontScale = useContentFontScaleStore(s => s.scale);
+  const { rgb } = useAccentTheme();
 
   const filtered = history.filter(t =>
     t.word.toLowerCase().includes(search.toLowerCase()) ||
@@ -35,7 +38,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick
       <div className={`p-4 border-b flex-shrink-0 ${dk ? 'border-slate-800/60' : 'border-slate-100'}`}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <History size={14} className="text-indigo-400" />
+            <History size={14} style={{ color: accentRgba(rgb, dk ? 0.85 : 0.72) }} />
             <span className="text-sm font-black">検索履歴</span>
           </div>
           {history.length > 0 && (
@@ -71,7 +74,16 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick
               <button
                 key={`${t.id}-${i}`}
                 onClick={() => onTermClick(t)}
-                className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all border ${dk ? 'border-transparent hover:bg-slate-800/60 hover:border-indigo-500/20' : 'border-transparent hover:bg-slate-50 hover:border-indigo-200'}`}
+                className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all border-l-2 ${
+                  dk ? 'hover:bg-slate-800/60' : 'hover:bg-slate-50'
+                }`}
+                style={{ borderLeftColor: 'transparent' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderLeftColor = accentRgba(rgb, dk ? 0.55 : 0.4);
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderLeftColor = 'transparent';
+                }}
               >
                 <span
                   className="w-2 h-2 rounded-full flex-shrink-0"
