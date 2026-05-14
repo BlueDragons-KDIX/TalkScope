@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Term } from '../data/terms';
 import { Info, Star } from 'lucide-react';
+import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
+import { scaledContentFontPx } from '../utils/contentFontScale';
 
 const TOOLTIP = { W: 176, H: 120, PAD: 8, GAP_ABOVE: 12 } as const;
 
@@ -34,6 +36,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   intervalSec = 5,
   mapContainerRef,
 }) => {
+  const contentFontScale = useContentFontScaleStore(s => s.scale);
   const [isHovered, setIsHovered] = useState(false);
   const [isShowingDesc, setIsShowingDesc] = useState(false);
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; showBelow: boolean } | null>(null);
@@ -211,7 +214,12 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
               className="absolute inset-0 flex items-center justify-center p-3 overflow-hidden rounded-full"
               title={term.shortDesc}
             >
-              <span className="line-clamp-4 overflow-hidden w-full leading-tight font-medium" style={{ fontSize: Math.min(10, Math.max(6, size * 0.13)) }}>
+              <span
+                className="line-clamp-4 overflow-hidden w-full leading-tight font-medium"
+                style={{
+                  fontSize: scaledContentFontPx(Math.min(10, Math.max(6, size * 0.13)), contentFontScale),
+                }}
+              >
                 {term.shortDesc}
               </span>
             </motion.div>
@@ -224,7 +232,12 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
               transition={{ duration: 1, ease: "easeInOut" }}
               className="absolute inset-0 flex items-center justify-center p-2 overflow-hidden rounded-full"
             >
-              <span className="w-full" style={{ fontSize: Math.min(14, Math.max(7, size * 0.18)) }}>
+              <span
+                className="w-full"
+                style={{
+                  fontSize: scaledContentFontPx(Math.min(14, Math.max(7, size * 0.18)), contentFontScale),
+                }}
+              >
                 {term.word}
               </span>
             </motion.div>
@@ -269,17 +282,40 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
           }}
         >
             <div className="flex items-center gap-1.5 mb-1">
-              <span className={`text-[9px] font-bold ${dk ? 'text-indigo-400' : 'text-indigo-500'}`}>{term.category}</span>
-              <span className={`text-[9px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>Lv.{term.level}</span>
+              <span
+                className={`font-bold ${dk ? 'text-indigo-400' : 'text-indigo-500'}`}
+                style={{ fontSize: scaledContentFontPx(9, contentFontScale) }}
+              >
+                {term.category}
+              </span>
+              <span
+                className={dk ? 'text-slate-500' : 'text-slate-400'}
+                style={{ fontSize: scaledContentFontPx(9, contentFontScale) }}
+              >
+                Lv.{term.level}
+              </span>
               {isPinned && (
-                <span className="text-[9px] font-bold text-yellow-400 flex items-center gap-0.5 ml-auto">
+                <span
+                  className="font-bold text-yellow-400 flex items-center gap-0.5 ml-auto"
+                  style={{ fontSize: scaledContentFontPx(9, contentFontScale) }}
+                >
                   <Star size={8} fill="currentColor" />ピン中
                 </span>
               )}
             </div>
-            <div className="text-xs font-bold mb-0.5">{term.word}</div>
-            <p className={`text-[10px] leading-relaxed line-clamp-2 ${dk ? 'text-slate-400' : 'text-slate-500'}`}>{term.shortDesc}</p>
-            <div className={`mt-1.5 text-[9px] font-medium flex items-center gap-1 ${dk ? 'text-indigo-400' : 'text-indigo-500'}`}>
+            <div className="font-bold mb-0.5" style={{ fontSize: scaledContentFontPx(12, contentFontScale) }}>
+              {term.word}
+            </div>
+            <p
+              className={`leading-relaxed line-clamp-2 ${dk ? 'text-slate-400' : 'text-slate-500'}`}
+              style={{ fontSize: scaledContentFontPx(10, contentFontScale) }}
+            >
+              {term.shortDesc}
+            </p>
+            <div
+              className={`mt-1.5 font-medium flex items-center gap-1 ${dk ? 'text-indigo-400' : 'text-indigo-500'}`}
+              style={{ fontSize: scaledContentFontPx(9, contentFontScale) }}
+            >
               <Info size={8} /> クリックで詳細
             </div>
             {/* 矢印：バブル中央に向けて指す（上向き or 下向き） */}
