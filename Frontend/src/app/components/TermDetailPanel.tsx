@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { Term } from '../data/terms';
 import { X, ExternalLink, Hash, BookOpen, Layers, Star, Copy } from 'lucide-react';
+import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
+import { scaledContentFontPx } from '../utils/contentFontScale';
 
 interface TermDetailPanelProps {
   term: Term | null;
@@ -20,6 +22,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
   onTogglePin,
 }) => {
   const dk = darkMode;
+  const contentFontScale = useContentFontScaleStore(s => s.scale);
 
   if (!term) {
     return (
@@ -72,7 +75,9 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-2xl font-black">{term.word}</h2>
+              <h2 className="font-black" style={{ fontSize: scaledContentFontPx(24, contentFontScale) }}>
+                {term.word}
+              </h2>
               <button
                 onClick={copyWord}
                 title="単語をコピー"
@@ -82,7 +87,12 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
               </button>
               {copied === 'word' && <span className="text-[10px] font-bold text-emerald-500">コピーしました</span>}
             </div>
-            <p className={`text-sm mt-0.5 ${dk ? 'text-slate-500' : 'text-slate-400'}`}>{term.kana}</p>
+            <p
+              className={`mt-0.5 ${dk ? 'text-slate-500' : 'text-slate-400'}`}
+              style={{ fontSize: scaledContentFontPx(14, contentFontScale) }}
+            >
+              {term.kana}
+            </p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             {/* 星ボタン */}
@@ -134,7 +144,12 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
             </button>
           </div>
           {copied === 'desc' && <p className="text-[10px] font-bold text-emerald-500 mb-1">コピーしました</p>}
-          <p className={`text-sm leading-relaxed ${dk ? 'text-slate-300' : 'text-slate-600'}`}>{term.longDesc}</p>
+          <p
+            className={`leading-relaxed ${dk ? 'text-slate-300' : 'text-slate-600'}`}
+            style={{ fontSize: scaledContentFontPx(14, contentFontScale) }}
+          >
+            {term.longDesc}
+          </p>
         </section>
 
         {related.length > 0 && (
