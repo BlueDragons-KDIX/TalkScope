@@ -11,6 +11,8 @@ import {
   similarityToScore,
   MOCK_DIM,
 } from '../utils/mockVectors';
+import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
+import { scaledContentFontPx } from '../utils/contentFontScale';
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
   Frontend: { bg: 'bg-blue-500/20',    text: 'text-blue-300',    border: 'border-blue-500/30',    dot: '#60a5fa' },
@@ -67,6 +69,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   onCategoryFilterChange,
 }) => {
   const dk = darkMode;
+  const contentFontScale = useContentFontScaleStore(s => s.scale);
   const categories = ['ALL', 'ピン中', ...Object.keys(CATEGORY_COLORS)];
 
   const dim = themeVector?.dim ?? MOCK_DIM;
@@ -364,13 +367,22 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                               ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/35 border border-indigo-500/30'
                               : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
                           }`}
+                          style={{ fontSize: scaledContentFontPx(12, contentFontScale) }}
                         >
                           {term.word}
                         </button>
                       </td>
-                      <td className={`py-2 px-3 text-xs ${dk ? 'text-slate-400' : 'text-slate-600'}`}>{term.category}</td>
+                      <td
+                        className={`py-2 px-3 ${dk ? 'text-slate-400' : 'text-slate-600'}`}
+                        style={{ fontSize: scaledContentFontPx(12, contentFontScale) }}
+                      >
+                        {term.category}
+                      </td>
                       <td className="py-2 px-3 max-w-[180px] align-top">
-                        <div className={`text-[11px] overflow-x-auto overflow-y-hidden whitespace-nowrap max-h-12 ${dk ? 'text-slate-500' : 'text-slate-500'}`}>
+                        <div
+                          className={`overflow-x-auto overflow-y-hidden whitespace-nowrap max-h-12 ${dk ? 'text-slate-500' : 'text-slate-500'}`}
+                          style={{ fontSize: scaledContentFontPx(11, contentFontScale) }}
+                        >
                           {term.shortDesc}
                         </div>
                       </td>
@@ -398,7 +410,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
         {activeTerms.length === 0 ? (
           <div className={`absolute inset-0 flex flex-col items-center justify-center ${dk ? 'text-slate-600' : 'text-slate-300'}`}>
             <Hexagon className="mb-3 opacity-30" size={40} />
-            <p className="text-xs font-bold opacity-60">用語抖出待機中</p>
+            <p className="text-xs font-bold opacity-60">用語検出待機中</p>
             <p className="text-[10px] opacity-40 mt-1">音声から検出された用語が<br />ここに表示されます</p>
           </div>
         ) : (

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Term } from '../data/terms';
 import { History, Trash2, ChevronRight, Search } from 'lucide-react';
+import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
+import { scaledContentFontPx } from '../utils/contentFontScale';
 
 const CATEGORY_DOT: Record<string, string> = {
   Frontend: '#60a5fa',
@@ -20,6 +22,7 @@ interface HistoryPanelProps {
 export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick, onClear, darkMode = true }) => {
   const [search, setSearch] = useState('');
   const dk = darkMode;
+  const contentFontScale = useContentFontScaleStore(s => s.scale);
 
   const filtered = history.filter(t =>
     t.word.toLowerCase().includes(search.toLowerCase()) ||
@@ -75,8 +78,18 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick
                   style={{ background: CATEGORY_DOT[t.category] || '#94a3b8' }}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className={`text-xs font-black truncate ${dk ? 'text-slate-200' : 'text-slate-700'}`}>{t.word}</p>
-                  <p className={`text-[10px] truncate ${dk ? 'text-slate-600' : 'text-slate-400'}`}>{t.shortDesc}</p>
+                  <p
+                    className={`font-black truncate ${dk ? 'text-slate-200' : 'text-slate-700'}`}
+                    style={{ fontSize: scaledContentFontPx(12, contentFontScale) }}
+                  >
+                    {t.word}
+                  </p>
+                  <p
+                    className={`truncate ${dk ? 'text-slate-600' : 'text-slate-400'}`}
+                    style={{ fontSize: scaledContentFontPx(10, contentFontScale) }}
+                  >
+                    {t.shortDesc}
+                  </p>
                 </div>
                 <ChevronRight size={12} className={dk ? 'text-slate-700 flex-shrink-0' : 'text-slate-300 flex-shrink-0'} />
               </button>

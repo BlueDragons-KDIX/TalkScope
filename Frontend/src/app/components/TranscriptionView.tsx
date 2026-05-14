@@ -7,6 +7,8 @@ import { Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle, Star } from '
 import { UseDemoStreamReturn } from '../../debug/hooks/useDemoStream';
 import type { MicrophoneDevice, TranscriptionMode } from '../../domain/interfaces/ITranscriptionService';
 import { RecordingToolbar } from '../../presentation/components/RecordingToolbar';
+import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
+import { scaledContentFontPx } from '../utils/contentFontScale';
 
 const TOOLTIP = { W: 208, H: 100, PAD: 8, GAP_ABOVE: 12 } as const;
 
@@ -64,6 +66,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const termButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const contentFontScale = useContentFontScaleStore(s => s.scale);
   const [hoveredPartIndex, setHoveredPartIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; showBelow: boolean } | null>(null);
 
@@ -206,7 +209,10 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
             )}
           </div>
         ) : (
-          <div className="whitespace-pre-wrap font-medium">
+          <div
+            className="whitespace-pre-wrap font-medium"
+            style={{ fontSize: scaledContentFontPx(14, contentFontScale) }}
+          >
             {parts.map((part, index) => {
               if (part.type === 'term') {
                 const term = part.term as Term;
@@ -264,11 +270,28 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
               </div>
             )}
             <div className="flex items-center gap-2 mb-1.5">
-              <span className={`text-[10px] font-bold ${dk ? 'text-indigo-400' : 'text-indigo-300'}`}>{hoveredTerm.category}</span>
-              <span className={`text-[10px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>Lv.{hoveredTerm.level}</span>
+              <span
+                className={`font-bold ${dk ? 'text-indigo-400' : 'text-indigo-300'}`}
+                style={{ fontSize: scaledContentFontPx(10, contentFontScale) }}
+              >
+                {hoveredTerm.category}
+              </span>
+              <span
+                className={dk ? 'text-slate-500' : 'text-slate-400'}
+                style={{ fontSize: scaledContentFontPx(10, contentFontScale) }}
+              >
+                Lv.{hoveredTerm.level}
+              </span>
             </div>
-            <div className="text-sm font-black mb-1">{hoveredTerm.word}</div>
-            <p className={`text-[11px] leading-relaxed line-clamp-2 ${dk ? 'text-slate-400' : 'text-slate-300'}`}>{hoveredTerm.shortDesc}</p>
+            <div className="font-black mb-1" style={{ fontSize: scaledContentFontPx(14, contentFontScale) }}>
+              {hoveredTerm.word}
+            </div>
+            <p
+              className={`leading-relaxed line-clamp-2 ${dk ? 'text-slate-400' : 'text-slate-300'}`}
+              style={{ fontSize: scaledContentFontPx(11, contentFontScale) }}
+            >
+              {hoveredTerm.shortDesc}
+            </p>
             <div
               className={`absolute left-1/2 -translate-x-1/2 border-[6px] border-transparent ${
                 tooltipPos.showBelow
