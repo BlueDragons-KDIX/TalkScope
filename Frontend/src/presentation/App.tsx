@@ -71,7 +71,11 @@ const App: React.FC = () => {
         <div
           className={`w-screen h-screen flex flex-col overflow-hidden ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}
         >
-          <PresentationAppHeader darkMode={darkMode} currentPhaseId={currentPhaseId} />
+          <PresentationAppHeader
+            darkMode={darkMode}
+            currentPhaseId={currentPhaseId}
+            onOpenAppearance={() => setAppearanceOpen(true)}
+          />
 
           {/* フェーズコンテンツ */}
           <div className="flex-1 overflow-hidden">

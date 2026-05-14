@@ -26,6 +26,8 @@ interface Props {
   disabled?: boolean
   /** 操作ドックなど狭い場所向けの小さめトリガー */
   compact?: boolean
+  /** アイコン横に「レイアウト」などのラベルを表示（ヘッダー用） */
+  labeled?: boolean
 }
 
 const focusRing =
@@ -37,6 +39,7 @@ export const LayoutPresetMenu: React.FC<Props> = ({
   menuAlign = 'right',
   disabled = false,
   compact = false,
+  labeled = false,
 }) => {
   const [open, setOpen] = useState(false)
   const setLayout = useLayoutStore(s => s.setLayout)
@@ -51,9 +54,23 @@ export const LayoutPresetMenu: React.FC<Props> = ({
     if (!disabled) setOpen(v => !v)
   }
 
+  const iconSize = compact ? 15 : labeled ? 16 : 18
+
+  const triggerIconOnly = `relative z-0 flex shrink-0 items-center justify-center rounded-full transition-colors ${compact ? 'size-8' : 'size-10'} ${focusRing} ${ringOffset} ${darkMode
+    ? 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'} ${disabled
+    ? 'pointer-events-none opacity-[0.42] saturate-50'
+    : ''}`
+
+  const triggerLabeled = `relative z-0 flex min-h-9 shrink-0 flex-row items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${focusRing} ${ringOffset} ${darkMode
+    ? 'border-slate-700/80 bg-slate-900/25 text-slate-200 hover:bg-slate-800'
+    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'} ${disabled
+    ? 'pointer-events-none cursor-not-allowed opacity-[0.42] saturate-50'
+    : ''}`
+
   return (
     <div
-      className={`relative inline-flex rounded-full ${disabled ? 'cursor-not-allowed' : ''}`}
+      className={`relative inline-flex ${labeled ? 'rounded-lg' : 'rounded-full'} ${disabled ? 'cursor-not-allowed' : ''}`}
       title={disabled ? '発表中のみレイアウトを変更できます' : undefined}
     >
       <button
@@ -63,17 +80,14 @@ export const LayoutPresetMenu: React.FC<Props> = ({
         aria-label={disabled ? 'レイアウトプリセット（発表後は利用不可）' : 'レイアウトプリセットを開く'}
         aria-expanded={!disabled && open}
         aria-disabled={disabled}
-        className={`relative z-0 flex shrink-0 items-center justify-center rounded-full transition-colors ${compact ? 'size-8' : 'size-10'} ${focusRing} ${ringOffset} ${darkMode
-          ? 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
-          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'} ${disabled
-          ? 'pointer-events-none opacity-[0.42] saturate-50'
-          : ''}`}
+        className={labeled ? triggerLabeled : triggerIconOnly}
       >
-        <LayoutGrid size={compact ? 15 : 18} strokeWidth={2} />
+        <LayoutGrid size={iconSize} strokeWidth={2} />
+        {labeled ? <span className="whitespace-nowrap">レイアウト</span> : null}
       </button>
       {disabled ? (
         <span
-          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden rounded-full"
+          className={`pointer-events-none absolute inset-0 z-10 flex items-center justify-center overflow-hidden ${labeled ? 'rounded-lg' : 'rounded-full'}`}
           aria-hidden
         >
           <span
