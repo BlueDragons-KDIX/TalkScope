@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { WebSpeechTranscriptionService } from '../../infrastructure/speech/WebSpeechTranscriptionService'
 import { LocalSttTranscriptionService } from '../../infrastructure/speech/LocalSttTranscriptionService'
 import { useTranscriptStore } from '../../stores/transcriptStore'
@@ -11,6 +11,21 @@ const services: Record<TranscriptionMode, ITranscriptionService> = {
   accurate: new LocalSttTranscriptionService(),
 }
 let _mode: TranscriptionMode = DEFAULT_MODE
+
+const transcriptionModeListeners = new Set<() => void>()
+
+function subscribeTranscriptionMode(onStoreChange: () => void): () => void {
+  transcriptionModeListeners.add(onStoreChange)
+  return () => {
+    transcriptionModeListeners.delete(onStoreChange)
+  }
+}
+
+function notifyTranscriptionModeChanged(): void {
+  transcriptionModeListeners.forEach((fn) => {
+    fn()
+  })
+}
 
 if (typeof window !== 'undefined') {
   const saved = window.localStorage.getItem(MODE_STORAGE_KEY)
@@ -29,6 +44,7 @@ export function setTranscriptionMode(mode: TranscriptionMode): void {
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(MODE_STORAGE_KEY, mode)
   }
+  notifyTranscriptionModeChanged()
 }
 
 /** アプリ全体で共有する現在モードの文字起こしサービス */
@@ -41,13 +57,16 @@ export function useTranscription() {
   const setStatus = useTranscriptStore(s => s.setStatus)
   const transcript = useTranscriptStore(s => s.transcript)
   const status = useTranscriptStore(s => s.status)
-  const [mode, setMode] = useState<TranscriptionMode>(getTranscriptionMode())
-  const serviceRef = useRef<ITranscriptionService>(getTranscriptionService())
-  const [microphones, setMicrophones] = useState<MicrophoneDevice[]>(serviceRef.current.getAvailableMicrophones())
-  const [selectedMicrophoneId, setSelectedMicrophoneId] = useState(serviceRef.current.getSelectedMicrophoneId())
+  const mode = useSyncExternalStore(subscribeTranscriptionMode, getTranscriptionMode, getTranscriptionMode)
+  const [microphones, setMicrophones] = useState<MicrophoneDevice[]>(() =>
+    getTranscriptionService().getAvailableMicrophones(),
+  )
+  const [selectedMicrophoneId, setSelectedMicrophoneId] = useState(() =>
+    getTranscriptionService().getSelectedMicrophoneId(),
+  )
 
   useEffect(() => {
-    const service = serviceRef.current
+    const service = getTranscriptionService()
     void service.refreshMicrophones()
     const unsubscribe = service.subscribe(() => {
       setTranscript(service.getTranscript())
@@ -61,8 +80,6 @@ export function useTranscription() {
   const changeMode = (nextMode: TranscriptionMode) => {
     setTranscriptionMode(nextMode)
     const nextService = getTranscriptionService()
-    serviceRef.current = nextService
-    setMode(nextMode)
     setTranscript(nextService.getTranscript())
     setStatus(nextService.getStatus())
     setMicrophones(nextService.getAvailableMicrophones())
@@ -77,13 +94,19 @@ export function useTranscription() {
     isListening: status === 'listening',
     microphones,
     selectedMicrophoneId,
-    refreshMicrophones: () => serviceRef.current.refreshMicrophones(),
-    selectMicrophone: (deviceId: string) => serviceRef.current.setSelectedMicrophone(deviceId),
+    refreshMicrophones: () => void getTranscriptionService().refreshMicrophones(),
+    selectMicrophone: (deviceId: string) => {
+      getTranscriptionService().setSelectedMicrophone(deviceId)
+    },
     setMode: changeMode,
-    startListening: () => serviceRef.current.startListening(),
-    stopListening: () => serviceRef.current.stopListening(),
+    startListening: () => {
+      getTranscriptionService().startListening()
+    },
+    stopListening: () => {
+      getTranscriptionService().stopListening()
+    },
     clearTranscript: () => {
-      serviceRef.current.clearTranscript()
+      getTranscriptionService().clearTranscript()
       useTranscriptStore.getState().clear()
     },
   }
