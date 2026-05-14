@@ -2,9 +2,6 @@ import React from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Mic, Square } from 'lucide-react'
 import type { MicrophoneDevice, TranscriptionMode } from '../../domain/interfaces/ITranscriptionService'
-import { useAccentTheme } from '../../theme/AccentThemeContext'
-import { micStartButtonStyle } from '../../theme/accentStyles'
-
 export type RecordingToolbarProps = {
   darkMode?: boolean
   isListening: boolean
@@ -35,7 +32,6 @@ export const RecordingToolbar: React.FC<RecordingToolbarProps> = ({
   variant = 'full',
 }) => {
   const dk = darkMode
-  const { rgb } = useAccentTheme()
   const btnSize = compact ? 'w-14 h-14' : 'w-20 h-20'
   const iconMic = compact ? 24 : 32
   const iconSq = compact ? 20 : 26
@@ -56,10 +52,10 @@ export const RecordingToolbar: React.FC<RecordingToolbarProps> = ({
                 exit={{ scale: 0.8, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 22 }}
                 whileTap={{ scale: 0.92 }}
-                className={`${btnSize} rounded-full flex items-center justify-center relative shadow-2xl bg-red-500 hover:bg-red-400 text-white shadow-red-500/30`}
+                className={`${btnSize} rounded-full flex items-center justify-center relative shadow-2xl bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/30`}
                 title="録音を中断"
               >
-                <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-25 pointer-events-none" />
+                <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-25 pointer-events-none" />
                 <Square size={iconSq} fill="currentColor" />
               </motion.button>
             ) : (
@@ -71,8 +67,7 @@ export const RecordingToolbar: React.FC<RecordingToolbarProps> = ({
                 exit={{ scale: 0.8, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 22 }}
                 whileTap={{ scale: 0.92 }}
-                className={`${btnSize} rounded-full flex items-center justify-center shadow-2xl transition-[filter] hover:brightness-110`}
-                style={micStartButtonStyle(rgb, dk)}
+                className={`${btnSize} rounded-full flex items-center justify-center shadow-2xl bg-violet-600 hover:bg-violet-500 text-white shadow-violet-500/35`}
                 title="録音開始"
               >
                 <Mic size={iconMic} />

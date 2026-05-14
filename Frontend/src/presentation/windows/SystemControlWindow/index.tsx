@@ -9,16 +9,12 @@ import {
   SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX,
   SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
 } from '../../constants/systemControlWindow'
-import { useAccentTheme } from '../../../theme/AccentThemeContext'
-import { micStartButtonStyle } from '../../../theme/accentStyles'
-
 const focusRing =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent-rgb)/0.45)] focus-visible:ring-offset-2'
 
 export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) => {
   const { onResetAll } = usePresentationShell()
   const dk = darkMode
-  const { rgb } = useAccentTheme()
   const ringOffset = dk ? 'focus-visible:ring-offset-[#0d0e1a]' : 'focus-visible:ring-offset-white'
 
   const { isListening, startListening, stopListening } = useTranscription()
@@ -54,10 +50,10 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
               exit={{ opacity: 0 }}
               transition={{ duration: 0.12 }}
               whileTap={{ scale: 0.98 }}
-              className={`${recordBtnBase} bg-red-500 text-white shadow-red-500/25 hover:bg-red-400`}
+              className={`${recordBtnBase} bg-emerald-500 text-white shadow-emerald-500/25 hover:bg-emerald-400`}
               title="録音を中断"
             >
-              <span className="pointer-events-none absolute inset-0 animate-ping rounded-lg bg-red-400 opacity-15" />
+              <span className="pointer-events-none absolute inset-0 animate-ping rounded-lg bg-emerald-400 opacity-15" />
               <Square size={16} fill="currentColor" className="shrink-0" />
               <span className="min-w-0 truncate">中断</span>
             </motion.button>
@@ -70,8 +66,7 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
               exit={{ opacity: 0 }}
               transition={{ duration: 0.12 }}
               whileTap={{ scale: 0.98 }}
-              className={`${recordBtnBase} text-white hover:brightness-110`}
-              style={micStartButtonStyle(rgb, dk)}
+              className={`${recordBtnBase} bg-violet-600 text-white shadow-violet-500/25 hover:bg-violet-500`}
               title="録音開始"
             >
               <Mic size={16} strokeWidth={2.25} className="shrink-0" />
