@@ -71,14 +71,14 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
         type="button"
         onClick={() => setOpen(v => !v)}
         title="開発者向けテスト（デモ・検証）"
-        className={`flex size-9 shrink-0 items-center justify-center rounded-full transition-colors ${focusRing} ${ringOffset} ${dk
+        className={`flex size-10 shrink-0 items-center justify-center rounded-full transition-colors ${focusRing} ${ringOffset} ${dk
           ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30'
           : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'}`}
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-label="開発者向けテストを開く"
       >
-        <FlaskConical size={16} strokeWidth={2} />
+        <FlaskConical size={17} strokeWidth={2} />
       </button>
 
       {open && (

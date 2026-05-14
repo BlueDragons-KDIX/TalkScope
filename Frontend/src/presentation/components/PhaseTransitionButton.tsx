@@ -38,7 +38,7 @@ export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true, compac
       ? 'bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-emerald-900/40 hover:from-emerald-400 hover:to-emerald-600'
       : 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-emerald-900/25 hover:from-emerald-600 hover:to-emerald-700'
 
-  const iconSize = compact ? 14 : 22
+  const iconSize = compact ? 16 : 22
 
   return (
     <button
@@ -48,7 +48,7 @@ export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true, compac
       aria-label={isDuring ? '発表を終了する' : '発表中に戻る'}
       className={`inline-flex items-center justify-center font-bold leading-none shadow-md transition-transform active:scale-[0.98] ${
         compact
-          ? 'min-h-10 h-10 min-w-0 flex-1 flex-row gap-1 rounded-lg px-2 text-[10px] hover:scale-[1.01]'
+          ? 'min-h-11 h-11 min-w-0 flex-1 flex-row gap-1.5 rounded-lg px-2.5 text-[11px] hover:scale-[1.01]'
           : 'w-full h-[3.25rem] shrink-0 gap-2.5 rounded-xl px-6 text-sm whitespace-nowrap shadow-lg hover:scale-[1.01]'
       } ${focusRing} ${ringOffset} ${surface}`}
     >

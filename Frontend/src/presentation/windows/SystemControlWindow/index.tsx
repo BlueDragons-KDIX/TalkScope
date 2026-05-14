@@ -5,6 +5,10 @@ import { PhaseTransitionButton } from '../../components/PhaseTransitionButton'
 import { usePresentationShell } from '../../context/PresentationShellContext'
 import { useTranscription } from '../../hooks/useTranscription'
 import type { WindowProps } from '../IWindowDefinition'
+import {
+  SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX,
+  SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
+} from '../../constants/systemControlWindow'
 
 const focusRing =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2'
@@ -24,15 +28,19 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
   const divider = dk ? 'bg-slate-700/40' : 'bg-slate-200'
 
   const recordBtnBase =
-    'relative flex min-h-10 h-10 min-w-0 flex-1 flex-row items-center justify-center gap-1.5 rounded-lg px-2 text-[10px] font-bold shadow-md'
+    'relative flex min-h-11 h-11 min-w-0 flex-1 flex-row items-center justify-center gap-2 rounded-lg px-2.5 text-[11px] font-bold shadow-md'
 
   return (
     <div
-      className={`flex h-full min-h-0 flex-col gap-1.5 overflow-y-auto p-2 ${
+      style={{
+        minWidth: SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
+        minHeight: SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX,
+      }}
+      className={`box-border flex h-full min-h-0 flex-col gap-2 overflow-y-auto p-2.5 ${
         dk ? 'bg-[#0d0e1a] text-slate-200' : 'bg-white text-slate-800'
       }`}
     >
-      <section aria-label="録音と発表の切り替え" className="flex gap-1.5">
+      <section aria-label="録音と発表の切り替え" className="flex gap-2">
         <AnimatePresence mode="wait">
           {isListening ? (
             <motion.button
@@ -47,7 +55,7 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
               title="録音を中断"
             >
               <span className="pointer-events-none absolute inset-0 animate-ping rounded-lg bg-red-400 opacity-15" />
-              <Square size={14} fill="currentColor" className="shrink-0" />
+              <Square size={16} fill="currentColor" className="shrink-0" />
               <span className="min-w-0 truncate">中断</span>
             </motion.button>
           ) : (
@@ -66,7 +74,7 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
               }`}
               title="録音開始"
             >
-              <Mic size={14} strokeWidth={2.25} className="shrink-0" />
+              <Mic size={16} strokeWidth={2.25} className="shrink-0" />
               <span className="min-w-0 truncate">録音</span>
             </motion.button>
           )}
@@ -81,14 +89,14 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
         type="button"
         onClick={onResetAll}
         title="文字起こし・用語・履歴などをすべてクリアします"
-        className={`flex w-full min-w-0 flex-row items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-bold transition-colors ${
+        className={`flex w-full min-w-0 flex-row items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-bold transition-colors ${
           dk
             ? 'border-amber-500/40 bg-amber-500/12 text-amber-300 hover:bg-amber-500/22'
             : 'border-amber-300/90 bg-amber-50 text-amber-900 hover:bg-amber-100'
         } ${focusRing} ${ringOffset}`}
         aria-label="すべてリセット"
       >
-        <RotateCcw size={13} strokeWidth={2.5} className="shrink-0" />
+        <RotateCcw size={15} strokeWidth={2.5} className="shrink-0" />
         リセット
       </button>
     </div>

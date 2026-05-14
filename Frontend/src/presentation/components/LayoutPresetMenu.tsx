@@ -54,15 +54,15 @@ export const LayoutPresetMenu: React.FC<Props> = ({
     if (!disabled) setOpen(v => !v)
   }
 
-  const iconSize = compact ? 15 : labeled ? 16 : 18
+  const iconSize = compact ? 16 : labeled ? 17 : 18
 
-  const triggerIconOnly = `relative z-0 flex shrink-0 items-center justify-center rounded-full transition-colors ${compact ? 'size-8' : 'size-10'} ${focusRing} ${ringOffset} ${darkMode
+  const triggerIconOnly = `relative z-0 flex shrink-0 items-center justify-center rounded-full transition-colors ${compact ? 'size-9' : 'size-11'} ${focusRing} ${ringOffset} ${darkMode
     ? 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'} ${disabled
     ? 'pointer-events-none opacity-[0.42] saturate-50'
     : ''}`
 
-  const triggerLabeled = `relative z-0 flex min-h-9 shrink-0 flex-row items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${focusRing} ${ringOffset} ${darkMode
+  const triggerLabeled = `relative z-0 flex min-h-10 shrink-0 flex-row items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold transition-colors ${focusRing} ${ringOffset} ${darkMode
     ? 'border-slate-700/80 bg-slate-900/25 text-slate-200 hover:bg-slate-800'
     : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'} ${disabled
     ? 'pointer-events-none cursor-not-allowed opacity-[0.42] saturate-50'

@@ -29,7 +29,7 @@ export const PresentationAppHeader: React.FC<PresentationAppHeaderProps> = ({
 
   return (
     <header
-      className={`flex-shrink-0 flex min-h-[3rem] flex-wrap items-center justify-between gap-2 border-b px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5 relative z-50 ${dk ? 'bg-[#0d0e1a] border-slate-800' : 'bg-white border-slate-200'}`}
+      className={`flex-shrink-0 flex min-h-[3.25rem] flex-wrap items-center justify-between gap-2 border-b px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5 relative z-50 ${dk ? 'bg-[#0d0e1a] border-slate-800' : 'bg-white border-slate-200'}`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
         <span
@@ -58,11 +58,11 @@ export const PresentationAppHeader: React.FC<PresentationAppHeaderProps> = ({
           type="button"
           onClick={onOpenAppearance}
           title="設定（表示・文字起こし・マイクなど）"
-          className={`flex min-h-9 shrink-0 flex-row items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${focusRing} ${ringOffset} ${settingsPill}`}
+          className={`flex min-h-10 shrink-0 flex-row items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold transition-colors ${focusRing} ${ringOffset} ${settingsPill}`}
           aria-haspopup="dialog"
           aria-label="設定を開く"
         >
-          <Settings size={16} strokeWidth={2} />
+          <Settings size={17} strokeWidth={2} />
           <span className="whitespace-nowrap">設定</span>
         </button>
         {import.meta.env.DEV ? <TestFeaturesPopover darkMode={dk} align="right" /> : null}
