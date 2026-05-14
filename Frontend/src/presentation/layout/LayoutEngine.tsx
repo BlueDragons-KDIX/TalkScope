@@ -122,6 +122,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
       const def = getWindowDefinition(node.windowId)
       const label = def?.label ?? node.windowId
       const WindowComponent = def?.component
+      const closable = def?.closable !== false
       const isTarget = dragging !== null && dragging !== node.windowId && dropInfo?.windowId === node.windowId
       return (
         <div
@@ -142,7 +143,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
             <GripHorizontal size={10} className="opacity-40 flex-shrink-0" />
             <span className="text-[9px] font-bold uppercase tracking-[0.15em]">{label}</span>
-            {onClose && (
+            {onClose && closable && (
               <button
                 onClick={e => { e.stopPropagation(); onClose(node.windowId) }}
                 className={`ml-auto p-0.5 rounded transition-colors ${darkMode ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-200 hover:text-black'}`}
