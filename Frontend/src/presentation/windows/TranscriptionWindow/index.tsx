@@ -11,8 +11,10 @@ export const TranscriptionWindow: React.FC<WindowProps> = ({ darkMode = true }) 
   const {
     transcript,
     isListening,
+    mode,
     startListening,
     stopListening,
+    setMode,
     microphones,
     selectedMicrophoneId,
     refreshMicrophones,
@@ -32,6 +34,8 @@ export const TranscriptionWindow: React.FC<WindowProps> = ({ darkMode = true }) 
     <TranscriptionView
       transcript={transcript}
       isListening={isListening}
+      mode={mode}
+      onChangeMode={setMode}
       onToggleListening={handleToggleListening}
       microphones={microphones}
       selectedMicrophoneId={selectedMicrophoneId}

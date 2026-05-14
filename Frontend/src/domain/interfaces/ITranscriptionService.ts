@@ -1,4 +1,5 @@
 export type TranscriptionStatus = 'idle' | 'listening' | 'error'
+export type TranscriptionMode = 'fast' | 'accurate'
 export type MicrophoneDevice = {
   deviceId: string
   label: string

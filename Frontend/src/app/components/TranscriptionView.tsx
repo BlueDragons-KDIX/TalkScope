@@ -5,7 +5,7 @@ import { Term } from '../data/terms';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mic, Square, Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle, Star } from 'lucide-react';
 import { UseDemoStreamReturn } from '../../debug/hooks/useDemoStream';
-import type { MicrophoneDevice } from '../../domain/interfaces/ITranscriptionService';
+import type { MicrophoneDevice, TranscriptionMode } from '../../domain/interfaces/ITranscriptionService';
 
 const TOOLTIP = { W: 208, H: 100, PAD: 8, GAP_ABOVE: 12 } as const;
 
@@ -13,6 +13,8 @@ interface TranscriptionViewProps {
   transcript: string;
   isListening: boolean;
   onToggleListening: () => void;
+  mode?: TranscriptionMode;
+  onChangeMode?: (mode: TranscriptionMode) => void;
   microphones?: MicrophoneDevice[];
   selectedMicrophoneId?: string;
   onSelectMicrophone?: (deviceId: string) => void;
@@ -38,6 +40,8 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   transcript,
   isListening,
   onToggleListening,
+  mode = 'fast',
+  onChangeMode,
   microphones = [],
   selectedMicrophoneId = '',
   onSelectMicrophone,
@@ -337,6 +341,25 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
             </AnimatePresence>
             <span className={`text-[10px] font-bold ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
               {isListening ? '中断' : '録音開始'}
+            </span>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className={`text-[10px] font-bold ${dk ? 'text-slate-500' : 'text-slate-400'}`}>モード</span>
+              <select
+                value={mode}
+                onChange={(e) => onChangeMode?.(e.target.value as TranscriptionMode)}
+                className={`rounded-md border px-2 py-1 text-[10px] ${
+                  dk
+                    ? 'bg-slate-800 border-slate-700 text-slate-200'
+                    : 'bg-white border-slate-300 text-slate-700'
+                }`}
+                title="文字起こしモードを選択"
+              >
+                <option value="fast">速度重視</option>
+                <option value="accurate">正確さ重視</option>
+              </select>
+            </div>
+            <span className={`text-[9px] ${dk ? 'text-slate-600' : 'text-slate-400'}`}>
+              {mode === 'fast' ? 'WebSpeechでリアルタイム寄り' : '停止後にローカルSTTで高精度化'}
             </span>
             <div className="mt-1 flex items-center gap-1.5">
               <select
