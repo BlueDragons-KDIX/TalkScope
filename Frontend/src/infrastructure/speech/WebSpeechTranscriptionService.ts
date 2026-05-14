@@ -264,6 +264,15 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     this.notify()
   }
 
+  pauseListening(): void {
+    if (!this.recognition || !this.isRunning) return
+    this.isRunning = false
+    this.status = 'paused'
+    try { this.recognition.stop() } catch { /* ignore */ }
+    this.releaseSelectedMicrophone()
+    this.notify()
+  }
+
   clearTranscript(): void {
     this.transcript = ''
     this.finalTranscript = ''
