@@ -9,6 +9,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "test:local-server": "node tests/local-server/transcriptReceiver.mjs",
+    "test:local-stt-server": "cd tests/local-stt && uvicorn server:app --host 127.0.0.1 --port 8765",
     "verify:similarity": "bun run src/app/utils/verifySimilarity.ts"
   },
   "dependencies": {
