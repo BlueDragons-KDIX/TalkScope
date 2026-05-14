@@ -1,6 +1,7 @@
 import React from 'react'
 import { Settings } from 'lucide-react'
 import { LayoutPresetMenu } from './LayoutPresetMenu'
+import { WindowPickerButton } from './WindowPickerButton'
 import { TestFeaturesPopover } from './TestFeaturesPopover'
 import { useAccentTheme } from '../../theme/AccentThemeContext'
 import { accentRgba } from '../../theme/accentStyles'
@@ -14,9 +15,6 @@ export interface PresentationAppHeaderProps {
 const focusRing =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent-rgb)/0.45)] focus-visible:ring-offset-2'
 
-/**
- * プレゼンレイヤのヘッダー（ブランド・フェーズ・レイアウト・設定・開発テスト）。
- */
 export const PresentationAppHeader: React.FC<PresentationAppHeaderProps> = ({
   darkMode,
   currentPhaseId,
@@ -64,6 +62,7 @@ export const PresentationAppHeader: React.FC<PresentationAppHeaderProps> = ({
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2" aria-label="ツールバー">
+        <WindowPickerButton darkMode={dk} phaseId="during" menuAlign="right" disabled={!isDuring} labeled />
         <LayoutPresetMenu darkMode={dk} phaseId="during" menuAlign="right" disabled={!isDuring} labeled />
         <button
           type="button"

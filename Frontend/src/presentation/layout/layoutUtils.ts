@@ -14,12 +14,7 @@ export function attachSystemControlDock(inner: LayoutNode, dockRatio = 0.18): La
 // ── 発表中フェーズのデフォルトレイアウト ──
 export const makeDefaultLayout = (): LayoutNode =>
   attachSystemControlDock(
-    S(
-      'h',
-      0.36,
-      L('transcription'),
-      S('h', 0.54, L('bubbleCloud'), S('v', 0.44, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))),
-    ),
+    S('h', 0.45, L('transcription'), L('bubbleCloud')),
   )
 
 export const makeLeftRightLayout = (): LayoutNode =>
