@@ -146,12 +146,12 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
             draggable
             onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragging(node.windowId) }}
             onDragEnd={() => { setDragging(null); setDropInfo(null) }}
-            className={`flex items-center gap-1.5 px-2.5 py-1 flex-shrink-0 cursor-grab active:cursor-grabbing select-none border-b font-semibold ${darkMode ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
+            className={`group flex items-center gap-1.5 px-2.5 py-2 flex-shrink-0 cursor-grab active:cursor-grabbing select-none border-b font-semibold transition-colors ${darkMode ? 'text-slate-300 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-black/5'}`}
             style={{ backgroundColor: headerBg, borderBottomColor: `rgba(${accentRgb},0.42)` }}
           >
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
-            <GripHorizontal size={10} className="opacity-40 flex-shrink-0" />
-            <span className="text-[9px] font-bold uppercase tracking-[0.15em]">{label}</span>
+            <GripHorizontal size={14} className="opacity-35 flex-shrink-0 transition-all group-hover:opacity-75 group-hover:scale-110" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em]">{label}</span>
             {onClose && closable && (
               <button
                 onClick={e => { e.stopPropagation(); onClose(node.windowId) }}
