@@ -28,6 +28,9 @@ import {
   makeLeftRightLayout,
   removeLeaf,
 } from './layout/layoutUtils';
+import { AccentThemeProvider } from '../theme/AccentThemeContext';
+import { accentRgba, micStartButtonStyle } from '../theme/accentStyles';
+import { getAccentRgb } from '../theme/accentTokens';
 
 
 
@@ -497,15 +500,24 @@ const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms]);
 
+  const shellRgb = getAccentRgb(settings.themeColor);
+
   return (
+    <AccentThemeProvider themeColor={settings.themeColor}>
     <div
       className={`h-full flex flex-col font-sans transition-colors duration-500 ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}
       style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
     >
       {dk && (
         <div className="fixed inset-0 pointer-events-none z-0">
-          <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-600/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-violet-600/5 rounded-full blur-3xl" />
+          <div
+            className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl"
+            style={{ backgroundColor: accentRgba(shellRgb, 0.12) }}
+          />
+          <div
+            className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl"
+            style={{ backgroundColor: accentRgba(shellRgb, 0.08) }}
+          />
         </div>
       )}
 
@@ -516,11 +528,19 @@ const App: React.FC = () => {
         <div className="w-full min-w-0 px-4 h-14 flex items-center justify-between gap-4">
           {/* Logo */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="bg-indigo-600 p-1.5 rounded-xl text-white shadow-lg shadow-indigo-600/30">
+            <div
+              className="p-1.5 rounded-xl text-white shadow-lg transition-[filter] hover:brightness-110"
+              style={micStartButtonStyle(shellRgb, dk)}
+            >
               <Book size={18} />
             </div>
             <span className="text-lg font-black tracking-tight">TalkScope</span>
-            <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-[0.2em] hidden sm:inline">Pro</span>
+            <span
+              className="text-[9px] font-bold uppercase tracking-[0.2em] hidden sm:inline"
+              style={{ color: accentRgba(shellRgb, dk ? 0.85 : 0.7) }}
+            >
+              Pro
+            </span>
           </div>
 
           {/* Actions（右詰め）: 主題 → レイアウト → API確認 → 設定 */}
@@ -549,7 +569,18 @@ const App: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setIsLayoutMenuOpen(v => !v)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${isLayoutMenuOpen ? (dk ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-600') : (dk ? 'text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 border-slate-700/50' : 'text-slate-500 hover:text-slate-700 bg-white border-slate-200 hover:bg-slate-50')}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                  isLayoutMenuOpen ? '' : (dk ? 'text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 border-slate-700/50' : 'text-slate-500 hover:text-slate-700 bg-white border-slate-200 hover:bg-slate-50')
+                }`}
+                style={
+                  isLayoutMenuOpen
+                    ? {
+                        backgroundColor: accentRgba(shellRgb, dk ? 0.22 : 0.1),
+                        borderColor: accentRgba(shellRgb, dk ? 0.5 : 0.35),
+                        color: accentRgba(shellRgb, dk ? 0.95 : 0.88),
+                      }
+                    : undefined
+                }
               >
                 <LayoutGrid size={13} />レイアウト
               </button>
@@ -561,7 +592,13 @@ const App: React.FC = () => {
                       <button
                         key={p.key}
                         onClick={() => { setLayout(p.make()); setIsLayoutMenuOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${dk ? 'hover:bg-indigo-600/20 text-slate-300 hover:text-white' : 'hover:bg-indigo-50 text-slate-600 hover:text-indigo-700'}`}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${dk ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = accentRgba(shellRgb, dk ? 0.18 : 0.1);
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
                       >
                         {p.label}
                       </button>
@@ -630,6 +667,7 @@ const App: React.FC = () => {
         darkMode={dk}
       />
     </div>
+    </AccentThemeProvider>
   );
 };
 
