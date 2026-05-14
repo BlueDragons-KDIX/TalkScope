@@ -8,6 +8,8 @@ import {
   CONTENT_FONT_SCALE_MIN,
   useContentFontScaleStore,
 } from '../../stores/contentFontScaleStore';
+import { useAccentTheme } from '../../theme/AccentThemeContext';
+import { accentRgba, accentRgbSolid, accentSliderStyle } from '../../theme/accentStyles';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -53,28 +55,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const { mode, setMode, microphones, selectedMicrophoneId, selectMicrophone, refreshMicrophones } = useTranscription();
   const contentFontScale = useContentFontScaleStore(s => s.scale);
   const setContentFontScale = useContentFontScaleStore(s => s.setScale);
+  const { rgb } = useAccentTheme();
 
   if (!isOpen) return null;
 
   const dk = settings.darkMode;
 
-  const modeBtn = (val: TranscriptionMode, label: string) => (
-    <button
-      key={val}
-      onClick={() => setMode(val)}
-      className={`flex-1 rounded-lg border py-1.5 text-xs font-bold transition-colors ${
-        mode === val
-          ? dk
-            ? 'border-indigo-500 bg-indigo-500/15 text-indigo-300'
-            : 'border-indigo-500 bg-indigo-50 text-indigo-700'
-          : dk
-            ? 'border-slate-700 text-slate-400 hover:bg-slate-800'
-            : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-      }`}
-    >
-      {label}
-    </button>
-  );
+  const modeBtn = (val: TranscriptionMode, label: string) => {
+    const active = mode === val;
+    return (
+      <button
+        key={val}
+        onClick={() => setMode(val)}
+        className={`flex-1 rounded-lg border py-1.5 text-xs font-bold transition-colors ${
+          active ? '' : dk ? 'border-slate-700 text-slate-400 hover:bg-slate-800' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+        }`}
+        style={
+          active
+            ? {
+                borderColor: accentRgba(rgb, dk ? 0.65 : 0.5),
+                backgroundColor: accentRgba(rgb, dk ? 0.2 : 0.1),
+                color: accentRgba(rgb, dk ? 0.96 : 0.88),
+              }
+            : undefined
+        }
+      >
+        {label}
+      </button>
+    );
+  };
 
   return (
     <AnimatePresence>
@@ -97,7 +106,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="p-4">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                <Settings size={16} className="text-indigo-400" />
+                <Settings size={16} style={{ color: accentRgba(rgb, dk ? 0.88 : 0.75) }} />
                 <h2 className="text-base font-black">設定</h2>
               </div>
               <button onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500' : 'hover:bg-slate-100 text-slate-400'}`}>
@@ -117,10 +126,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span className="text-xs font-bold">ダークモード</span>
                   <button
                     onClick={() => updateSettings({ darkMode: !settings.darkMode })}
-                    className={`w-10 h-5 rounded-full relative transition-colors ${settings.darkMode ? 'bg-indigo-600' : 'bg-slate-200'}`}
+                    className={`w-10 h-5 rounded-full relative transition-colors ${settings.darkMode ? '' : 'bg-slate-200'}`}
+                    style={settings.darkMode ? { backgroundColor: accentRgbSolid(rgb) } : undefined}
                   >
                     <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${settings.darkMode ? 'left-[22px]' : 'left-0.5'} flex items-center justify-center shadow-sm`}>
-                      {settings.darkMode ? <Moon size={8} className="text-indigo-600" /> : <Sun size={8} className="text-amber-500" />}
+                      {settings.darkMode ? <Moon size={8} style={{ color: accentRgbSolid(rgb) }} /> : <Sun size={8} className="text-amber-500" />}
                     </div>
                   </button>
                 </div>
@@ -132,7 +142,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <button
                         key={color.value}
                         onClick={() => updateSettings({ themeColor: color.value })}
-                        className={`w-7 h-7 rounded-full transition-all ${color.bg} ${settings.themeColor === color.value ? `ring-2 ring-offset-2 ${dk ? 'ring-offset-[#12132a]' : 'ring-offset-white'} ring-slate-400 scale-110` : 'opacity-60 hover:opacity-100'}`}
+                        className={`w-7 h-7 rounded-full transition-all ${color.bg} ${
+                          settings.themeColor === color.value ? 'scale-110' : 'opacity-60 hover:opacity-100'
+                        }`}
+                        style={
+                          settings.themeColor === color.value
+                            ? { boxShadow: `0 0 0 2px ${dk ? '#0f172a' : '#fff'}, 0 0 0 4px ${accentRgbSolid(rgb)}, 0 0 18px ${accentRgba(rgb, 0.5)}` }
+                            : undefined
+                        }
                         title={color.name}
                       />
                     ))}
@@ -157,7 +174,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   step={5}
                   value={Math.round(contentFontScale * 100)}
                   onChange={(e) => setContentFontScale(Number(e.target.value) / 100)}
-                  className={`mb-1.5 w-full cursor-pointer accent-indigo-500 ${dk ? 'opacity-95' : ''}`}
+                  className={`mb-1.5 w-full cursor-pointer ${dk ? 'opacity-95' : ''}`}
+                  style={accentSliderStyle(rgb)}
                   aria-valuemin={Math.round(CONTENT_FONT_SCALE_MIN * 100)}
                   aria-valuemax={Math.round(CONTENT_FONT_SCALE_MAX * 100)}
                   aria-valuenow={Math.round(contentFontScale * 100)}
@@ -234,7 +252,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                     <button
                       onClick={() => onSimilarityFilterEnabledChange(!similarityFilterEnabled)}
-                      className={`w-10 h-5 rounded-full relative transition-colors ${similarityFilterEnabled ? 'bg-indigo-600' : (dk ? 'bg-slate-700' : 'bg-slate-200')}`}
+                      className={`w-10 h-5 rounded-full relative transition-colors ${similarityFilterEnabled ? '' : (dk ? 'bg-slate-700' : 'bg-slate-200')}`}
+                      style={similarityFilterEnabled ? { backgroundColor: accentRgbSolid(rgb) } : undefined}
                     >
                       <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${similarityFilterEnabled ? 'left-[22px]' : 'left-0.5'}`} />
                     </button>
@@ -253,7 +272,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         step={1}
                         value={similarityFilterStrength}
                         onChange={(e) => onSimilarityFilterStrengthChange(Number(e.target.value))}
-                        className="w-full h-1 rounded-lg appearance-none cursor-pointer bg-slate-700 accent-indigo-500"
+                        className="w-full h-1 rounded-lg appearance-none cursor-pointer bg-slate-700"
+                        style={accentSliderStyle(rgb)}
                       />
                       <div className={`flex justify-between mt-0.5 text-[9px] ${dk ? 'text-slate-600' : 'text-slate-400'}`}>
                         <span>広く</span>
