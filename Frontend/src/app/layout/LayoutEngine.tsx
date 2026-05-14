@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { GripHorizontal, X } from 'lucide-react';
 import { DropZone, LayoutNode, PanelId } from './types';
 import { movePanel, updateRatio } from './layoutUtils';
+import { getAccentRgb } from '../../theme/accentTokens';
 
 // ── パネルラベル ────────────────────────────────────
 const PANEL_LABELS: Record<PanelId, string> = {
@@ -9,16 +10,6 @@ const PANEL_LABELS: Record<PanelId, string> = {
     bubbleCloud: '用語マップ',
     detail: '詳細',
     history: '履歴',
-};
-
-// ── アクセントカラー→RGB値マッピング ────────────────
-const ACCENT_RGB: Record<string, string> = {
-    blue: '59,130,246',
-    indigo: '99,102,241',
-    purple: '168,85,247',
-    rose: '244,63,94',
-    emerald: '16,185,129',
-    orange: '249,115,22',
 };
 
 // ── ドロップゾーンオーバーレイ ──────────────────────
@@ -97,10 +88,13 @@ export interface LayoutEngineProps {
 
 export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, onLayoutChange, darkMode, themeColor = 'indigo', panels, onClose }) => {
     const dk = darkMode;
-    const accentRgb = ACCENT_RGB[themeColor] ?? ACCENT_RGB['indigo'];
-    const borderStyle = `2px solid rgba(${accentRgb},0.6)`;
-    const headerBg = `rgba(${accentRgb},0.07)`;
+    const accentRgb = getAccentRgb(themeColor);
+    const borderStyle = `2px solid rgba(${accentRgb},0.72)`;
+    const headerBg = `rgba(${accentRgb},${dk ? 0.18 : 0.12})`;
     const dotColor = `rgba(${accentRgb},1)`;
+    const panelGlow = dk
+        ? `0 0 0 1px rgba(${accentRgb},0.14), 0 12px 40px rgba(${accentRgb},0.1)`
+        : `0 0 0 1px rgba(${accentRgb},0.18), 0 10px 36px rgba(${accentRgb},0.08)`;
 
     const [dragging, setDragging] = useState<PanelId | null>(null);
     const [dropInfo, setDropInfo] = useState<{ panelId: PanelId; zone: DropZone } | null>(null);
@@ -147,6 +141,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, onLayoutChan
                         overflow: 'hidden',
                         border: borderStyle,
                         borderRadius: 6,
+                        boxShadow: panelGlow,
                     }}
                 >
                     {/* コンパクトドラッグハンドルヘッダー */}
@@ -154,10 +149,10 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, onLayoutChan
                         draggable
                         onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragging(node.panelId); }}
                         onDragEnd={() => { setDragging(null); setDropInfo(null); }}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 flex-shrink-0 cursor-grab active:cursor-grabbing select-none border-b ${dk ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 flex-shrink-0 cursor-grab active:cursor-grabbing select-none border-b font-semibold ${dk ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
                         style={{
                             backgroundColor: headerBg,
-                            borderBottomColor: `rgba(${accentRgb},0.3)`,
+                            borderBottomColor: `rgba(${accentRgb},0.42)`,
                         }}
                     >
                         {/* アクセントカラードット */}
@@ -237,7 +232,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, onLayoutChan
             </div>
         );
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [dragging, dropInfo, dk, panels, accentRgb, borderStyle, headerBg, dotColor, calcZone, onLayoutChange, onClose]);
+    }, [dragging, dropInfo, dk, panels, accentRgb, borderStyle, headerBg, dotColor, panelGlow, calcZone, onLayoutChange, onClose]);
 
     return (
         <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
