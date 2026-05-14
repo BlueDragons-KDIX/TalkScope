@@ -17,6 +17,7 @@
 | #26 `feature/accent-color-theming` | アクセントテーマ、`accentStyles`、レイアウトの色味など |
 | #27 `fix/transcription-recording-stale-service` | `useTranscription` のモードと `getTranscriptionService()` の同期 |
 | #28 `fix/term-detail-panel-hooks-order` | `TermDetailPanel` の Rules of Hooks 違反修正 |
+| #29 `feature/ux-recording-and-window-controls` | 録音一時停止・操作ドックUI・ウィンドウピッカー等（本ブランチへ `develop/v0` 経由で取り込み後もテスト再実行で確認） |
 
 本仕様書では、上記のうち **自動テストで固定しやすい範囲** に絞って単体・結合テストを追加する。
 
@@ -32,6 +33,7 @@
 | テストファイル数 | 17 |
 | 実行コマンド | `cd Frontend && bun test` |
 | 備考 | `package.json` に `"test": "bun test"` を追加 |
+| 追記（`develop/v0` 取り込み後） | `origin/develop/v0`（PR #29 マージ済み）をマージした状態で `bun test` / `bun run build` 再実行 → いずれも成功 |
 
 ---
 
