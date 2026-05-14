@@ -1,34 +1,50 @@
 import type { DropZone, LeafNode, LayoutNode, SplitNode } from '../../domain/entities/Layout'
 import { newNodeId } from '../../domain/entities/Layout'
+import { SYSTEM_CONTROL_WINDOW_ID } from '../constants/systemControlWindow'
 
 const L = (windowId: string): LeafNode => ({ type: 'leaf', id: newNodeId(), windowId })
 const S = (direction: 'h' | 'v', ratio: number, a: LayoutNode, b: LayoutNode): SplitNode =>
   ({ type: 'split', id: newNodeId(), direction, ratio, a, b })
 
+/** 左列に削除不可の操作ウィンドウを付与する（発表中レイアウト用） */
+export function attachSystemControlDock(inner: LayoutNode, dockRatio = 0.18): LayoutNode {
+  return S('h', dockRatio, L(SYSTEM_CONTROL_WINDOW_ID), inner)
+}
+
 // ── 発表中フェーズのデフォルトレイアウト ──
 export const makeDefaultLayout = (): LayoutNode =>
-  S(
-    'h',
-    0.36,
-    L('transcription'),
-    S('h', 0.54, L('bubbleCloud'), S('v', 0.44, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))),
+  attachSystemControlDock(
+    S(
+      'h',
+      0.36,
+      L('transcription'),
+      S('h', 0.54, L('bubbleCloud'), S('v', 0.44, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))),
+    ),
   )
 
 export const makeLeftRightLayout = (): LayoutNode =>
-  S('h', 0.4, L('transcription'), S('v', 0.38, L('bubbleCloud'), S('h', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))))
+  attachSystemControlDock(
+    S('h', 0.4, L('transcription'), S('v', 0.38, L('bubbleCloud'), S('h', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history'))))),
+  )
 
 export const make2x2Layout = (): LayoutNode =>
-  S('v', 0.5, S('h', 0.5, L('transcription'), L('bubbleCloud')), S('h', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history'))))
+  attachSystemControlDock(
+    S('v', 0.5, S('h', 0.5, L('transcription'), L('bubbleCloud')), S('h', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))),
+  )
 
 export const makeHorizontalLayout = (): LayoutNode =>
-  S('h', 0.24, L('transcription'), S('h', 0.316, L('bubbleCloud'), S('h', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))))
+  attachSystemControlDock(
+    S('h', 0.24, L('transcription'), S('h', 0.316, L('bubbleCloud'), S('h', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history'))))),
+  )
 
 export const makeVerticalLayout = (): LayoutNode =>
-  S('v', 0.22, L('transcription'), S('v', 0.32, L('bubbleCloud'), S('v', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))))
+  attachSystemControlDock(
+    S('v', 0.22, L('transcription'), S('v', 0.32, L('bubbleCloud'), S('v', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history'))))),
+  )
 
 // ── 発表後フェーズのデフォルトレイアウト ──
 export const makeAfterLayout = (): LayoutNode =>
-  L('minutes')
+  attachSystemControlDock(L('minutes'), 0.22)
 
 // ── ツリー操作 ──
 

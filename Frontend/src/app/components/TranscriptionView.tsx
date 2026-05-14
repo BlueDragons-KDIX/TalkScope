@@ -3,16 +3,19 @@ import { createPortal } from 'react-dom';
 import { highlightTerms } from '../utils/termDetection';
 import { Term } from '../data/terms';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, Square, Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle, Star } from 'lucide-react';
+import { Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle, Star } from 'lucide-react';
 import { UseDemoStreamReturn } from '../../debug/hooks/useDemoStream';
 import type { MicrophoneDevice, TranscriptionMode } from '../../domain/interfaces/ITranscriptionService';
+import { RecordingToolbar } from '../../presentation/components/RecordingToolbar';
 
 const TOOLTIP = { W: 208, H: 100, PAD: 8, GAP_ABOVE: 12 } as const;
 
 interface TranscriptionViewProps {
   transcript: string;
   isListening: boolean;
-  onToggleListening: () => void;
+  onToggleListening?: () => void;
+  /** false のとき録音・モード・マイクは操作ウィンドウ側に集約 */
+  showRecordingCluster?: boolean;
   mode?: TranscriptionMode;
   onChangeMode?: (mode: TranscriptionMode) => void;
   microphones?: MicrophoneDevice[];
@@ -40,6 +43,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   transcript,
   isListening,
   onToggleListening,
+  showRecordingCluster = true,
   mode = 'fast',
   onChangeMode,
   microphones = [],
@@ -301,99 +305,21 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
             </div>
           )}
 
-          {/* 録音開始/中断ボタン（メイン） */}
-          <div className="flex flex-col items-center gap-1.5">
-            <AnimatePresence mode="wait">
-              {isListening ? (
-                <motion.button
-                  key="stop"
-                  onClick={onToggleListening}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-                  whileTap={{ scale: 0.92 }}
-                  className="w-20 h-20 rounded-full flex items-center justify-center relative shadow-2xl bg-red-500 hover:bg-red-400 text-white shadow-red-500/30"
-                  title="録音を中断"
-                >
-                  <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-25 pointer-events-none" />
-                  <Square size={26} fill="currentColor" />
-                </motion.button>
-              ) : (
-                <motion.button
-                  key="start"
-                  onClick={onToggleListening}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-                  whileTap={{ scale: 0.92 }}
-                  className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl ${
-                    dk
-                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/40'
-                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'
-                  }`}
-                  title="録音開始"
-                >
-                  <Mic size={32} />
-                </motion.button>
-              )}
-            </AnimatePresence>
-            <span className={`text-[10px] font-bold ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
-              {isListening ? '中断' : '録音開始'}
-            </span>
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className={`text-[10px] font-bold ${dk ? 'text-slate-500' : 'text-slate-400'}`}>モード</span>
-              <select
-                value={mode}
-                onChange={(e) => onChangeMode?.(e.target.value as TranscriptionMode)}
-                className={`rounded-md border px-2 py-1 text-[10px] ${
-                  dk
-                    ? 'bg-slate-800 border-slate-700 text-slate-200'
-                    : 'bg-white border-slate-300 text-slate-700'
-                }`}
-                title="文字起こしモードを選択"
-              >
-                <option value="fast">速度重視</option>
-                <option value="accurate">正確さ重視</option>
-              </select>
-            </div>
-            <span className={`text-[9px] ${dk ? 'text-slate-600' : 'text-slate-400'}`}>
-              {mode === 'fast' ? 'WebSpeechでリアルタイム寄り' : '停止後にローカルSTTで高精度化'}
-            </span>
-            <div className="mt-1 flex items-center gap-1.5">
-              <select
-                value={selectedMicrophoneId}
-                onChange={(e) => onSelectMicrophone?.(e.target.value)}
-                className={`max-w-[180px] rounded-md border px-2 py-1 text-[10px] ${
-                  dk
-                    ? 'bg-slate-800 border-slate-700 text-slate-200'
-                    : 'bg-white border-slate-300 text-slate-700'
-                }`}
-                title="使用するマイクを選択"
-              >
-                {microphones.length === 0 && (
-                  <option value="">利用可能マイクなし</option>
-                )}
-                {microphones.map((mic) => (
-                  <option key={mic.deviceId} value={mic.deviceId}>
-                    {mic.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={onRefreshMicrophones}
-                className={`rounded-md border px-2 py-1 text-[10px] font-bold ${
-                  dk
-                    ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'
-                    : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100'
-                }`}
-                title="マイク一覧を再取得"
-              >
-                更新
-              </button>
-            </div>
-          </div>
+          {/* 録音開始/中断・モード・マイク（操作ウィンドウに移したときは非表示） */}
+          {showRecordingCluster && onToggleListening && (
+            <RecordingToolbar
+              darkMode={darkMode}
+              isListening={isListening}
+              onToggleListening={onToggleListening}
+              mode={mode}
+              onChangeMode={onChangeMode ?? (() => {})}
+              microphones={microphones}
+              selectedMicrophoneId={selectedMicrophoneId}
+              onSelectMicrophone={onSelectMicrophone ?? (() => {})}
+              onRefreshMicrophones={onRefreshMicrophones ?? (() => {})}
+              variant={onChangeMode && onSelectMicrophone && onRefreshMicrophones ? 'full' : 'recordOnly'}
+            />
+          )}
 
           {/* ライブデモボタン＋速度スライダー（右側） */}
           {demoStream && showEmbeddedDemoControls && (

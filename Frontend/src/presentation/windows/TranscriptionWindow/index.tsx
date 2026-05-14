@@ -8,39 +8,17 @@ import type { Term } from '../../../domain/entities/Term'
 
 export const TranscriptionWindow: React.FC<WindowProps> = ({ darkMode = true }) => {
   const demoStream = useDemoTools()
-  const {
-    transcript,
-    isListening,
-    mode,
-    startListening,
-    stopListening,
-    setMode,
-    microphones,
-    selectedMicrophoneId,
-    refreshMicrophones,
-    selectMicrophone,
-  } = useTranscription()
+  const { transcript, isListening } = useTranscription()
   const selectTerm = useTermStore(s => s.selectTerm)
   const togglePin = useTermStore(s => s.togglePin)
   const isPinned = useTermStore(s => s.pinnedTermIds)
   const activeTerms = useTermStore(s => s.activeTerms)
 
-  const handleToggleListening = () => {
-    if (isListening) stopListening()
-    else startListening()
-  }
-
   return (
     <TranscriptionView
       transcript={transcript}
       isListening={isListening}
-      mode={mode}
-      onChangeMode={setMode}
-      onToggleListening={handleToggleListening}
-      microphones={microphones}
-      selectedMicrophoneId={selectedMicrophoneId}
-      onRefreshMicrophones={refreshMicrophones}
-      onSelectMicrophone={selectMicrophone}
+      showRecordingCluster={false}
       showEmbeddedResetButton={false}
       onTermClick={(term: Term) => selectTerm(term)}
       onTermHover={() => {}}

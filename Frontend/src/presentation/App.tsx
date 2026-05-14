@@ -5,6 +5,7 @@ import { AfterPresentation } from './phases/AfterPresentation'
 import { usePhaseStore } from '../stores/phaseStore'
 import { registerAllWindows } from './windows'
 import { PresentationAppHeader } from './components/PresentationAppHeader'
+import { PresentationShellProvider } from './context/PresentationShellContext'
 import { DemoToolsProvider } from './context/DemoToolsContext'
 import { useDemoStream } from '../debug/hooks/useDemoStream'
 import { getTranscriptionService } from './hooks/useTranscription'
@@ -60,34 +61,40 @@ const App: React.FC = () => {
 
   return (
     <DemoToolsProvider value={demoStream}>
-      <DemoImportantTermsBridge />
-      <div
-        className={`w-screen h-screen flex flex-col overflow-hidden ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}
+      <PresentationShellProvider
+        value={{
+          onOpenAppearance: () => setAppearanceOpen(true),
+          onResetAll: resetAllWindows,
+        }}
       >
-        <PresentationAppHeader
-          darkMode={darkMode}
-          currentPhaseId={currentPhaseId}
-          onReset={resetAllWindows}
-          onOpenAppearance={() => setAppearanceOpen(true)}
-        />
+        <DemoImportantTermsBridge />
+        <div
+          className={`w-screen h-screen flex flex-col overflow-hidden ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}
+        >
+          <PresentationAppHeader
+            darkMode={darkMode}
+            currentPhaseId={currentPhaseId}
+            onOpenAppearance={() => setAppearanceOpen(true)}
+          />
 
-        {/* フェーズコンテンツ */}
-        <div className="flex-1 overflow-hidden">
-          {currentPhaseId === 'during'
-            ? <DuringPresentation darkMode={darkMode} themeColor={phaseAccentColor} />
-            : <AfterPresentation darkMode={darkMode} themeColor={phaseAccentColor} />
-          }
+          {/* フェーズコンテンツ */}
+          <div className="flex-1 overflow-hidden">
+            {currentPhaseId === 'during'
+              ? <DuringPresentation darkMode={darkMode} themeColor={phaseAccentColor} />
+              : <AfterPresentation darkMode={darkMode} themeColor={phaseAccentColor} />
+            }
+          </div>
+
+          <SettingsModal
+            isOpen={appearanceOpen}
+            onClose={() => setAppearanceOpen(false)}
+            settings={appearance}
+            updateSettings={partial => setAppearance(prev => ({ ...prev, ...partial }))}
+          />
+
+          <Toaster position="bottom-right" theme={darkMode ? 'dark' : 'light'} />
         </div>
-
-        <SettingsModal
-          isOpen={appearanceOpen}
-          onClose={() => setAppearanceOpen(false)}
-          settings={appearance}
-          updateSettings={partial => setAppearance(prev => ({ ...prev, ...partial }))}
-        />
-
-        <Toaster position="bottom-right" theme={darkMode ? 'dark' : 'light'} />
-      </div>
+      </PresentationShellProvider>
     </DemoToolsProvider>
   )
 }

@@ -1,46 +1,36 @@
 import React from 'react'
-import { RotateCcw, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { LayoutPresetMenu } from './LayoutPresetMenu'
 import { TestFeaturesPopover } from './TestFeaturesPopover'
-import { PhaseTransitionButton } from './PhaseTransitionButton'
-
-const focusRing =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2'
 
 export interface PresentationAppHeaderProps {
   darkMode: boolean
   currentPhaseId: string
-  onReset: () => void
   onOpenAppearance: () => void
 }
 
+const focusRing =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2'
+
 /**
- * プレゼンレイヤのグローバルツールバー。
- * 開発者向けテストは `import.meta.env.DEV` のときのみ左側（フェーズ表示の右）に表示。
+ * プレゼンレイヤのヘッダー（ブランド・フェーズ・レイアウト・設定・開発テスト）。
  */
 export const PresentationAppHeader: React.FC<PresentationAppHeaderProps> = ({
   darkMode,
   currentPhaseId,
-  onReset,
   onOpenAppearance,
 }) => {
   const dk = darkMode
   const isDuring = currentPhaseId === 'during'
   const ringOffset = dk ? 'focus-visible:ring-offset-[#0d0e1a]' : 'focus-visible:ring-offset-white'
-
-  const settingsBtn = dk
-    ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
-    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-
-  const resetBtn = dk
-    ? 'border border-amber-500/45 bg-amber-500/12 text-amber-300 hover:bg-amber-500/22 hover:border-amber-400/60'
-    : 'border border-amber-300/80 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:border-amber-400'
+  const settingsPill = dk
+    ? 'border-slate-700/80 bg-slate-900/25 text-slate-200 hover:bg-slate-800'
+    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
 
   return (
     <header
-      className={`flex-shrink-0 flex flex-wrap items-center gap-3 px-4 py-2.5 border-b relative z-50 min-h-[3rem] ${dk ? 'bg-[#0d0e1a] border-slate-800' : 'bg-white border-slate-200'}`}
+      className={`flex-shrink-0 flex min-h-[3.25rem] flex-wrap items-center justify-between gap-2 border-b px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5 relative z-50 ${dk ? 'bg-[#0d0e1a] border-slate-800' : 'bg-white border-slate-200'}`}
     >
-      {/* 左: ブランド（強調） + フェーズ +（DEV のみ）テスト */}
       <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
         <span
           className={`select-none text-2xl font-black tracking-tighter sm:text-3xl tabular-nums ${dk
@@ -60,36 +50,22 @@ export const PresentationAppHeader: React.FC<PresentationAppHeaderProps> = ({
         >
           {isDuring ? '発表中' : '発表後'}
         </span>
-        {import.meta.env.DEV ? (
-          <div className="shrink-0 border-l border-slate-600/40 pl-2.5 sm:pl-3">
-            <TestFeaturesPopover darkMode={darkMode} align="left" />
-          </div>
-        ) : null}
       </div>
 
-      {/* 右: レイアウト（発表後は表示のみ・無効） | 設定 | リセット | フェーズ遷移 */}
-      <div className="ml-auto flex flex-wrap items-center gap-2 sm:gap-2.5">
-        <LayoutPresetMenu darkMode={darkMode} phaseId="during" menuAlign="right" disabled={!isDuring} />
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2" aria-label="ツールバー">
+        <LayoutPresetMenu darkMode={dk} phaseId="during" menuAlign="right" disabled={!isDuring} labeled />
         <button
           type="button"
           onClick={onOpenAppearance}
-          title="設定"
-          className={`flex size-10 shrink-0 items-center justify-center rounded-full transition-colors ${focusRing} ${ringOffset} ${settingsBtn}`}
+          title="設定（表示・文字起こし・マイクなど）"
+          className={`flex min-h-10 shrink-0 flex-row items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold transition-colors ${focusRing} ${ringOffset} ${settingsPill}`}
           aria-haspopup="dialog"
           aria-label="設定を開く"
         >
-          <Settings size={18} strokeWidth={2} />
+          <Settings size={17} strokeWidth={2} />
+          <span className="whitespace-nowrap">設定</span>
         </button>
-        <button
-          type="button"
-          onClick={onReset}
-          title="文字起こし・用語・履歴などをすべてクリアします"
-          className={`flex size-11 shrink-0 items-center justify-center rounded-full transition-colors ${focusRing} ${ringOffset} ${resetBtn}`}
-          aria-label="すべてのウィンドウをリセット"
-        >
-          <RotateCcw size={19} strokeWidth={2} />
-        </button>
-        <PhaseTransitionButton darkMode={darkMode} />
+        {import.meta.env.DEV ? <TestFeaturesPopover darkMode={dk} align="right" /> : null}
       </div>
     </header>
   )

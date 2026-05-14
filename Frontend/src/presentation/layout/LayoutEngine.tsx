@@ -3,6 +3,11 @@ import { GripHorizontal, X } from 'lucide-react'
 import type { DropZone, LayoutNode } from '../../domain/entities/Layout'
 import { movePanel, updateRatio } from './layoutUtils'
 import { getWindowDefinition } from '../windows/registry'
+import {
+  SYSTEM_CONTROL_WINDOW_ID,
+  SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX,
+  SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
+} from '../constants/systemControlWindow'
 
 const ACCENT_RGB: Record<string, string> = {
   blue: '59,130,246',
@@ -122,14 +127,23 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
       const def = getWindowDefinition(node.windowId)
       const label = def?.label ?? node.windowId
       const WindowComponent = def?.component
+      const closable = def?.closable !== false
       const isTarget = dragging !== null && dragging !== node.windowId && dropInfo?.windowId === node.windowId
+      const isSystemControl = node.windowId === SYSTEM_CONTROL_WINDOW_ID
+      const leafMin: React.CSSProperties = isSystemControl
+        ? {
+            minWidth: SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
+            minHeight: SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX,
+          }
+        : { minWidth: 0, minHeight: 0 }
       return (
         <div
           key={node.id}
           style={{
             position: 'relative', display: 'flex', flexDirection: 'column',
-            width: '100%', height: '100%', minWidth: 0, minHeight: 0,
+            width: '100%', height: '100%',
             overflow: 'hidden', border: borderStyle, borderRadius: 6,
+            ...leafMin,
           }}
         >
           <div
@@ -142,7 +156,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
             <GripHorizontal size={10} className="opacity-40 flex-shrink-0" />
             <span className="text-[9px] font-bold uppercase tracking-[0.15em]">{label}</span>
-            {onClose && (
+            {onClose && closable && (
               <button
                 onClick={e => { e.stopPropagation(); onClose(node.windowId) }}
                 className={`ml-auto p-0.5 rounded transition-colors ${darkMode ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-200 hover:text-black'}`}
@@ -178,9 +192,25 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
     }
 
     const isH = node.direction === 'h'
+    const isSystemControlDockPane = isH && node.a.type === 'leaf' && node.a.windowId === SYSTEM_CONTROL_WINDOW_ID
     const aStyle: React.CSSProperties = isH
-      ? { width: `${node.ratio * 100}%`, flexShrink: 0, flexGrow: 0, minWidth: 0, overflow: 'hidden', display: 'flex' }
-      : { height: `${node.ratio * 100}%`, flexShrink: 0, flexGrow: 0, minHeight: 0, overflow: 'hidden', display: 'flex' }
+      ? {
+          width: `${node.ratio * 100}%`,
+          flexShrink: 0,
+          flexGrow: 0,
+          minWidth: isSystemControlDockPane ? SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX : 0,
+          minHeight: isSystemControlDockPane ? SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX : 0,
+          overflow: 'hidden',
+          display: 'flex',
+        }
+      : {
+          height: `${node.ratio * 100}%`,
+          flexShrink: 0,
+          flexGrow: 0,
+          minHeight: 0,
+          overflow: 'hidden',
+          display: 'flex',
+        }
     const bStyle: React.CSSProperties = { flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', display: 'flex' }
 
     return (

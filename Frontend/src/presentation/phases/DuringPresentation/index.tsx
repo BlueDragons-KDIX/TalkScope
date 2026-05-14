@@ -4,6 +4,7 @@ import { useLayoutStore } from '../../../stores/layoutStore'
 import { makeDefaultLayout } from '../../layout/layoutUtils'
 import { removeLeaf } from '../../layout/layoutUtils'
 import type { LayoutNode } from '../../../domain/entities/Layout'
+import { SYSTEM_CONTROL_WINDOW_ID } from '../../constants/systemControlWindow'
 
 const PHASE_ID = 'during'
 
@@ -27,6 +28,7 @@ export const DuringPresentation: React.FC<Props> = ({ darkMode = true, themeColo
   }
 
   const handleClose = (windowId: string) => {
+    if (windowId === SYSTEM_CONTROL_WINDOW_ID) return
     const updated = removeLeaf(layout, windowId)
     if (updated) setLayout(PHASE_ID, updated)
   }

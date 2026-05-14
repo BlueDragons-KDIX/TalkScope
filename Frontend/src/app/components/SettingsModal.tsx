@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings, X, Moon, Sun, Palette, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { Settings, X, Moon, Sun, Palette, SlidersHorizontal, Loader2, Mic } from 'lucide-react';
+import { useTranscription } from '../../presentation/hooks/useTranscription';
+import type { TranscriptionMode } from '../../domain/interfaces/ITranscriptionService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -43,9 +45,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   similarityReferenceWord = 'it',
   similarityReady = false,
 }) => {
+  const { mode, setMode, microphones, selectedMicrophoneId, selectMicrophone, refreshMicrophones } = useTranscription();
+
   if (!isOpen) return null;
 
   const dk = settings.darkMode;
+
+  const modeBtn = (val: TranscriptionMode, label: string) => (
+    <button
+      key={val}
+      onClick={() => setMode(val)}
+      className={`flex-1 rounded-lg border py-1.5 text-xs font-bold transition-colors ${
+        mode === val
+          ? dk
+            ? 'border-indigo-500 bg-indigo-500/15 text-indigo-300'
+            : 'border-indigo-500 bg-indigo-50 text-indigo-700'
+          : dk
+            ? 'border-slate-700 text-slate-400 hover:bg-slate-800'
+            : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+      }`}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <AnimatePresence>
@@ -57,7 +79,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           onClick={onClose}
           className={`absolute inset-0 ${dk ? 'bg-black/60' : 'bg-slate-900/50'} backdrop-blur-sm`}
         />
-        
+
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -65,27 +87,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           transition={{ duration: 0.2 }}
           className={`relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border ${dk ? 'bg-[#12132a] border-slate-800/60 text-slate-100' : 'bg-white border-slate-200 text-slate-900'}`}
         >
-          <div className="p-5">
-            <div className="flex justify-between items-center mb-5">
+          <div className="p-4">
+            <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 <Settings size={16} className="text-indigo-400" />
-                <h2 className="text-lg font-black">設定</h2>
+                <h2 className="text-base font-black">設定</h2>
               </div>
               <button onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${dk ? 'hover:bg-slate-800 text-slate-500' : 'hover:bg-slate-100 text-slate-400'}`}>
                 <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-4">
+
               {/* Display Settings */}
               <section>
                 <div className={`flex items-center gap-1.5 mb-3 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
                   <Palette size={12} /> 表示
                 </div>
-                
+
                 <div className="flex items-center justify-between mb-3.5">
                   <span className="text-xs font-bold">ダークモード</span>
-                  <button 
+                  <button
                     onClick={() => updateSettings({ darkMode: !settings.darkMode })}
                     className={`w-10 h-5 rounded-full relative transition-colors ${settings.darkMode ? 'bg-indigo-600' : 'bg-slate-200'}`}
                   >
@@ -95,7 +118,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </button>
                 </div>
 
-                <div className="mb-3.5">
+                <div>
                   <span className="text-xs font-bold block mb-2">アクセントカラー</span>
                   <div className="flex gap-2">
                     {THEME_COLORS.map(color => (
@@ -107,6 +130,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       />
                     ))}
                   </div>
+                </div>
+              </section>
+
+              {/* 文字起こし（モード・マイク）— 操作ドックの詳細はここに集約 */}
+              <section>
+                <div className={`flex items-center gap-1.5 mb-2.5 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+                  <Mic size={12} /> 文字起こし
+                </div>
+
+                <div className="mb-3">
+                  <span className="text-xs font-bold block mb-1.5">モード</span>
+                  <div className="flex gap-2">
+                    {modeBtn('fast', '速度重視')}
+                    {modeBtn('accurate', '正確さ重視')}
+                  </div>
+                  <p className={`mt-1 text-[10px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {mode === 'fast' ? 'WebSpeechでリアルタイム寄り' : '停止後にローカルSTTで高精度化'}
+                  </p>
+                </div>
+
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold">マイク</span>
+                    <button
+                      type="button"
+                      onClick={() => void refreshMicrophones()}
+                      className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-bold transition-colors ${
+                        dk
+                          ? 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                          : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                      title="マイク一覧を再取得"
+                    >
+                      更新
+                    </button>
+                  </div>
+                  <select
+                    value={selectedMicrophoneId}
+                    onChange={(e) => selectMicrophone(e.target.value)}
+                    className={`w-full rounded-lg border px-2.5 py-1.5 text-xs ${
+                      dk ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    {microphones.length === 0 && <option value="">利用可能マイクなし</option>}
+                    {microphones.map((mic) => (
+                      <option key={mic.deviceId} value={mic.deviceId}>{mic.label}</option>
+                    ))}
+                  </select>
                 </div>
               </section>
 

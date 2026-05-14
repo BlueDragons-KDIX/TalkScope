@@ -5,9 +5,11 @@ import { useBubbleStore } from '../../stores/bubbleStore'
 
 interface Props {
   darkMode?: boolean
+  /** 操作ドック内: 録音ボタンと横並びの低いボタン */
+  compact?: boolean
 }
 
-export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true }) => {
+export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true, compact = false }) => {
   const currentPhaseId = usePhaseStore(s => s.currentPhaseId)
   const transitionTo = usePhaseStore(s => s.transitionTo)
   const clearBubbles = useBubbleStore(s => s.clearBubbles)
@@ -36,23 +38,29 @@ export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true }) => {
       ? 'bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-emerald-900/40 hover:from-emerald-400 hover:to-emerald-600'
       : 'bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-emerald-900/25 hover:from-emerald-600 hover:to-emerald-700'
 
+  const iconSize = compact ? 16 : 22
+
   return (
     <button
       type="button"
       onClick={handleClick}
       title={isDuring ? '発表を終了する' : '発表中に戻る'}
       aria-label={isDuring ? '発表を終了する' : '発表中に戻る'}
-      className={`inline-flex h-[3.25rem] w-[12.5rem] shrink-0 items-center justify-center gap-2.5 whitespace-nowrap rounded-full px-6 text-sm font-bold leading-none shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98] ${focusRing} ${ringOffset} ${surface}`}
+      className={`inline-flex items-center justify-center font-bold leading-none shadow-md transition-transform active:scale-[0.98] ${
+        compact
+          ? 'min-h-11 h-11 min-w-0 flex-1 flex-row gap-1.5 rounded-lg px-2.5 text-[11px] hover:scale-[1.01]'
+          : 'w-full h-[3.25rem] shrink-0 gap-2.5 rounded-xl px-6 text-sm whitespace-nowrap shadow-lg hover:scale-[1.01]'
+      } ${focusRing} ${ringOffset} ${surface}`}
     >
       {isDuring ? (
         <>
-          <StopCircle size={22} strokeWidth={2.25} className="shrink-0" />
-          発表終了
+          <StopCircle size={iconSize} strokeWidth={2.25} className="shrink-0" />
+          <span className="min-w-0 truncate">発表終了</span>
         </>
       ) : (
         <>
-          <Play size={22} strokeWidth={2.25} className="shrink-0" />
-          もどる
+          <Play size={iconSize} strokeWidth={2.25} className="shrink-0" />
+          <span className="min-w-0 truncate">もどる</span>
         </>
       )}
     </button>

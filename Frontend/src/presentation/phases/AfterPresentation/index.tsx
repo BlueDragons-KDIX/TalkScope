@@ -3,6 +3,7 @@ import { LayoutEngine } from '../../layout/LayoutEngine'
 import { useLayoutStore } from '../../../stores/layoutStore'
 import { makeAfterLayout, removeLeaf } from '../../layout/layoutUtils'
 import type { LayoutNode } from '../../../domain/entities/Layout'
+import { SYSTEM_CONTROL_WINDOW_ID } from '../../constants/systemControlWindow'
 
 const PHASE_ID = 'after'
 
@@ -26,6 +27,7 @@ export const AfterPresentation: React.FC<Props> = ({ darkMode = true, themeColor
   }
 
   const handleClose = (windowId: string) => {
+    if (windowId === SYSTEM_CONTROL_WINDOW_ID) return
     const updated = removeLeaf(layout, windowId)
     if (updated) setLayout(PHASE_ID, updated)
   }
