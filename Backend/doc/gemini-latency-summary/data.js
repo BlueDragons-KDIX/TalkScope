@@ -1,4 +1,4 @@
-// Auto-generated from .log/artifacts/gemini_latency (latest 10 runs)
+// Auto-generated from .log/artifacts/gemini_latency (selected 20 runs)
 // Each case entry: { v1: elapsed_ms, old: elapsed_ms, v1c: raw_response_chars, oldc: raw_response_chars }
 const RUNS = [
   { id:"14:45", ts:"2026-05-15 14:45:20", speedup: 7.49,
@@ -90,6 +90,96 @@ const RUNS = [
       "3w3s": { v1: 1393.35, old: null,     v1c: 184, oldc: null }
     },
     group: { g5: 18228.33, g10: 2650.81 }
+  },
+  { id:"18:19", ts:"2026-05-15 18:19:39", speedup: 2.23,
+    cases: {
+      "1w1s": { v1: 1355.27, old: 1056.30, v1c: 52, oldc: 80 },
+      "1w3s": { v1: 887.80, old: 1306.45, v1c: 45, oldc: 80 },
+      "3w1s": { v1: 947.73, old: 4214.91, v1c: 155, oldc: 272 },
+      "3w3s": { v1: 1415.29, old: null, v1c: 184, oldc: null }
+    },
+    group: { g5: 8308.50, g10: 1880.83 }
+  },
+  { id:"18:21", ts:"2026-05-15 18:21:03", speedup: 5.01,
+    cases: {
+      "1w1s": { v1: 1091.51, old: 14936.98, v1c: 52, oldc: 69 },
+      "1w3s": { v1: 1237.36, old: 1287.68, v1c: 45, oldc: 36 },
+      "3w1s": { v1: 6169.09, old: 1821.57, v1c: 155, oldc: 245 },
+      "3w3s": { v1: 1408.89, old: null, v1c: 184, oldc: null }
+    },
+    group: { g5: 3800.10, g10: 1635.32 }
+  },
+  { id:"18:22", ts:"2026-05-15 18:22:40", speedup: 3.44,
+    cases: {
+      "1w1s": { v1: 1026.30, old: 1312.18, v1c: 55, oldc: 55 },
+      "1w3s": { v1: 1290.47, old: 10079.16, v1c: 45, oldc: 69 },
+      "3w1s": { v1: 1129.11, old: 1379.02, v1c: 155, oldc: 248 },
+      "3w3s": { v1: 1412.38, old: null, v1c: 184, oldc: null }
+    },
+    group: { g5: 8139.19, g10: 2003.34 }
+  },
+  { id:"18:24", ts:"2026-05-15 18:24:10", speedup: 1.02,
+    cases: {
+      "1w1s": { v1: 1176.83, old: 1257.50, v1c: 52, oldc: 80 },
+      "1w3s": { v1: 1136.84, old: 805.97, v1c: 45, oldc: 36 },
+      "3w1s": { v1: 1357.80, old: 1734.83, v1c: 155, oldc: 289 },
+      "3w3s": { v1: 1206.28, old: null, v1c: 184, oldc: null }
+    },
+    group: { g5: 3286.31, g10: 1816.82 }
+  },
+  { id:"18:25", ts:"2026-05-15 18:25:26", speedup: 0.97,
+    cases: {
+      "1w1s": { v1: 1171.05, old: 918.31, v1c: 52, oldc: 36 },
+      "1w3s": { v1: 1118.91, old: 1156.18, v1c: 45, oldc: 73 },
+      "3w1s": { v1: 1274.86, old: 1392.45, v1c: 155, oldc: 279 },
+      "3w3s": { v1: 1756.32, old: null, v1c: 184, oldc: null }
+    },
+    group: { g5: 3725.97, g10: 18141.26 }
+  },
+  { id:"18:27", ts:"2026-05-15 18:27:14", speedup: 1.18,
+    cases: {
+      "1w1s": { v1: 875.75, old: 937.81, v1c: 52, oldc: 55 },
+      "1w3s": { v1: 874.88, old: 1047.58, v1c: 45, oldc: 55 },
+      "3w1s": { v1: 1225.36, old: 1570.58, v1c: 155, oldc: 278 },
+      "3w3s": { v1: 1252.00, old: null, v1c: 184, oldc: null }
+    },
+    group: { g5: 17707.20, g10: 1682.93 }
+  },
+  { id:"18:28", ts:"2026-05-15 18:28:43", speedup: 4.93,
+    cases: {
+      "1w1s": { v1: 1340.20, old: 2198.25, v1c: 52, oldc: 36 },
+      "1w3s": { v1: 16105.75, old: 1197.63, v1c: 45, oldc: 80 },
+      "3w1s": { v1: 1383.64, old: 18106.23, v1c: 155, oldc: 289 },
+      "3w3s": { v1: 1475.39, old: null, v1c: 184, oldc: null }
+    },
+    group: { g5: 22365.18, g10: 1811.84 }
+  },
+  { id:"18:30", ts:"2026-05-15 18:30:52", speedup: 3.83,
+    cases: {
+      "1w1s": { v1: 912.42, old: 898.56, v1c: 52, oldc: 69 },
+      "1w3s": { v1: 1049.20, old: 1430.80, v1c: 63, oldc: 124 },
+      "3w1s": { v1: 896.93, old: 8186.54, v1c: 155, oldc: 274 },
+      "3w3s": { v1: 1668.04, old: null, v1c: 184, oldc: null }
+    },
+    group: { g5: 3276.08, g10: 1732.65 }
+  },
+  { id:"18:32", ts:"2026-05-15 18:32:14", speedup: 1.09,
+    cases: {
+      "1w1s": { v1: 1838.26, old: 1377.88, v1c: 52, oldc: 69 },
+      "1w3s": { v1: 900.03, old: 1440.38, v1c: 45, oldc: 36 },
+      "3w1s": { v1: 1290.26, old: 1181.78, v1c: 155, oldc: 247 },
+      "3w3s": { v1: 2433.77, old: null, v1c: 184, oldc: null }
+    },
+    group: { g5: 2933.76, g10: 1796.85 }
+  },
+  { id:"18:33", ts:"2026-05-15 18:33:32", speedup: 14.99,
+    cases: {
+      "1w1s": { v1: 1014.10, old: 25898.51, v1c: 52, oldc: 62 },
+      "1w3s": { v1: 9052.74, old: 1398.07, v1c: 45, oldc: 62 },
+      "3w1s": { v1: 1007.71, old: 19415.43, v1c: 155, oldc: 247 },
+      "3w3s": { v1: 4599.29, old: null, v1c: 184, oldc: null }
+    },
+    group: { g5: 3931.13, g10: 1813.26 }
   }
 ];
 

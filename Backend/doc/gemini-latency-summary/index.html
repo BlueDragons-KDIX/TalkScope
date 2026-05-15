@@ -56,7 +56,7 @@ tr:hover td{background:rgba(108,99,255,.05)}
   <div class="header">
     <h1>Gemini API Latency Report</h1>
     <p>refer_dictionary (旧) vs refer_dictionary_v1 (新) — レスポンス速度比較</p>
-    <div class="badge">直近10回の計測結果 — 2026-05-15 14:45〜15:51 JST</div>
+    <div class="badge" id="runRangeBadge"></div>
   </div>
   <div class="kpi-grid" id="kpis"></div>
   <div class="section">
@@ -137,6 +137,9 @@ tr:hover td{background:rgba(108,99,255,.05)}
 <script>
 const C=id=>document.getElementById(id),fmt=v=>v==null?'—':v.toLocaleString('en',{maximumFractionDigits:0});
 const caseKeys=["1w1s","1w3s","3w1s"],allCaseKeys=["1w1s","1w3s","3w1s","3w3s"];
+const runCount=RUNS.length;
+const startRun=RUNS[0],endRun=RUNS[runCount-1];
+C('runRangeBadge').textContent=`${runCount}回の計測結果 — ${startRun.ts.slice(0,16)}〜${endRun.ts.slice(11,16)} JST`;
 let allV1=[],allOld=[],winsV1=0,winsOld=0;
 RUNS.forEach(r=>{caseKeys.forEach(k=>{const c=r.cases[k];if(c.v1!=null)allV1.push(c.v1);if(c.old!=null)allOld.push(c.old);if(c.v1!=null&&c.old!=null){c.v1<c.old?winsV1++:winsOld++}})});
 const avg=a=>a.reduce((s,v)=>s+v,0)/a.length;
@@ -243,12 +246,12 @@ new Chart(C('warmupChart'), {
 
 // Verdict
 const firstSlotWins = slotWinCounts[0];
-const expectedIfRandom = 10/4;
+const expectedIfRandom = runCount/4;
 const verdictColor = firstSlotWins <= expectedIfRandom + 1 ? 'var(--accent2)' : 'var(--warn)';
 C('warmupVerdict').innerHTML = `
   <strong style="color:${verdictColor}">検証結果：</strong>
-  ①スロット（最初のリクエスト）が最も遅かったのは <strong style="color:${verdictColor}">${firstSlotWins}/10回</strong>。
-  ランダムなら期待値は <strong>2.5回</strong>（25%）。
+  ①スロット（最初のリクエスト）が最も遅かったのは <strong style="color:${verdictColor}">${firstSlotWins}/${runCount}回</strong>。
+  ランダムなら期待値は <strong>${expectedIfRandom.toFixed(1)}回</strong>（25%）。
   スロット別の最遅回数：${WARMUP_SLOTS.map((s,i)=>`${s.label} = ${slotWinCounts[i]}回`).join('、')}。
   <br><span style="color:var(--text2);font-size:.8rem;margin-top:6px;display:block">
   → ①が突出して多いわけではなく、スロット③②④でも頻繁に最遅が出ている。
@@ -326,12 +329,12 @@ C('corrStats').innerHTML=[
 C('notesList').innerHTML=[
   `v1 は全体の ${((winsV1/(winsV1+winsOld))*100).toFixed(0)}% のケースで旧方式より高速（${winsV1}/${winsV1+winsOld} 回）`,
   `平均高速化倍率: ${avgSpeedup.toFixed(2)}× — ばらつき大（${Math.min(...RUNS.map(r=>r.speedup)).toFixed(2)}× 〜 ${Math.max(...RUNS.map(r=>r.speedup)).toFixed(2)}×）`,
-  `3語ケースでは v1 が ${v1W3}/10 回勝利 — リクエスト統合の効果が高い`,
+  `3語ケースでは v1 が ${v1W3}/${runCount} 回勝利 — リクエスト統合の効果が高い`,
   `v1 中央値 ${fmt(medV1)} ms vs 旧 ${fmt(medOld)} ms（${(medOld/medV1).toFixed(1)}× 高速）`,
-  `group_size=10 が =5 より速い: ${g10W}/10 回 — 1リクエスト集約が有効`,
+  `group_size=10 が =5 より速い: ${g10W}/${runCount} 回 — 1リクエスト集約が有効`,
   `生成文字数とレイテンシの相関(r): v1=${rV1.toFixed(2)}, 旧=${rOld.toFixed(2)} — v1 は文字数が固定的なのでケース差が主因、旧はばらつき大`,
   `v1 の生成文字数はケースごとに固定（1語=52, 3語=155字）— API側ランダム揺れが主要因であることを示唆`,
-  `ウォームアップ仮説：①スロットが最遅だったのは${firstSlotWins}/10回（期待値2.5回）— コールドスタート効果は統計的に確認できない`,
+  `ウォームアップ仮説：①スロットが最遅だったのは${firstSlotWins}/${runCount}回（期待値${expectedIfRandom.toFixed(1)}回）— コールドスタート効果は統計的に確認できない`,
   `速度重視なら v1 + group_size=10 が最も安定した組み合わせ`
 ].map(n=>`<li>${n}</li>`).join('');
 </script>
