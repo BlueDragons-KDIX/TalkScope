@@ -5,6 +5,8 @@ import { movePanel, updateRatio } from './layoutUtils'
 import { getWindowDefinition } from '../windows/registry'
 import {
   SYSTEM_CONTROL_WINDOW_ID,
+  SYSTEM_CONTROL_CONTENT_MIN_HEIGHT_PX,
+  SYSTEM_CONTROL_CONTENT_MIN_WIDTH_PX,
   SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX,
   SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
 } from '../constants/systemControlWindow'
@@ -66,7 +68,30 @@ interface ResizeState {
   startRatio: number
   direction: 'h' | 'v'
   containerSize: number
+  minRatio: number
+  maxRatio: number
 }
+
+const clamp = (min: number, max: number, value: number): number =>
+  Math.max(min, Math.min(max, value))
+
+const containsSystemControlWindow = (node: LayoutNode): boolean => {
+  if (node.type === 'leaf') return node.windowId === SYSTEM_CONTROL_WINDOW_ID
+  return containsSystemControlWindow(node.a) || containsSystemControlWindow(node.b)
+}
+
+const getSystemControlMinSize = (node: LayoutNode, direction: 'h' | 'v'): number => {
+  if (!containsSystemControlWindow(node)) return 0
+  return direction === 'h' ? SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX : SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX
+}
+
+const systemControlMinStyle = (node: LayoutNode): React.CSSProperties =>
+  containsSystemControlWindow(node)
+    ? {
+        minWidth: SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
+        minHeight: SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX,
+      }
+    : { minWidth: 0, minHeight: 0 }
 
 export interface LayoutEngineProps {
   layout: LayoutNode
@@ -98,7 +123,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
     const onMove = (e: MouseEvent) => {
       const delta = resizing.direction === 'h' ? e.clientX - resizing.startPos : e.clientY - resizing.startPos
       const newRatio = resizing.startRatio + delta / resizing.containerSize
-      onLayoutChange(updateRatio(layoutRef.current, resizing.splitId, newRatio))
+      onLayoutChange(updateRatio(layoutRef.current, resizing.splitId, clamp(resizing.minRatio, resizing.maxRatio, newRatio)))
     }
     const onUp = () => setResizing(null)
     window.addEventListener('mousemove', onMove)
@@ -162,7 +187,15 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
               </button>
             )}
           </div>
-          <div style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
+          <div
+            style={{
+              flex: 1,
+              minWidth: isSystemControl ? SYSTEM_CONTROL_CONTENT_MIN_WIDTH_PX : 0,
+              minHeight: isSystemControl ? SYSTEM_CONTROL_CONTENT_MIN_HEIGHT_PX : 0,
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
             <div className="relative z-0 h-full min-h-0 overflow-hidden">
               {WindowComponent
                 ? <WindowComponent windowId={node.windowId} darkMode={darkMode} />
@@ -200,14 +233,14 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
     }
 
     const isH = node.direction === 'h'
-    const isSystemControlDockPane = isH && node.a.type === 'leaf' && node.a.windowId === SYSTEM_CONTROL_WINDOW_ID
+    const aMinStyle = systemControlMinStyle(node.a)
+    const bMinStyle = systemControlMinStyle(node.b)
     const aStyle: React.CSSProperties = isH
       ? {
           width: `${node.ratio * 100}%`,
           flexShrink: 0,
           flexGrow: 0,
-          minWidth: isSystemControlDockPane ? SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX : 0,
-          minHeight: isSystemControlDockPane ? SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX : 0,
+          ...aMinStyle,
           overflow: 'hidden',
           display: 'flex',
         }
@@ -215,11 +248,16 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
           height: `${node.ratio * 100}%`,
           flexShrink: 0,
           flexGrow: 0,
-          minHeight: 0,
+          ...aMinStyle,
           overflow: 'hidden',
           display: 'flex',
         }
-    const bStyle: React.CSSProperties = { flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', display: 'flex' }
+    const bStyle: React.CSSProperties = {
+      flex: 1,
+      ...bMinStyle,
+      overflow: 'hidden',
+      display: 'flex',
+    }
 
     return (
       <div key={node.id} style={{ display: 'flex', flexDirection: isH ? 'row' : 'column', width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
@@ -232,12 +270,19 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
             e.preventDefault()
             const parent = (e.currentTarget as HTMLElement).parentElement!
             const rect = parent.getBoundingClientRect()
+            const containerSize = (isH ? rect.width : rect.height) - 4
+            const minA = getSystemControlMinSize(node.a, node.direction)
+            const minB = getSystemControlMinSize(node.b, node.direction)
+            const minRatio = containerSize > 0 ? minA / containerSize : 0.1
+            const maxRatio = containerSize > 0 ? 1 - minB / containerSize : 0.9
             setResizing({
               splitId: node.id,
               startPos: isH ? e.clientX : e.clientY,
               startRatio: node.ratio,
               direction: node.direction,
-              containerSize: (isH ? rect.width : rect.height) - 4,
+              containerSize,
+              minRatio: Math.min(0.9, minRatio),
+              maxRatio: Math.max(0.1, maxRatio),
             })
           }}
         />
@@ -247,8 +292,10 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragging, dropInfo, darkMode, accentRgb, borderStyle, headerBg, dotColor, panelGlow, calcZone, onLayoutChange, onClose])
 
+  const rootMinStyle = systemControlMinStyle(layout)
+
   return (
-    <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '100%', overflow: 'hidden', ...rootMinStyle }}>
       {renderNode(layout)}
     </div>
   )

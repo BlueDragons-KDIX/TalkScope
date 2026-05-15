@@ -7,8 +7,8 @@ import { usePresentationShell } from '../../context/PresentationShellContext'
 import { useTranscription } from '../../hooks/useTranscription'
 import type { WindowProps } from '../IWindowDefinition'
 import {
-  SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX,
-  SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
+  SYSTEM_CONTROL_CONTENT_MIN_HEIGHT_PX,
+  SYSTEM_CONTROL_CONTENT_MIN_WIDTH_PX,
 } from '../../constants/systemControlWindow'
 
 const focusRing =
@@ -25,7 +25,7 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
   const [resetOpen, setResetOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
   const [layoutMode, setLayoutMode] = useState<ControlsLayoutMode>('tall')
-  const [viewportSize, setViewportSize] = useState({ width: SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX, height: SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX })
+  const [viewportSize, setViewportSize] = useState({ width: SYSTEM_CONTROL_CONTENT_MIN_WIDTH_PX, height: SYSTEM_CONTROL_CONTENT_MIN_HEIGHT_PX })
 
   const { isListening, isPaused, startListening, pauseListening } = useTranscription()
 
@@ -41,8 +41,8 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0]
-      const width = entry?.contentRect?.width ?? SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX
-      const height = entry?.contentRect?.height ?? SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX
+      const width = entry?.contentRect?.width ?? SYSTEM_CONTROL_CONTENT_MIN_WIDTH_PX
+      const height = entry?.contentRect?.height ?? SYSTEM_CONTROL_CONTENT_MIN_HEIGHT_PX
       setViewportSize({ width, height })
 
       const ratio = width / Math.max(height, 1)
@@ -132,8 +132,8 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
     <div
       ref={rootRef}
       style={{
-        minWidth: SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
-        minHeight: SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX,
+        minWidth: SYSTEM_CONTROL_CONTENT_MIN_WIDTH_PX,
+        minHeight: SYSTEM_CONTROL_CONTENT_MIN_HEIGHT_PX,
       }}
       className={`box-border flex h-full min-h-0 flex-col gap-2 overflow-y-auto p-2.5 ${
         dk ? 'bg-[#0d0e1a] text-slate-200' : 'bg-white text-slate-800'
