@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gemini Latency Summary</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --ink: #20242c;
+      --muted: #5d6675;
+      --line: #d9dee8;
+      --v0: #5b7cfa;
+      --v1: #0f9d7a;
+      --accent: #b35b00;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+    }
+
+    header {
+      padding: 40px 24px 24px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 24px 56px;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: 32px;
+    }
+
+    h2 {
+      margin-top: 36px;
+      font-size: 22px;
+    }
+
+    h3 {
+      margin-top: 22px;
+      font-size: 17px;
+    }
+
+    p {
+      margin: 10px 0 0;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #edf1f7;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95em;
+    }
+
+    a {
+      color: #2358c8;
+    }
+
+    .lede {
+      max-width: 930px;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .metric, .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .metric {
+      min-height: 118px;
+      padding: 16px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .panel {
+      margin-top: 16px;
+      padding: 18px;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    table {
+      width: 100%;
+      min-width: 920px;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #eef2f8;
+      font-weight: 700;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .v0 {
+      color: var(--v0);
+      font-weight: 700;
+    }
+
+    .v1 {
+      color: var(--v1);
+      font-weight: 700;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .bars {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 230px 1fr 96px;
+      gap: 12px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .bar-track {
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e3e8f1;
+    }
+
+    .bar {
+      height: 100%;
+      border-radius: inherit;
+    }
+
+    .bar.v0bar {
+      background: var(--v0);
+    }
+
+    .bar.v1bar {
+      background: var(--v1);
+    }
+
+    ul {
+      margin: 10px 0 0;
+      padding-left: 1.3rem;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 560px) {
+      header {
+        padding: 28px 18px 20px;
+      }
+
+      main {
+        padding: 22px 18px 40px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .bar-row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gemini Latency Summary</h1>
+    <p class="lede">
+      <code>Backend/.log/artifacts/gemini_latency</code> の直近5回
+      (<code>20260515_1450</code>, <code>1452</code>, <code>1454</code>, <code>1457</code>, <code>1459</code>)
+      を読み取り、<code>refer_dictionary</code> と <code>refer_dictionary_v1</code> の傾向をまとめたHTMLです。
+    </p>
+  </header>
+
+  <main>
+    <section>
+      <div class="grid">
+        <div class="metric">
+          <strong>5 runs</strong>
+          <span>直近5回を対象に集計</span>
+        </div>
+        <div class="metric">
+          <strong>v1優勢</strong>
+          <span>中央値では多くの比較ケースで <code>refer_dictionary_v1</code> が速い</span>
+        </div>
+        <div class="metric">
+          <strong>2/2/3</strong>
+          <span>3語3意味ケースの返却内訳は直近5回で安定</span>
+        </div>
+        <div class="metric">
+          <strong>group 10</strong>
+          <span>group_size比較の中央値では <code>group_size=10</code> が速い</span>
+        </div>
+      </div>
+
+      <div class="panel note">
+        <h2>前提</h2>
+        <p>
+          計測は実Gemini APIに依存するため、タイムアウトやウォームアップらしい外れ値が混ざります。
+          このページでは単発の勝敗より、直近5回の中央値、最小、最大、返却意味数の安定性を重視しています。
+          <code>refer_dictionary</code> 側は並列送信に近づけた測定です。
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>直近5回の中央値</h2>
+      <p>
+        <code>elapsed ms</code> の中央値で見ると、1語1意味以外では
+        <code>refer_dictionary_v1</code> が大きく有利です。ただし、1語1意味では
+        <code>refer_dictionary</code> の中央値が短く、v1の長いJSONプロンプトが重く見えることがあります。
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>case</th>
+              <th>method</th>
+              <th class="num">n</th>
+              <th class="num">median ms</th>
+              <th class="num">min ms</th>
+              <th class="num">max ms</th>
+              <th>傾向</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>case_1_word_1_sense</td>
+              <td class="v1">refer_dictionary_v1</td>
+              <td class="num">5</td>
+              <td class="num">4215.46</td>
+              <td class="num">1290.24</td>
+              <td class="num">16357.92</td>
+              <td>外れ値が大きく、1語1意味では不安定。</td>
+            </tr>
+            <tr>
+              <td>case_1_word_1_sense</td>
+              <td class="v0">refer_dictionary</td>
+              <td class="num">5</td>
+              <td class="num">1592.79</td>
+              <td class="num">1229.07</td>
+              <td class="num">9735.47</td>
+              <td>中央値ではv0が短い。</td>
+            </tr>
+            <tr>
+              <td>case_1_word_3_sense</td>
+              <td class="v1">refer_dictionary_v1</td>
+              <td class="num">5</td>
+              <td class="num">1375.42</td>
+              <td class="num">1068.43</td>
+              <td class="num">11982.91</td>
+              <td>1リクエストで複数意味を返す効果が出ている。</td>
+            </tr>
+            <tr>
+              <td>case_1_word_3_sense</td>
+              <td class="v0">refer_dictionary</td>
+              <td class="num">5</td>
+              <td class="num">19265.19</td>
+              <td class="num">8599.09</td>
+              <td class="num">25546.31</td>
+              <td>複数回問い合わせるため重い。</td>
+            </tr>
+            <tr>
+              <td>case_3_words_1_sense</td>
+              <td class="v1">refer_dictionary_v1</td>
+              <td class="num">5</td>
+              <td class="num">1137.81</td>
+              <td class="num">1013.17</td>
+              <td class="num">12532.82</td>
+              <td>中央値ではかなり速いが、1回大きな外れ値あり。</td>
+            </tr>
+            <tr>
+              <td>case_3_words_1_sense</td>
+              <td class="v0">refer_dictionary</td>
+              <td class="num">5</td>
+              <td class="num">11361.50</td>
+              <td class="num">9692.96</td>
+              <td class="num">27888.12</td>
+              <td>並列でも3リクエスト分の重さが残る。</td>
+            </tr>
+            <tr>
+              <td>case_3_words_3_sense</td>
+              <td class="v1">refer_dictionary_v1</td>
+              <td class="num">5</td>
+              <td class="num">1826.92</td>
+              <td class="num">1601.23</td>
+              <td class="num">8900.20</td>
+              <td>2/2/3で安定。v0は多リクエストのため未実行。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <h3>中央値のバー表示</h3>
+        <div class="bars">
+          <div class="bar-row">
+            <span>1 word / 1 sense v1</span>
+            <div class="bar-track"><div class="bar v1bar" style="width:21.9%"></div></div>
+            <span>4215ms</span>
+          </div>
+          <div class="bar-row">
+            <span>1 word / 1 sense v0</span>
+            <div class="bar-track"><div class="bar v0bar" style="width:8.3%"></div></div>
+            <span>1593ms</span>
+          </div>
+          <div class="bar-row">
+            <span>1 word / 3 sense v1</span>
+            <div class="bar-track"><div class="bar v1bar" style="width:7.1%"></div></div>
+            <span>1375ms</span>
+          </div>
+          <div class="bar-row">
+            <span>1 word / 3 sense v0</span>
+            <div class="bar-track"><div class="bar v0bar" style="width:100%"></div></div>
+            <span>19265ms</span>
+          </div>
+          <div class="bar-row">
+            <span>3 words / 1 sense v1</span>
+            <div class="bar-track"><div class="bar v1bar" style="width:5.9%"></div></div>
+            <span>1138ms</span>
+          </div>
+          <div class="bar-row">
+            <span>3 words / 1 sense v0</span>
+            <div class="bar-track"><div class="bar v0bar" style="width:59%"></div></div>
+            <span>11362ms</span>
+          </div>
+          <div class="bar-row">
+            <span>3 words / 3 sense v1</span>
+            <div class="bar-track"><div class="bar v1bar" style="width:9.5%"></div></div>
+            <span>1827ms</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>返却意味数の傾向</h2>
+      <div class="panel">
+        <ul>
+          <li><code>case_1_word_3_sense</code> は、直近5回中4回が3件返却、1回が2件返却でした。</li>
+          <li><code>case_3_words_3_sense</code> は、直近5回すべて <code>2/2/3</code>、合計7件で安定しています。</li>
+          <li>最大3件指定でも、全単語が3件返すわけではありません。速度比較では <code>returned senses detail</code> を必ず見る必要があります。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>group_size 比較</h2>
+      <p>
+        直近5回では、同じ10語を使って <code>group_size=5</code> と
+        <code>group_size=10</code> を比較しています。中央値では <code>group_size=10</code> が速く、
+        リクエスト数とプロンプト文字数も少ない一方、返却意味数は <code>group_size=5</code> の方が多く安定しています。
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>case</th>
+              <th class="num">n</th>
+              <th class="num">median ms</th>
+              <th class="num">min ms</th>
+              <th class="num">max ms</th>
+              <th class="num">requests</th>
+              <th class="num">returned senses</th>
+              <th>detail傾向</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>case_10_words_3_sense_group_5</td>
+              <td class="num">5</td>
+              <td class="num">4816.76</td>
+              <td class="num">3861.81</td>
+              <td class="num">20292.70</td>
+              <td class="num">2</td>
+              <td class="num">26</td>
+              <td>全5回で26件。<code>2/2/3/2/2/3/3/3/3/3</code> が安定。</td>
+            </tr>
+            <tr>
+              <td>case_10_words_3_sense_group_10</td>
+              <td class="num">5</td>
+              <td class="num">2374.57</td>
+              <td class="num">2119.34</td>
+              <td class="num">21899.24</td>
+              <td class="num">1</td>
+              <td class="num">21</td>
+              <td>全5回で21件。件数はgroup_5より少ないが安定。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>直近5回からの結論</h2>
+      <div class="panel">
+        <ul>
+          <li><code>refer_dictionary_v1</code> は、複数意味・複数単語のケースでリクエスト集約の効果が大きいです。</li>
+          <li>1語1意味だけは <code>refer_dictionary</code> の方が中央値で速く、v1の長いJSONプロンプトのコストが見えます。</li>
+          <li><code>refer_dictionary_v1</code> は最大3件指定でも返却数が揺れます。速度だけでなく、返却意味数も同時に評価する必要があります。</li>
+          <li>group_size は速度だけなら10が有利に見えますが、返却数は5の方が多い傾向です。</li>
+          <li>LLMの応答時間は外れ値が大きいため、今後は中央値・p95・タイムアウト回数を自動集計すると判断しやすくなります。</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
