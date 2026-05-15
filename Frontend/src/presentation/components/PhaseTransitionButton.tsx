@@ -7,9 +7,11 @@ interface Props {
   darkMode?: boolean
   /** 操作ドック内: 録音ボタンの下に配置する従属ボタン */
   compact?: boolean
+  /** compact 時に追加で付与するクラス */
+  compactClassName?: string
 }
 
-export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true, compact = false }) => {
+export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true, compact = false, compactClassName = '' }) => {
   const currentPhaseId = usePhaseStore(s => s.currentPhaseId)
   const transitionTo = usePhaseStore(s => s.transitionTo)
   const clearBubbles = useBubbleStore(s => s.clearBubbles)
@@ -32,11 +34,11 @@ export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true, compac
   if (compact) {
     const outlineCls = isDuring
       ? dk
-        ? 'border-rose-500/50 text-rose-400 hover:bg-rose-500/15 focus-visible:ring-rose-400/60'
-        : 'border-rose-400 text-rose-600 bg-rose-50 hover:bg-rose-100 focus-visible:ring-rose-400/60'
+        ? 'border-rose-500/55 bg-gradient-to-b from-rose-500/16 to-rose-600/8 text-rose-300 hover:from-rose-500/26 hover:to-rose-600/16 shadow-[inset_0_1px_0_rgba(251,113,133,0.14)] focus-visible:ring-rose-400/60'
+        : 'border-rose-300 bg-gradient-to-b from-white to-rose-50 text-rose-600 hover:from-rose-50 hover:to-rose-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_3px_rgba(200,50,50,0.1)] focus-visible:ring-rose-400/60'
       : dk
-        ? 'border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/15 focus-visible:ring-emerald-400/60'
-        : 'border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 focus-visible:ring-emerald-400/60'
+        ? 'border-emerald-500/55 bg-gradient-to-b from-emerald-500/16 to-emerald-600/8 text-emerald-300 hover:from-emerald-500/26 hover:to-emerald-600/16 shadow-[inset_0_1px_0_rgba(52,211,153,0.14)] focus-visible:ring-emerald-400/60'
+        : 'border-emerald-300 bg-gradient-to-b from-white to-emerald-50 text-emerald-700 hover:from-emerald-50 hover:to-emerald-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_3px_rgba(0,140,80,0.1)] focus-visible:ring-emerald-400/60'
 
     return (
       <button
@@ -44,7 +46,7 @@ export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true, compac
         onClick={handleClick}
         title={isDuring ? '発表を終了する' : '発表中に戻る'}
         aria-label={isDuring ? '発表を終了する' : '発表中に戻る'}
-        className={`inline-flex w-full items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-bold transition-colors active:scale-[0.98] ${outlineCls} ${focusRing} ${ringOffset}`}
+        className={`inline-flex w-full items-center justify-center gap-1.5 rounded-full border px-2.5 py-2 text-xs font-bold transition-colors active:scale-[0.98] ${outlineCls} ${focusRing} ${ringOffset} ${compactClassName}`}
       >
         {isDuring ? (
           <>
@@ -75,7 +77,7 @@ export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true, compac
       onClick={handleClick}
       title={isDuring ? '発表を終了する' : '発表中に戻る'}
       aria-label={isDuring ? '発表を終了する' : '発表中に戻る'}
-      className={`inline-flex h-[3.25rem] w-full shrink-0 items-center justify-center gap-2.5 rounded-xl px-6 text-sm font-bold leading-none shadow-lg transition-transform active:scale-[0.98] hover:scale-[1.01] ${surface} ${focusRing} ${ringOffset}`}
+      className={`inline-flex h-[3.25rem] w-full shrink-0 items-center justify-center gap-2.5 rounded-full px-6 text-sm font-bold leading-none shadow-lg transition-transform active:scale-[0.98] hover:scale-[1.01] ${surface} ${focusRing} ${ringOffset}`}
     >
       {isDuring ? (
         <>
