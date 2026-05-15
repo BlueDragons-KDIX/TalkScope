@@ -34,11 +34,11 @@ export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true, compac
   if (compact) {
     const outlineCls = isDuring
       ? dk
-        ? 'border-rose-500/55 bg-gradient-to-b from-rose-500/16 to-rose-600/8 text-rose-300 hover:from-rose-500/26 hover:to-rose-600/16 shadow-[inset_0_1px_0_rgba(251,113,133,0.14)] focus-visible:ring-rose-400/60'
-        : 'border-rose-300 bg-gradient-to-b from-white to-rose-50 text-rose-600 hover:from-rose-50 hover:to-rose-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_3px_rgba(200,50,50,0.1)] focus-visible:ring-rose-400/60'
+        ? 'border-rose-400/65 bg-gradient-to-b from-rose-400 to-rose-600 text-white shadow-[0_2px_14px_rgba(244,63,94,0.42),inset_0_1px_0_rgba(255,255,255,0.2)] hover:brightness-[1.08] focus-visible:ring-rose-400/70'
+        : 'border-rose-500/70 bg-gradient-to-b from-rose-400 to-rose-600 text-white shadow-[0_2px_12px_rgba(244,63,94,0.26),inset_0_1px_0_rgba(255,255,255,0.24)] hover:brightness-[1.05] focus-visible:ring-rose-400/70'
       : dk
-        ? 'border-emerald-500/55 bg-gradient-to-b from-emerald-500/16 to-emerald-600/8 text-emerald-300 hover:from-emerald-500/26 hover:to-emerald-600/16 shadow-[inset_0_1px_0_rgba(52,211,153,0.14)] focus-visible:ring-emerald-400/60'
-        : 'border-emerald-300 bg-gradient-to-b from-white to-emerald-50 text-emerald-700 hover:from-emerald-50 hover:to-emerald-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_3px_rgba(0,140,80,0.1)] focus-visible:ring-emerald-400/60'
+        ? 'border-sky-400/65 bg-gradient-to-b from-sky-400 to-sky-600 text-white shadow-[0_2px_14px_rgba(14,165,233,0.38),inset_0_1px_0_rgba(255,255,255,0.2)] hover:brightness-[1.08] focus-visible:ring-sky-400/70'
+        : 'border-sky-500/70 bg-gradient-to-b from-sky-400 to-sky-600 text-white shadow-[0_2px_12px_rgba(14,165,233,0.24),inset_0_1px_0_rgba(255,255,255,0.24)] hover:brightness-[1.05] focus-visible:ring-sky-400/70'
 
     return (
       <button

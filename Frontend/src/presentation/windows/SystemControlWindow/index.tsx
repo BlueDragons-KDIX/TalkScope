@@ -14,14 +14,17 @@ import {
 const focusRing =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
 
-type ControlsLayoutMode = 'row' | 'column' | 'mid'
+type ControlsLayoutMode = 'wide' | 'tall' | 'middle' | 'tiny'
+
+const clamp = (min: number, max: number, value: number): number =>
+  Math.max(min, Math.min(max, value))
 
 export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) => {
   const { onResetAll } = usePresentationShell()
   const dk = darkMode
   const [resetOpen, setResetOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
-  const [layoutMode, setLayoutMode] = useState<ControlsLayoutMode>('column')
+  const [layoutMode, setLayoutMode] = useState<ControlsLayoutMode>('tall')
   const [viewportSize, setViewportSize] = useState({ width: SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX, height: SYSTEM_CONTROL_DOCK_MIN_HEIGHT_PX })
 
   const { isListening, isPaused, startListening, pauseListening } = useTranscription()
@@ -43,36 +46,87 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
       setViewportSize({ width, height })
 
       const ratio = width / Math.max(height, 1)
-      if (ratio >= 1.34) setLayoutMode('row')
-      else if (ratio <= 0.78) setLayoutMode('column')
-      else setLayoutMode('mid')
+      const isTiny = width < 168 || height < 172
+      if (isTiny) setLayoutMode('tiny')
+      else if (ratio >= 1.45) setLayoutMode('wide')
+      else if (ratio <= 0.76) setLayoutMode('tall')
+      else setLayoutMode('middle')
     })
 
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
 
-  const controlsLayoutClass = useMemo(() => {
-    if (layoutMode === 'row') return 'grid grid-cols-3 items-stretch gap-2'
-    if (layoutMode === 'column') return 'grid grid-cols-1 items-stretch gap-2'
-    return 'grid grid-cols-2 items-stretch gap-2'
-  }, [layoutMode])
+  const isTiny = layoutMode === 'tiny'
+
+  const controlsLayoutStyle = useMemo<React.CSSProperties>(() => {
+    if (isTiny) {
+      return {
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr)',
+        gridTemplateAreas: '"record" "phase" "reset"',
+        gap: 6,
+        alignItems: 'stretch',
+      }
+    }
+
+    if (layoutMode === 'wide') {
+      return {
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(72px, 0.68fr)',
+        gridTemplateAreas: '"record phase reset"',
+        gap: 8,
+        alignItems: 'center',
+      }
+    }
+
+    if (layoutMode === 'tall') {
+      return {
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1fr)',
+        gridTemplateAreas: '"record" "phase" "reset"',
+        gap: 8,
+        alignItems: 'stretch',
+      }
+    }
+
+    return {
+      display: 'grid',
+      gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+      gridTemplateAreas: '"record phase" ". reset"',
+      columnGap: 8,
+      rowGap: 10,
+      alignItems: 'stretch',
+    }
+  }, [isTiny, layoutMode])
 
   const baseControlSize = useMemo(() => {
     const { width, height } = viewportSize
-    if (layoutMode === 'row') {
-      return Math.max(54, Math.min(92, Math.floor((width - 32) / 3)))
+    const contentWidth = Math.max(0, width - 20)
+    const contentHeight = Math.max(0, height - 20)
+
+    if (isTiny) {
+      return clamp(42, 56, Math.min(contentWidth, Math.floor((contentHeight - 16) / 2.75)))
     }
-    if (layoutMode === 'column') {
-      return Math.max(54, Math.min(92, Math.floor((height - 52) / 3)))
+
+    if (layoutMode === 'wide') {
+      return clamp(48, 76, Math.min(Math.floor((contentWidth - 16) / 2.68), contentHeight))
     }
-    const fromWidth = Math.floor((width - 24) / 2)
-    const fromHeight = Math.floor((height - 56) / 2)
-    return Math.max(52, Math.min(88, Math.min(fromWidth, fromHeight)))
-  }, [layoutMode, viewportSize])
+    if (layoutMode === 'tall') {
+      return clamp(48, 78, Math.min(contentWidth, Math.floor((contentHeight - 24) / 2.72)))
+    }
+    return clamp(46, 74, Math.min(Math.floor((contentWidth - 8) / 2), Math.floor((contentHeight - 14) / 1.88)))
+  }, [isTiny, layoutMode, viewportSize])
 
   const primaryTileStyle = { minHeight: baseControlSize, height: baseControlSize }
-  const resetTileStyle = { minHeight: Math.round(baseControlSize * 0.88), height: Math.round(baseControlSize * 0.88) }
+  const resetTileStyle = {
+    gridArea: 'reset',
+    justifySelf: layoutMode === 'middle' ? 'end' : 'stretch',
+    marginTop: layoutMode === 'tall' ? 8 : 0,
+    minHeight: Math.round(baseControlSize * 0.84),
+    height: Math.round(baseControlSize * 0.84),
+    width: layoutMode === 'middle' ? 'min(100%, 124px)' : '100%',
+  } satisfies React.CSSProperties
 
   return (
     <div
@@ -85,8 +139,8 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
         dk ? 'bg-[#0d0e1a] text-slate-200' : 'bg-white text-slate-800'
       }`}
     >
-      <section aria-label="操作コントロール" className={controlsLayoutClass}>
-        <div style={primaryTileStyle}>
+      <section aria-label="操作コントロール" style={controlsLayoutStyle}>
+        <div style={{ ...primaryTileStyle, gridArea: 'record' }}>
           <AnimatePresence mode="wait">
             {isListening ? (
               <motion.button
@@ -138,7 +192,7 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
           </AnimatePresence>
         </div>
 
-        <div style={primaryTileStyle}>
+        <div style={{ ...primaryTileStyle, gridArea: 'phase' }}>
           <PhaseTransitionButton
             darkMode={darkMode}
             compact
@@ -148,15 +202,15 @@ export const SystemControlWindow: React.FC<WindowProps> = ({ darkMode = true }) 
 
       {/* リセット（確認ダイアログ付き） */}
         <AlertDialog.Root open={resetOpen} onOpenChange={setResetOpen}>
-          <div className={layoutMode === 'mid' ? 'col-span-2' : ''} style={resetTileStyle}>
+          <div style={resetTileStyle}>
             <AlertDialog.Trigger asChild>
               <button
                 type="button"
                 title="文字起こし・用語・履歴などをすべてクリアします"
                 className={`${resetBtnBase} ${focusRing} focus-visible:ring-amber-400/60 ${ringOffsetCls} ${
                   dk
-                    ? 'border-amber-500/50 bg-gradient-to-b from-amber-500/15 to-amber-600/8 text-amber-300 hover:from-amber-500/25 hover:to-amber-600/15 shadow-[inset_0_1px_0_rgba(251,191,36,0.12),0_1px_4px_rgba(0,0,0,0.25)]'
-                    : 'border-amber-300 bg-gradient-to-b from-white to-amber-50 text-amber-800 hover:from-amber-50 hover:to-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_3px_rgba(160,100,0,0.12)]'
+                    ? 'border-slate-600/55 bg-gradient-to-b from-slate-800/70 to-slate-900/70 text-slate-400 hover:border-amber-500/55 hover:text-amber-300 hover:from-amber-500/14 hover:to-amber-600/8 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]'
+                    : 'border-slate-200 bg-gradient-to-b from-white to-slate-50 text-slate-500 hover:border-amber-300 hover:text-amber-800 hover:from-amber-50 hover:to-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_1px_2px_rgba(15,23,42,0.06)]'
                 }`}
                 aria-label="すべてリセット"
               >
