@@ -1,8 +1,6 @@
-import { GlobalRegistrator } from '@happy-dom/global-registrator'
+import '@happy-dom/global-registrator/register'
 import { afterEach } from 'bun:test'
 import { cleanup } from '@testing-library/react'
-
-GlobalRegistrator.register()
 
 afterEach(() => {
   cleanup()
