@@ -2,9 +2,11 @@ from typing import AsyncGenerator
 
 from fastapi.logger import logger
 
+from app.schemas.dictionary import TermInfo
 from config.config import ZERO_VECTOR_300
 import app.services.refer_dictionary as rd
 import app.crud.dictionary as crud_dict
+import app.crud.dictionary_v1 as crud_dict_v1
 import app.services.llm as llm
 from app.services.enbedding import spacy_enbedding as sp_emb
 from typing import Callable
@@ -20,23 +22,11 @@ async def service_analyze_text(text: str):
         # 結果の整形
         pass
 
-# ========================== Model ===================================
-
-class TermInfo:
-    """
-    DBからヒットした用語情報を表すクラス
-    Args:
-        term: 用語
-        sense: 用語の意味のリスト。各意味は (説明, embedding) のタプル
-    """
-    def __init__(self, term: str, sense: list[tuple[str, list[float]]]):
-        self.term : str = term
-        self.sense : list[tuple[str, list[float]]] = sense
-
 # ========================== Protocols / Type Aliases ===============================
 
 # embedding APIを呼び出す関数の型定義
 CallableEmbeddingAPIProtocol = Callable[[str], list[float]]
+InsertDBTermInfosProtocol = Callable[[list[TermInfo]], None]
 
 # ================================= Service ======================================
 
@@ -87,18 +77,18 @@ async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry]
     
     # missした用語の意味候補をLLMで生成
     result_senses = _generate_senses_for_terms(terms_db_miss, group_size=10)
-    results_terms = _embed_terms(sp_emb.call_embedding_api, result_senses)
+    results_terms = _embed_terms(call_embedding_api=sp_emb.call_embedding_api, terms=result_senses)
     
     # TODO: DB保存をスレッドに分離して並列化し、書き込みの確認をせずにreturnすることも検討
     # DB保存
-    pass
+    store_term_infos(insert_db_term_infos=crud_dict_v1.insert_term_infos, term_infos=results_terms)
     # 最後にbest sense選択して返す
     yield _best_sense_selection(term_infos=results_terms, text_embedding=[], source="llm")
 
 
 # =========================== Domain ===================================
 
-def _compute_text_embedding(call_embedding_api: CallableEmbeddingAPIProtocol, text: str) -> list[float]:
+def _compute_text_embedding(*, call_embedding_api: CallableEmbeddingAPIProtocol, text: str) -> list[float]:
     """
     入力テキストのembeddingを計算する関数
     外部APIを呼び出してembeddingを計算する想定
@@ -116,15 +106,22 @@ def _compute_text_embedding(call_embedding_api: CallableEmbeddingAPIProtocol, te
         return ZERO_VECTOR_300.copy()
 
 def _embed_terms(call_embedding_api: CallableEmbeddingAPIProtocol, terms: dict[str, list[str]]) -> list[TermInfo]:
-    """用語のリストを受け取り、各用語の意味テキストをembeddingを計算する関数"""
+    """
+    用語のリストを受け取り、各用語の意味テキストをembeddingを計算する関数
+    Args:
+        call_embedding_api: embedding APIを呼び出す関数
+        terms: 用語をキー、意味のテキストのリストを値に
+    Returns:
+        term_infos: 用語情報のリスト。各用語情報は、用語と、意味テキストとそのembeddingのタプルのリストを持つ
+    """
     results_terms: list[TermInfo] = []
     # 用語ごとに意味のembeddingを計算する
     for term, senses in terms.items():
-        term_info = TermInfo(term=term, sense=[])
+        term_info = TermInfo(term=term, definition_embeddings=[])
         for sense in senses:
-            embedding = _compute_text_embedding(call_embedding_api, sense)
+            embedding = _compute_text_embedding(call_embedding_api=call_embedding_api, text=sense)
             # DB保存のためのオブジェクトを作る
-            term_info.sense.append((sense, embedding))
+            term_info.definition_embeddings.append((sense, embedding))
         results_terms.append(term_info)
     return results_terms
 
@@ -143,7 +140,7 @@ def _search_dictionary(terms: list[str]) -> list[TermInfo]:
     except Exception as e:
         logger.exception("DB検索に失敗: %s\n フォールバックとして空の結果を返します。", e)
         return []
-    return [TermInfo(term=entry.term, sense=[(entry.description, entry.meaning_vector)]) for entry in result]
+    return [TermInfo(term=entry.term, definition_embeddings=[(entry.description, entry.meaning_vector)]) for entry in result]
 
 
 def _generate_senses_for_terms(terms: list[str], group_size: int = 10) -> dict[str, list[str]]:
@@ -160,8 +157,22 @@ def _generate_senses_for_terms(terms: list[str], group_size: int = 10) -> dict[s
 
     for prompt in prompts:
         result_senses.update(llm.generate_json(prompt))
+    # 空の意味候補は除外する
+    result_senses = {term: senses for term, senses in result_senses.items() if senses}
     return result_senses
 
+def store_term_infos(*, insert_db_term_infos: InsertDBTermInfosProtocol, term_infos: list[TermInfo]) -> None:
+    """
+    用語情報のリストをDBに保存する関数
+    エラーはログに記録するが、処理は継続する（部分的に保存できる可能性があるため）
+    Args:
+        insert_db_term_infos: 用語情報をDBに挿入する関数
+        term_infos: 保存する用語情報のリスト
+    """
+    try:
+        insert_db_term_infos(term_infos)
+    except Exception as e:
+        logger.exception("DB保存に失敗: %s\n 処理は継続します。", e)
 
 def _best_sense_selection(term_infos: list[TermInfo], text_embedding: list[float], source: str) -> list[rd.DictionaryEntry]:
     """
@@ -175,22 +186,27 @@ def _best_sense_selection(term_infos: list[TermInfo], text_embedding: list[float
     """
     # TODO: text_embeddingとterm_infosの意味ベクトルを比較して最も近いものを選ぶロジックを実装する（現状は単純に先頭の意味を選ぶ）
     # また、ゼロベクトルを想定したハンドリングも必要(スコア計算も同じく)
-    return [
-        rd.DictionaryEntry(
-            term=term_info.term, 
-            description=term_info.sense[0][0], 
-            meaning_vector=term_info.sense[0][1],
-            source=source,
-        ) \
-        for term_info in term_infos
-        ]
+    results: list[rd.DictionaryEntry] = []
+    for term_info in term_infos:
+        if not term_info.definition_embeddings:
+            continue
+        results.append(
+            rd.DictionaryEntry(
+                term=term_info.term,
+                description=term_info.definition_embeddings[0][0],
+                meaning_vector=term_info.definition_embeddings[0][1],
+                source=source,
+            )
+        )
+    return results
 
-def _build_prompts(terms: list[str], group_size: int = 10) -> list[str]:
+def _build_prompts(terms: list[str], group_size: int = 10, generate_max_sense: int = 3) -> list[str]:
     """
     LLMに渡すプロンプトを生成する関数
     Args:
         terms: プロンプトを生成する用語のリスト
         group_size: 一度に処理する用語の数。LLMのトークン制限や処理時間を考慮して適切な値を設定する。
+        generate_max_sense: 一度に生成する意味の数
     Returns:
         prompts: 生成されたプロンプトのリスト
     """
@@ -202,7 +218,7 @@ def _build_prompts(terms: list[str], group_size: int = 10) -> list[str]:
 
         prompts.append(f"""
             あなたは辞書アシスタントです。
-            以下の単語それぞれについて、日本語で使われる主要な意味を最大3つ出してください。
+            以下の単語それぞれについて、日本語で使われる主要な意味を1~{generate_max_sense}つ出してください。
 
             条件:
             - 各単語は独立して処理してください

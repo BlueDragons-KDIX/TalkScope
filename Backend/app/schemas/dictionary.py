@@ -178,3 +178,17 @@ class DictionaryBulkRegisterResponse(BaseModel):
         default_factory=list,
         description="用語ごとの処理結果",
     )
+
+
+# ========================== refer_dictionary_v1 ===================================
+class TermInfo:
+    """
+    DBからヒットした用語情報を表すクラス
+    Args:
+        term: 用語
+        definition_embeddings: 用語の意味のリスト。各意味は (説明, embedding) のタプル
+    """
+    def __init__(self, term: str, definition_embeddings: list[tuple[str, list[float]]]):
+        self.term : str = term
+        # 意味とベクトルの対応付けをしつつ、複数の意味を保持できるようにする
+        self.definition_embeddings : list[tuple[str, list[float]]] = definition_embeddings

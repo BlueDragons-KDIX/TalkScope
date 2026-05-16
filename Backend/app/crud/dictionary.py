@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from app.core.database import get_transaction_manager
 from app.models.dictionary import Dictionary
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import (
+    Session,
+)
 
 
 def _get_tx():
@@ -135,4 +137,3 @@ def search_sense_dictionary(terms: list[str]) -> list[Dictionary]:
         return results
 
     return _get_tx().run(_search)
-
