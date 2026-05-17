@@ -4,6 +4,8 @@ from typing import Any
 from app.core.database import get_transaction_manager
 from app.models.dictionary import InfoTable, TermTable
 from app.schemas.dictionary import TermInfo
+
+from sqlalchemy import RowMapping, select
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 
@@ -35,7 +37,7 @@ def insert_term_infos(term_infos: list[TermInfo]) -> None:
                     term_id=new_term.id,
                     description=description,
                     meaning_vector=meaning_vector,
-                ) for description, meaning_vector in info.definition_embeddings
+                ) for description, meaning_vector in info.description_embeddings
             ]
             session.add_all(new_info)
         session.flush()
@@ -75,40 +77,47 @@ def read_term_infos(terms: list[str]) -> list[TermInfo]:
     Returns:
         term_infos: 用語と、その意味説明・意味ベクトルのリスト
     """
-    if not terms:
-        return []
-
     # read呼び出し
-    rows = read_term_info_rows(terms)
-
-    # マッピング
-    term_info_by_term: dict[str, TermInfo] = {}
-    for term_row, info_row in rows:
-        if term_row.term not in term_info_by_term:
-            term_info_by_term[term_row.term] = TermInfo(term=term_row.term, definition_embeddings=[])
-        term_info_by_term[term_row.term].definition_embeddings.append(
-            (info_row.description, info_row.meaning_vector)
+    rows: list[RowMapping] = read_term_info_rows(terms)
+    # TermInfoにマッピング
+    term_info_dict: dict[int, TermInfo] = {}
+    for row in rows:
+        term_id = row["term_id"]
+        if term_id not in term_info_dict:
+            term_info_dict[term_id] = TermInfo(
+                term=row["term"], 
+                idf_wiki=row["idf_wiki"],
+                description_embeddings=[]
+            )
+        term_info_dict[term_id].description_embeddings.append(
+            (row["description"], row["meaning_vector"])
         )
+    # TODO: 【検討】最終更新日が古いものは、もう一度意味生成を行うような処理を入れるべきか？（意味生成の精度向上のため）
+    pass
+    return list(term_info_dict.values())
 
-    # 一定の日数で更新する
-    return list(term_info_by_term.values())
 
-
-def read_term_info_rows(terms: list[str]) -> list[tuple[TermTable, InfoTable]]:
+def read_term_info_rows(terms: list[str]) -> list[RowMapping]:
     """
     用語情報のテーブル行を複数取得する関数
     Args:
         terms: 検索対象の用語リスト
     Returns:
-        rows: 用語テーブル行と意味情報テーブル行のタプル
+        rows: 用語テーブル行と意味情報テーブル行の辞書のリスト
     """
-    def _read(session: Session) -> list[tuple[TermTable, InfoTable]]:
-        return (
-            session.query(TermTable, InfoTable)
-            .join(InfoTable, InfoTable.term_id == TermTable.id)
-            .filter(TermTable.term.in_(terms))
-            .order_by(TermTable.id.asc(), InfoTable.id.asc())
-            .all()
+    def _read(session: Session) -> list[RowMapping]:
+        stmt = (
+            select(
+                TermTable.id.label("term_id"),
+                TermTable.term,
+                TermTable.idf_wiki,
+                InfoTable.description,
+                InfoTable.meaning_vector,
+                TermTable.updated_at,
+                TermTable.created_at,
+            )
+            .join(InfoTable, TermTable.id == InfoTable.term_id)
+            .where(TermTable.term.in_(terms))
         )
-
+        return session.execute(stmt).mappings().all()
     return _get_tx().run(_read)

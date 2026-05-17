@@ -67,7 +67,7 @@ async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry]
     unique_joined_terms = ["".join(term_tuple) for term_tuple in unique_terms]
 
     # DB検索(バッチで検索)
-    results_term = _search_dictionary(unique_joined_terms)
+    results_term = crud_dict_v1.read_term_infos(unique_joined_terms)
 
     # hitはbest sense選択して返す (今は1単語1意味の想定なのでそのまま返す)
     yield _best_sense_selection(term_infos=results_term, text_embedding=[], source="db")
@@ -117,30 +117,31 @@ def _embed_terms(call_embedding_api: CallableEmbeddingAPIProtocol, terms: dict[s
     results_terms: list[TermInfo] = []
     # 用語ごとに意味のembeddingを計算する
     for term, senses in terms.items():
-        term_info = TermInfo(term=term, definition_embeddings=[])
+        term_info = TermInfo(term=term, idf_wiki=None, description_embeddings=[])
         for sense in senses:
             embedding = _compute_text_embedding(call_embedding_api=call_embedding_api, text=sense)
             # DB保存のためのオブジェクトを作る
-            term_info.definition_embeddings.append((sense, embedding))
+            term_info.description_embeddings.append((sense, embedding))
         results_terms.append(term_info)
     return results_terms
 
 
-def _search_dictionary(terms: list[str]) -> list[TermInfo]:
-    """
-    DBから複数の用語情報を検索する関数
-    複合語を連結した文字列で検索する
-    Args:
-        terms: 検索する用語のリスト
-    Returns:
-        term_infos: 検索結果の用語情報のリスト
-    """
-    try:
-        result = crud_dict.search_sense_dictionary(terms=terms)
-    except Exception as e:
-        logger.exception("DB検索に失敗: %s\n フォールバックとして空の結果を返します。", e)
-        return []
-    return [TermInfo(term=entry.term, definition_embeddings=[(entry.description, entry.meaning_vector)]) for entry in result]
+# 旧実装のためコメント化
+# def _search_dictionary(terms: list[str]) -> list[TermInfo]:
+#     """
+#     DBから複数の用語情報を検索する関数
+#     複合語を連結した文字列で検索する
+#     Args:
+#         terms: 検索する用語のリスト
+#     Returns:
+#         term_infos: 検索結果の用語情報のリスト
+#     """
+#     try:
+#         result = crud_dict.search_sense_dictionary(terms=terms)
+#     except Exception as e:
+#         logger.exception("DB検索に失敗: %s\n フォールバックとして空の結果を返します。", e)
+#         return []
+#     return [TermInfo(term=entry.term, idf_wiki=None, description_embeddings=[(entry.description, entry.meaning_vector)]) for entry in result]
 
 
 def _generate_senses_for_terms(terms: list[str], group_size: int = 10) -> dict[str, list[str]]:
@@ -188,13 +189,13 @@ def _best_sense_selection(term_infos: list[TermInfo], text_embedding: list[float
     # また、ゼロベクトルを想定したハンドリングも必要(スコア計算も同じく)
     results: list[rd.DictionaryEntry] = []
     for term_info in term_infos:
-        if not term_info.definition_embeddings:
+        if not term_info.description_embeddings:
             continue
         results.append(
             rd.DictionaryEntry(
                 term=term_info.term,
-                description=term_info.definition_embeddings[0][0],
-                meaning_vector=term_info.definition_embeddings[0][1],
+                description=term_info.description_embeddings[0][0],
+                meaning_vector=term_info.description_embeddings[0][1],
                 source=source,
             )
         )

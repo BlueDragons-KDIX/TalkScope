@@ -186,9 +186,16 @@ class TermInfo:
     DBからヒットした用語情報を表すクラス
     Args:
         term: 用語
-        definition_embeddings: 用語の意味のリスト。各意味は (説明, embedding) のタプル
+        idf_wiki: WikiのIDF値
+        description_embeddings: 用語の意味のリスト。各意味は (説明, embedding) のタプル
     """
-    def __init__(self, term: str, definition_embeddings: list[tuple[str, list[float]]]):
+    def __init__(
+            self,
+            term: str, 
+            idf_wiki: float | None, 
+            description_embeddings: list[tuple[str, list[float]]]
+        ):
         self.term : str = term
+        self.idf_wiki : float | None = idf_wiki
         # 意味とベクトルの対応付けをしつつ、複数の意味を保持できるようにする
-        self.definition_embeddings : list[tuple[str, list[float]]] = definition_embeddings
+        self.description_embeddings : list[tuple[str, list[float]]] = description_embeddings

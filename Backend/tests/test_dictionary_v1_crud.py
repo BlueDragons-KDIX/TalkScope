@@ -74,15 +74,24 @@ def test_insert_term_infos_commits_terms_and_definitions_to_dev_db() -> None:
     ]
 
     insert_term_infos([
-        TermInfo(term=term, definition_embeddings=definitions)
+        TermInfo(term=term, idf_wiki=None, description_embeddings=definitions)
     ])
 
     term_infos = read_term_infos([term])
+    print("\n[read_term_infos result]")
+    for term_info in term_infos:
+        print(f"term={term_info.term}, idf_wiki={term_info.idf_wiki}")
+        for description, vector in term_info.description_embeddings:
+            print(
+                f"  description={description}, "
+                f"vector_dim={len(vector)}, vector_head={float(vector[0])}"
+            )
+
     assert len(term_infos) == 1
     assert term_infos[0].term == term
-    assert len(term_infos[0].definition_embeddings) == 2
+    assert len(term_infos[0].description_embeddings) == 2
 
-    returned_definitions = term_infos[0].definition_embeddings
+    returned_definitions = term_infos[0].description_embeddings
     assert {description for description, _vector in returned_definitions} == {
         "テスト用の意味説明1",
         "テスト用の意味説明2",

@@ -92,9 +92,9 @@ def test_embed_terms_embeds_each_sense() -> None:
         raise AssertionError(f"_embed_terms: unexpected calls {calls}")
 
     for term_info in term_infos:
-        if not term_info.definition_embeddings:
+        if not term_info.description_embeddings:
             raise AssertionError(f"_embed_terms: {term_info.term} has no senses")
-        for _description, vector in term_info.definition_embeddings:
+        for _description, vector in term_info.description_embeddings:
             assert_vector_300(vector, f"_embed_terms {term_info.term}")
 
 
@@ -174,7 +174,7 @@ def test_compare_with_refer_dictionary_vector() -> None:
     refer_dictionary_v1_vector = _embed_terms(
         call_embedding_api,
         {"".join(term_parts): ["人間が日常的に使う言語をコンピュータで処理する技術"]},
-    )[0].definition_embeddings[0][1]
+    )[0].description_embeddings[0][1]
     elapsed = time.perf_counter() - start
     print(f"    refer_dictionary_v1 vector embedding time: {elapsed:.6f}s")
 
