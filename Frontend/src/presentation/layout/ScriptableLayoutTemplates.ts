@@ -21,6 +21,7 @@ export class ScriptableLayoutTemplates {
     return [
       this.template('デフォルト', this.createDuringSampleLayout()),
       this.template('バブル重視', this.createBubbleFocusedLayout()),
+      this.template('重要リスト重視', this.createImportanceListFocusedLayout()),
     ]
   }
 
@@ -120,6 +121,47 @@ export class ScriptableLayoutTemplates {
             id: 'n19',
             windowId: 'systemControl',
           },
+        },
+      },
+    }
+  }
+
+  createImportanceListFocusedLayout(): LayoutNode {
+    return {
+      type: 'split',
+      id: 'n8',
+      direction: 'h',
+      ratio: 0.6873806275579809,
+      a: {
+        type: 'split',
+        id: 'n24',
+        direction: 'h',
+        ratio: 0.43989426965781536,
+        a: {
+          type: 'leaf',
+          id: 'n6',
+          windowId: 'transcription',
+        },
+        b: {
+          type: 'leaf',
+          id: 'n23',
+          windowId: 'importanceRanking',
+        },
+      },
+      b: {
+        type: 'split',
+        id: 'n20',
+        direction: 'v',
+        ratio: 0.7496740547588006,
+        a: {
+          type: 'leaf',
+          id: 'n17',
+          windowId: 'detail',
+        },
+        b: {
+          type: 'leaf',
+          id: 'n19',
+          windowId: 'systemControl',
         },
       },
     }
