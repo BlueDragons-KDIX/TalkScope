@@ -34,6 +34,15 @@ import {
   TERM_MAP_TEXT_FONT_SIZE_MIN,
   useTermMapWindowSettingsStore,
 } from '../../stores/termMapWindowSettingsStore'
+import {
+  IMPORTANCE_RANKING_FONT_SIZE_MAX,
+  IMPORTANCE_RANKING_FONT_SIZE_MIN,
+  IMPORTANCE_RANKING_MASTER_SIZE_SCALE_MAX,
+  IMPORTANCE_RANKING_MASTER_SIZE_SCALE_MIN,
+  IMPORTANCE_RANKING_VISIBLE_COUNT_MAX,
+  IMPORTANCE_RANKING_VISIBLE_COUNT_MIN,
+  useImportanceRankingWindowSettingsStore,
+} from '../../stores/importanceRankingWindowSettingsStore'
 
 const DropOverlay: React.FC<{ zone: DropZone; rgb: string }> = ({ zone, rgb }) => {
   const base: React.CSSProperties = {
@@ -199,6 +208,12 @@ const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
   const setTermMapTextFontSizePx = useTermMapWindowSettingsStore(s => s.setTextFontSizePx)
   const setTermMapAutoSwitchEnabled = useTermMapWindowSettingsStore(s => s.setAutoSwitchEnabled)
   const setTermMapAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.setAutoSwitchIntervalSec)
+  const importanceRankingMasterSizeScale = useImportanceRankingWindowSettingsStore(s => s.masterSizeScale)
+  const importanceRankingFontSizePx = useImportanceRankingWindowSettingsStore(s => s.fontSizePx)
+  const importanceRankingVisibleCount = useImportanceRankingWindowSettingsStore(s => s.visibleCount)
+  const setImportanceRankingMasterSizeScale = useImportanceRankingWindowSettingsStore(s => s.setMasterSizeScale)
+  const setImportanceRankingFontSizePx = useImportanceRankingWindowSettingsStore(s => s.setFontSizePx)
+  const setImportanceRankingVisibleCount = useImportanceRankingWindowSettingsStore(s => s.setVisibleCount)
   const dk = darkMode
 
   const modeButton = (value: TranscriptionMode, text: string) => {
@@ -418,6 +433,49 @@ const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
               accentRgb={accentRgb}
               onChange={setTermMapAutoSwitchIntervalSec}
             />
+          </section>
+        </div>
+      ) : windowId === 'importanceRanking' ? (
+        <div className="space-y-3">
+          <section>
+            <div className={`mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+              <SlidersHorizontal size={11} /> 表示
+            </div>
+            <div className="space-y-2.5">
+              <SettingsSlider
+                label="要素サイズ"
+                valueLabel={`${Math.round(importanceRankingMasterSizeScale * 100)}%`}
+                value={importanceRankingMasterSizeScale}
+                min={IMPORTANCE_RANKING_MASTER_SIZE_SCALE_MIN}
+                max={IMPORTANCE_RANKING_MASTER_SIZE_SCALE_MAX}
+                step={0.05}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setImportanceRankingMasterSizeScale}
+              />
+              <SettingsSlider
+                label="フォント"
+                valueLabel={`${importanceRankingFontSizePx}px`}
+                value={importanceRankingFontSizePx}
+                min={IMPORTANCE_RANKING_FONT_SIZE_MIN}
+                max={IMPORTANCE_RANKING_FONT_SIZE_MAX}
+                step={1}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setImportanceRankingFontSizePx}
+              />
+              <SettingsSlider
+                label="表示単語数"
+                valueLabel={`${importanceRankingVisibleCount}個`}
+                value={importanceRankingVisibleCount}
+                min={IMPORTANCE_RANKING_VISIBLE_COUNT_MIN}
+                max={IMPORTANCE_RANKING_VISIBLE_COUNT_MAX}
+                step={1}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setImportanceRankingVisibleCount}
+              />
+            </div>
           </section>
         </div>
       ) : (
