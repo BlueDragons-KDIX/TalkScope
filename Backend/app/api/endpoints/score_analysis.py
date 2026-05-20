@@ -50,13 +50,5 @@ def post_theme_session_reset(body: SessionResetRequest) -> SessionResetResponse:
     summary="複数用語の素点＋バフを一括算出する（IDF は term_idf／IDF_JSON_PATH を起動時ロード済みのときのみ有効）",
 )
 def post_score_terms(body: TermScoreBatchRequest) -> TermScoreBatchResponse:
-    """複数語のスコアを一括算出し、リクエストのウェイト／テーマ override を ``term_score`` に渡すだけ。"""
-    return compute_term_scores_for_request(
-        body.session_id,
-        body.chunk_text_for_bigrams,
-        body.terms,
-        theme_vector_override=body.theme_vector_override,
-        use_session_theme=body.use_session_theme,
-        weights=body.weights,
-        debuffs=body.debuffs,
-    )
+    """複数語のスコアを一括算出し、``term_score`` に委譲する。"""
+    return compute_term_scores_for_request(body.session_id, body.terms)

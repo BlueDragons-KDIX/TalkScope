@@ -42,9 +42,9 @@ JSON オブジェクト `{ "語1": 2.34, ... }` は開発向け **`IDF_JSON_PATH
 
 ## 3. 実行時にどう使われるか
 
-1. クライアントが `POST /analysis/score/terms` に **`lemma`** と `weights.idf_weight > 0` を送る。
+1. クライアントが `POST /analysis/score/terms` に **`lemma`** を送る。
 2. サーバが `idf_table.lookup(lemma)` を呼ぶ。
-3. **テーブルにキーがあれば**その値に `idf_weight` を掛ける。
+3. **テーブルにキーがあれば**その値にサーバ側の係数 `_SCORE_IDF_WEIGHT` を掛ける。
 4. **無い語**は **`IdfLookupTable` の平均 IDF**（読み込んだ語のみで計算された平均）にフォールバックする。下限で間引いた場合、テーブル未収録語への平均は「残した語」の平均になる点に留意する。
 
 ---

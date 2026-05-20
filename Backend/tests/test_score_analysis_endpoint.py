@@ -13,6 +13,8 @@ if str(_backend_root) not in sys.path:
 
 from main import app
 
+from app.schemas.score_analysis import THEME_EMA_ALPHA_DEFAULT
+
 client = TestClient(app)
 
 
@@ -50,14 +52,16 @@ def test_theme_chunk_persists(monkeypatch: pytest.MonkeyPatch) -> None:
         min_content_tokens: int = 2,
     ):
         vec = [0.6, 0.8]
-        assert alpha == pytest.approx(0.05)
+        assert alpha == pytest.approx(THEME_EMA_ALPHA_DEFAULT)
+        assert normalize_sentence is True
+        assert min_content_tokens == 2
         return vec, True, {"skipped": False}
 
     monkeypatch.setattr("app.services.term_score.update_theme_ema_chunk", fake_update)
 
     res = client.post(
         "/analysis/theme/chunk",
-        json={"session_id": "s2", "text": "チャンク", "alpha": 0.05},
+        json={"session_id": "s2", "text": "チャンク"},
     )
     assert res.status_code == 200
     assert res.json()["updated"] is True
@@ -67,11 +71,9 @@ def test_theme_chunk_persists(monkeypatch: pytest.MonkeyPatch) -> None:
         "/analysis/score/terms",
         json={
             "session_id": "s2",
-            "chunk_text_for_bigrams": "自然 言語",
             "terms": [
                 {"lemma": "自然", "occurrence_count": 5, "term_vector": [0.6, 0.8]},
             ],
-            "weights": {"theme_sim_weight": 1.0, "ppmi_weight": 0.0, "count_cap": 100},
         },
     )
     assert res2.status_code == 200
@@ -93,12 +95,23 @@ def test_theme_session_reset() -> None:
     assert res2.json()["cleared"] is False
 
 
+def test_score_terms_rejects_unknown_body_field() -> None:
+    res = client.post(
+        "/analysis/score/terms",
+        json={
+            "session_id": "s9",
+            "terms": [{"lemma": "a", "occurrence_count": 1, "term_vector": [0.1, 0.2]}],
+            "chunk_text_for_bigrams": "余計",
+        },
+    )
+    assert res.status_code == 422
+
+
 def test_score_terms_validation() -> None:
     res = client.post(
         "/analysis/score/terms",
         json={
             "session_id": "",
-            "chunk_text_for_bigrams": "",
             "terms": [],
         },
     )

@@ -105,10 +105,10 @@ def test_update_theme_ema_empty_vector(monkeypatch: pytest.MonkeyPatch, ts: Any)
     assert diag.get("reason") == "empty_sentence_vector"
 
 
-def test_compute_term_scores_batch_morphological_analysis_once(
+def test_compute_term_scores_batch_does_not_call_morph_for_bigrams(
     monkeypatch: pytest.MonkeyPatch, ts: Any
 ) -> None:
-    from app.schemas.score_analysis import TermScoreInput, TermScoreWeights
+    from app.schemas.score_analysis import TermScoreInput
 
     calls = 0
 
@@ -123,30 +123,23 @@ def test_compute_term_scores_batch_morphological_analysis_once(
     monkeypatch.setattr(ts, "morphological_analysis", counting_morph)
     ts.compute_term_scores_for_request(
         "sess",
-        "xy",
         [
             TermScoreInput(lemma="自然", occurrence_count=1, term_vector=[1.0, 0.0]),
             TermScoreInput(lemma="言語", occurrence_count=1, term_vector=[0.0, 1.0]),
         ],
-        theme_vector_override=None,
-        use_session_theme=False,
-        weights=TermScoreWeights(ppmi_weight=0.2, theme_sim_weight=0.0),
-        debuffs=None,
     )
-    assert calls == 1
+    assert calls == 0
 
 
 def test_compute_term_score_additive_structure(monkeypatch: pytest.MonkeyPatch, ts: Any) -> None:
     from app.services.score_building_blocks import IdfLookupTable, count_axis_weight
 
-    monkeypatch.setattr(ts, "scoring_lemmas_in_order", lambda _text: ["自然", "言語"])
     tbl = IdfLookupTable({"自然": 4.0})
     theme = [1.0, 0.0, 0.0]
     termv = [1.0, 0.0, 0.0]
     r = ts.compute_term_score_additive(
         "自然",
         occurrence_count=25,
-        chunk_text_for_bigrams="ダミー",
         theme_vector=theme,
         term_vector=termv,
         idf_table=tbl,

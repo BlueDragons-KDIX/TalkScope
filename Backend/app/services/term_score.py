@@ -7,8 +7,7 @@
 設計方針:
 
 - **文ベクトル／重い前処理の回数**: テーマ更新ではチャンクごとに ``vectorize_sentence`` を高々 1 回。
-  用語スコアの **バッチ** では、チャンク全文に対する隣接 bigram 用の形態素列を **リクエストにつき 1 回**
-  だけ求め、各用語計算に流用する（embedding 同様、同一入力の重複ワークを避ける）。
+  用語スコアのバッチは語ごとに素点・テーマ類似・IDF のみを計算する（共起 PPMI は提供しない）。
 - **multi-sense**: 将来、語あたり複数 sense ベクトルがある場合は ``best_sense_index_by_context`` で
   文脈ベクトルに対する argmax を基本形とする（LLM・初出生成は同期から外す前提で別タスク）。
 """
@@ -30,22 +29,21 @@ __all__ = [
     "update_theme_ema_chunk",
 ]
 
-from collections.abc import Mapping
 from threading import Lock
 from typing import Any
 
 from app.schemas.score_analysis import (
+    THEME_EMA_ALPHA_DEFAULT,
     TermScoreBatchResponse,
     TermScoreInput,
     TermScoreResult,
-    TermScoreWeights,
     ThemeChunkRequest,
     ThemeChunkResponse,
 )
+
 from app.services.score_building_blocks import (
     IdfLookupTable,
     adjacent_bigram_counts,
-    window_bigram_counts,
     compose_additive_score,
     cosine_similarity,
     count_axis_weight,
@@ -54,10 +52,21 @@ from app.services.score_building_blocks import (
     is_term_score_pos_allowed,
     linear_cosine_similarity_to_unit,
     should_skip_theme_update,
-    term_adjacent_ppmi_max,
 )
 from app.services.idf_runtime import get_idf_table
 from app.services.text_analysis import morphological_analysis, vectorize_sentence
+
+# POST /analysis/score/terms の加点の強さ（数を大きくするとその要素の影響が強くなる）
+# テーマ類似: 「今の会話の話題」と用語の意味が近いほど足す量 → 応答 buffs["theme_linear"]
+_SCORE_THEME_SIM_WEIGHT = 0.5
+# レア語（IDF）: Wikipedia 等で珍しい語ほど足す量 → 応答 buffs["idf_scaled"]
+_SCORE_IDF_WEIGHT = 0.08
+# 出現回数から作る素点の上限 → 応答 base（count_axis_weight の cap）
+_SCORE_COUNT_CAP = 100
+
+# POST /analysis/theme/chunk の固定値（API からは変更不可）
+_THEME_CHUNK_NORMALIZE_SENTENCE = True
+_THEME_CHUNK_MIN_CONTENT_TOKENS = 2
 
 # ── 形態素・ベクトル化への接続（フィルタ） ────────────────────────────
 
@@ -66,7 +75,7 @@ def morph_tokens_for_scoring(text: str) -> list[dict[str, Any]]:
     """スコア計算に必要となる対象となる形態素だけを抽出する。(名詞・固有名詞のみ、代名詞は除外)
 
     Sudachi/GiNZa 経由の分析結果へ **名詞系・短文除外・代名詞除外**などのフィルタをかけ、
-    ``base_form`` を確定させた辞書リストを返す（以降 PMI・回数計算が同じ規則を共有する）。
+    ``base_form`` を確定させた辞書リストを返す（テーマゲートなどに利用）。
     """
     out: list[dict[str, Any]] = []
     for t in morphological_analysis(text):
@@ -89,13 +98,13 @@ def scoring_lemmas_in_order(text: str) -> list[str]:
     """チャンク内で用語スコア対象となる語順の並びが知りたいときのヘルパー。
 
     中身は :func:`morph_tokens_for_scoring` を通過したトークンの ``base_form`` のみで、順序は原文に沿う。
-    bigram／窓カウントをチャンクで 1 回だけ取るときの入力に使う。
+    （共起カウント用ヘルパの入力として利用可能だが、`POST .../score/terms` 本体では使わない。）
     """
     return [m["base_form"] for m in morph_tokens_for_scoring(text)]
 
 
 def adjacent_bigrams_for_scoring_text(text: str) -> dict[tuple[str, str], int]:
-    """単一チャンク内での隣接共起カウント（PMI／PPMI バフの材料）。"""
+    """単一チャンク内での隣接共起カウント（ヘルパー・テスト用。スコア API では不使用）。"""
     lemmas = scoring_lemmas_in_order(text)
     return adjacent_bigram_counts(lemmas, filter_surface=lambda _: True)
 
@@ -133,29 +142,20 @@ def compute_term_score_additive(
     lemma: str,
     *,
     occurrence_count: int,
-    chunk_text_for_bigrams: str,
-    chunk_adjacent_bigrams: Mapping[tuple[str, str], int] | None = None,
     theme_vector: list[float] | None = None,
     term_vector: list[float] | None = None,
     idf_table: IdfLookupTable | None = None,
     count_cap: int = 100,
     theme_sim_weight: float = 0.5,
     idf_weight: float = 0.08,
-    ppmi_clip: float = 3.0,
-    ppmi_weight: float = 0.2,
-    debuffs: Mapping[str, float] | None = None,
 ) -> dict[str, Any]:
     """
     1用語ぶんの素点と各種バフを足し込み最終値を決める関数。
 
     - **素点**: ``occurrence_count`` を ``count_axis_weight`` に通した値。
-    - **テーマ類似バフ**: 任意のセッション／override テーマベクトルと ``term_vector`` の類似。
+    - **テーマ類似バフ**: セッション等のテーマベクトルと ``term_vector`` の類似。
     - **IDF バフ**: ``idf_table`` が非 ``None`` かつ ``idf_weight != 0`` のときのみ。
       テーブルは通常 ``idf_runtime.get_idf_table()``（起動時に DB ``term_idf`` または JSON から構築済み）。
-    - **PPMI バフ**: 渡されたチャンク内 bigram カウントに基づく（隣接か窓かは上位の ``compute_term_scores_for_request`` が決める）。
-
-    ``chunk_adjacent_bigrams`` が与えられたときは PMI 入力にのみそれを使い、バッチ API で
-    形態素解析をチャンクあたり 1 回に抑える。
     """
     base = count_axis_weight(occurrence_count, cap=count_cap)
     buffs: dict[str, float] = {}
@@ -172,25 +172,11 @@ def compute_term_score_additive(
     if idf_table is not None and idf_weight != 0.0:
         buffs["idf_scaled"] = idf_weight * idf_table.lookup(lemma)
 
-    if ppmi_weight != 0.0:
-        bg: dict[tuple[str, str], int]
-        if chunk_adjacent_bigrams is not None:
-            bg = dict(chunk_adjacent_bigrams)
-        elif chunk_text_for_bigrams.strip():
-            bg = adjacent_bigrams_for_scoring_text(chunk_text_for_bigrams)
-        else:
-            bg = {}
-        if bg:
-            raw_p = term_adjacent_ppmi_max(lemma, bg)
-            clipped = min(raw_p, ppmi_clip)
-            buffs["ppmi_max_clipped"] = ppmi_weight * clipped
-
-    composed = compose_additive_score(base, buffs, debuffs, floor=0.0)
+    composed = compose_additive_score(base, buffs, floor=0.0)
 
     return {
         **composed,
         "lemma": lemma,
-        "occurrence_count": occurrence_count,
     }
 
 
@@ -249,9 +235,9 @@ def apply_theme_chunk(req: ThemeChunkRequest) -> ThemeChunkResponse:
     new_theme, updated, diagnostics = update_theme_ema_chunk(
         req.text,
         prev,
-        req.alpha,
-        normalize_sentence=req.normalize_sentence,
-        min_content_tokens=req.min_content_tokens,
+        THEME_EMA_ALPHA_DEFAULT,
+        normalize_sentence=_THEME_CHUNK_NORMALIZE_SENTENCE,
+        min_content_tokens=_THEME_CHUNK_MIN_CONTENT_TOKENS,
     )
     if updated and new_theme is not None:
         set_theme(req.session_id, new_theme)
@@ -266,38 +252,14 @@ def apply_theme_chunk(req: ThemeChunkRequest) -> ThemeChunkResponse:
 
 def compute_term_scores_for_request(
     session_id: str,
-    chunk_text_for_bigrams: str,
     terms: list[TermScoreInput],
-    *,
-    theme_vector_override: list[float] | None,
-    use_session_theme: bool,
-    weights: TermScoreWeights,
-    debuffs: dict[str, float] | None,
 ) -> TermScoreBatchResponse:
-    """``POST .../score/terms`` 用：**複数用語をまとめて**スコアし PPMI 用 bigram はチャンク 1 回分だけ算出する。
+    """``POST .../score/terms`` 用：複数用語の素点・テーマ類似・IDF バフを一括算出する。
 
-    セッションに紐づくテーマは ``use_session_theme`` とオーバーライドで選択。
-    **IDF は** ``get_idf_table()`` のシングルトン（DB 読み込みは起動時のみ）をすべての語に共通で渡す。
+    テーマは ``session_id`` に ``theme/chunk`` で保存済みのベクトルのみ使用する（未設定ならテーマバフなし）。
+    IDF は ``get_idf_table()`` のシングルトンを使用する。
     """
-    theme: list[float] | None = None
-    if use_session_theme:
-        theme = theme_vector_override if theme_vector_override is not None else get_theme(session_id)
-    elif theme_vector_override is not None:
-        theme = theme_vector_override
-
-    shared_bigrams: dict[tuple[str, str], int] | None = None
-    if weights.ppmi_weight != 0.0 and chunk_text_for_bigrams.strip():
-        lemmas = scoring_lemmas_in_order(chunk_text_for_bigrams)
-        if weights.pmi_cooccurrence == "window":
-            shared_bigrams = window_bigram_counts(
-                lemmas,
-                max_token_distance=weights.pmi_window_max_distance,
-                filter_surface=lambda _: True,
-            )
-        else:
-            shared_bigrams = adjacent_bigram_counts(lemmas, filter_surface=lambda _: True)
-
-    # 起動時に DB(JSON) で構築済み。リクエストごとには DB に触れない。
+    theme: list[float] | None = get_theme(session_id)
     idf_table_loaded = get_idf_table()
 
     results: list[TermScoreResult] = []
@@ -305,17 +267,12 @@ def compute_term_scores_for_request(
         raw = compute_term_score_additive(
             t.lemma,
             occurrence_count=t.occurrence_count,
-            chunk_text_for_bigrams=chunk_text_for_bigrams,
-            chunk_adjacent_bigrams=shared_bigrams,
             theme_vector=theme,
             term_vector=t.term_vector,
             idf_table=idf_table_loaded,
-            count_cap=weights.count_cap,
-            theme_sim_weight=weights.theme_sim_weight,
-            idf_weight=weights.idf_weight if weights.idf_weight > 0 else 0.0,
-            ppmi_clip=weights.ppmi_clip,
-            ppmi_weight=weights.ppmi_weight,
-            debuffs=debuffs,
+            count_cap=_SCORE_COUNT_CAP,
+            theme_sim_weight=_SCORE_THEME_SIM_WEIGHT,
+            idf_weight=_SCORE_IDF_WEIGHT if _SCORE_IDF_WEIGHT > 0 else 0.0,
         )
         results.append(_score_raw_to_term_result(raw))
 
@@ -325,28 +282,20 @@ def compute_term_scores_for_request(
 def _score_raw_to_term_result(raw: dict[str, object]) -> TermScoreResult:
     """:func:`compute_term_score_additive` の連結辞書を、API の ``TermScoreResult`` に正規化する。
 
-    buffs／debuffs は数値のみに落とし、欠損キーは既定値になる。
+    buffs は数値のみに落とし、欠損キーは空辞書になる。
     """
     buffs = raw.get("buffs")
-    debuffs_raw = raw.get("debuffs")
     if not isinstance(buffs, dict):
         buffs = {}
-    if not isinstance(debuffs_raw, dict):
-        debuffs_raw = {}
 
     def _nf(x: object) -> float:
         return float(x) if isinstance(x, (int, float)) else 0.0
 
     bs = {str(k): _nf(v) for k, v in buffs.items()}
-    ds = {str(k): _nf(v) for k, v in debuffs_raw.items()}
 
     return TermScoreResult(
         lemma=str(raw.get("lemma", "")),
-        occurrence_count=int(raw.get("occurrence_count", 0)),
         base=_nf(raw.get("base")),
-        buff_total=_nf(raw.get("buff_total")),
-        debuff_total=_nf(raw.get("debuff_total")),
         buffs=bs,
-        debuffs=ds,
         final=_nf(raw.get("final")),
     )

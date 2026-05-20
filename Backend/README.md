@@ -134,17 +134,17 @@ Cloud Run へのデプロイ手順は以下を参照してください。
 
 - `POST /analysis/theme/chunk`
   - セッション単位で会話テーマベクトルを **EMA 1 ステップ**更新する（相槌・短文はスキップされ得る）
-  - ボディ例: `{"session_id":"abc","text":"チャンク全文"}`（`alpha` は未指定時 `app/schemas/score_analysis.py` の `THEME_EMA_ALPHA_DEFAULT` = 0.10）
-  - `alpha`・`normalize_sentence`・`min_content_tokens` は任意
+  - ボディ例: `{"session_id":"abc","text":"チャンク全文"}`。EMA の α・文ベクトル正規化・更新スキップ下限は `app/schemas/score_analysis.py` の `THEME_EMA_ALPHA_DEFAULT`（0.10）および `term_score` の固定値
 
 - `POST /analysis/theme/session/reset`
   - 指定 `session_id` のテーマベクトルをストアから削除する
 
 - `POST /analysis/score/terms`
-  - 複数用語の **素点＋バフ**（テーマ類似・PPMI 等）を一括計算。サーバのセッション済みテーマを使うか `theme_vector_override` で上書き可能
+  - 複数用語の **素点＋バフ**（テーマ類似・IDF）を一括計算。テーマは同一 `session_id` で `theme/chunk` 済みのものを使用
   - **IDF バフ**: DB の `term_idf` を起動時に読み込む（オプション `TERM_IDF_LOAD_MIN_VALUE` でその IDF 以上の語だけに間引ける）。開発用は `IDF_JSON_PATH`。詳細は `Backend/docs/IDF_DATA_PIPELINE.md`
-  - `weights.pmi_cooccurrence`: `"adjacent"`（既定）または `"window"`（窓は `pmi_window_max_distance`、既定 4）
+  - 係数は `app/services/term_score.py` のサーバ定数。クライアントからは変更不可
   - 各用語には `term_vector`（テーマと同一次元）が必須
+  - 設計・アルゴリズム: [`Backend/docs/TERM_SCORE_AND_THEME_SPEC.md`](docs/TERM_SCORE_AND_THEME_SPEC.md)
 
 - `POST /dictionary/lookup`
   - 用語の意味を日本語で1〜2文の概要として返す
