@@ -1,4 +1,4 @@
-# test-spec-006: Term category / score（難易度ランク）廃止
+# test-spec-006: ウィンドウ個別設定 UI
 
 ## 日付
 
@@ -6,40 +6,46 @@
 
 ## 対象ファイル
 
-- `Frontend/src/domain/entities/Term.ts`
-- `Frontend/src/domain/entities/__tests__/Term.test.ts`
-- `Frontend/src/stores/termStore.ts`
-- `Frontend/src/stores/__tests__/termStore.test.ts`
-- `Frontend/src/app/data/terms.ts`
-- `Frontend/src/app/hooks/useReferDict.ts`
-- `Frontend/src/app/components/TermDetailPanel.tsx`
-- `Frontend/src/app/components/TermDetailModal.tsx`
-- `Frontend/src/app/components/TermBubble.tsx`
-- `Frontend/src/app/components/TranscriptionView.tsx`
-- `Frontend/src/app/components/__tests__/TermDetailPanel.test.tsx`
-- `Frontend/src/presentation/utils/importanceRanking.ts`
-- `Frontend/src/presentation/utils/__tests__/importanceRanking.test.ts`
+- `Frontend/src/presentation/layout/LayoutEngine.tsx`
 - `Frontend/src/presentation/windows/ImportanceRankingWindow/index.tsx`
-- `Frontend/src/app/db/schema.ts`
+- `Frontend/src/app/components/TermDetailPanel.tsx`
+- `Frontend/src/app/components/BubbleCloud.tsx`
+- `Frontend/src/app/components/TermBubble.tsx`
+- `Frontend/src/app/components/SettingsModal.tsx`
+- `Frontend/src/presentation/components/PresentationAppHeader.tsx`
+- `Frontend/src/stores/transcriptionWindowSettingsStore.ts`
+- `Frontend/src/stores/termMapWindowSettingsStore.ts`
+- `Frontend/src/stores/importanceRankingWindowSettingsStore.ts`
+- `Frontend/src/stores/detailWindowSettingsStore.ts`
+- `Frontend/src/stores/__tests__/transcriptionWindowSettingsStore.test.ts`
+- `Frontend/src/stores/__tests__/termMapWindowSettingsStore.test.ts`
+- `Frontend/src/stores/__tests__/importanceRankingWindowSettingsStore.test.ts`
+- `Frontend/src/stores/__tests__/detailWindowSettingsStore.test.ts`
 
 ## テストの目的
 
-ブランチ `feature/important-term-schema-update` における以下を検証する。
+各ウィンドウの設定を共通ヘッダーの設定ボタンから変更できるようにしたため、以下を検証する。
 
-- `level` → `score` へのリネーム後も、既存の注入・ランキング・詳細表示が破綻しないこと
-- `category` が `addTerms` で常に空文字に正規化されること
-- 初級/中級/上級（`Term.score` に基づくランク表示）が UI から消え、重要度算出に `term.score` が使われないこと
+- 全ウィンドウで同じ位置・同じアイコンから設定ポップアップを開けること
+- 操作ウィンドウで文字起こしモードとマイクを変更できること
+- 文字起こし、用語マップ、重要度、詳細ウィンドウの表示設定が保存・復元できること
+- 用語マップと重要度ウィンドウでは、ウィンドウ内にあったサイズ調整スライダーを設定ポップアップへ集約できていること
+- 設定ポップアップ外側のクリックでポップアップが閉じること
+- 既存のフック順序、ストア、レイアウト、重要度計算の単体テストを壊していないこと
 
 ## テスト項目
 
 | # | テストケース | 種別 | 期待結果 |
 |---|---|---|---|
-| 1 | `normalizeTermCategory` | 単体 | null / 任意文字列 → `''` |
-| 2 | `addTerms` の category 正規化 | 単体 | 注入後 `activeTerms[].category === ''` |
-| 3 | `TermDetailPanel` に category 非表示 | 単体 | `AI/Data` 等のラベルが DOM に無い |
-| 4 | `importanceRanking` 降順ソート | 単体 | 頻度・クリックに基づく `RankedTerm.score` の降順 |
-| 5 | 全体テスト | 結合 | `bun test` 全件成功 |
-| 6 | 全体ビルド | 結合 | `bun run build` 成功 |
+| 1 | 文字起こしウィンドウ設定を保存する | 単体 | マスター、通常文字、重要単語のサイズが `localStorage` に保存される |
+| 2 | 用語マップウィンドウ設定を保存する | 単体 | マスター、バブル、テキスト、自動切り替え、切り替え間隔が保存される |
+| 3 | 重要度ウィンドウ設定を保存する | 単体 | 要素サイズ、フォントサイズ、表示単語数が保存される |
+| 4 | 詳細ウィンドウ設定を保存する | 単体 | フォントサイズが保存される |
+| 5 | 各設定ストアへ範囲外の値を入れる | 単体 | 定義済みの最小値・最大値へクランプされる |
+| 6 | 重要度ウィンドウでフォントを大きくし要素サイズを小さくする | 結合/手動 | フォントに必要な高さと順位バッジサイズが確保される |
+| 7 | 設定ポップアップ外側をクリックする | 結合/手動 | 開いている設定ポップアップが閉じる |
+| 8 | 全体ビルド | 結合 | TypeScript build と Vite build が成功する |
+| 9 | 全体テスト | 結合 | 既存テストを含めて全件成功する |
 
 ## 実行結果
 
@@ -53,21 +59,21 @@ bun run build
 
 | コマンド | 結果 | メモ |
 |----------|------|------|
-| `bun test` | 合格 | 76 件成功、0 件失敗 |
-| `bun run build` | 合格 | `app/data/terms.ts` の `category: string` 揃え後 |
+| `bun test` | 合格 | 85 件成功、0 件失敗 |
+| `bun run build` | 合格 | TypeScript build と Vite build が成功。500kB 超のチャンク警告のみ |
 
 `bun test` の内訳:
 
 | 項目 | 件数 |
 |------|------|
-| 総テスト数 | 76 |
-| 成功 | 76 |
+| 総テスト数 | 85 |
+| 成功 | 85 |
 | 失敗 | 0 |
-| expect 呼び出し | 132 |
-| テストファイル数 | 19 |
+| expect 呼び出し | 159 |
+| テストファイル数 | 23 |
 
 ## 気づき・注意点
 
-- `RankedTerm.score`（ランキング合成値）と `Term.score`（廃止した難易度フィールド）は名前が同じで概念が異なる。ADR-009 を参照。
-- 手動確認: 詳細ウィンドウ・文字起こしホバー・バブルツールチップに初級/中級/上級および `Score.N` が出ないこと。
-- 関連 ADR: `adr-009.md`
+- ウィンドウ固有設定は各ストアで `localStorage` に保存する。ストアごとに保存キーを分け、設定値の責務を分離した。
+- 設定ポップアップは `LayoutEngine` の共通 UI として扱い、外側クリックの閉じる挙動も全ウィンドウ共通にした。
+- `bun test` は `Frontend/` をカレントディレクトリにして実行する。`bunfig.toml` の preload により DOM 環境が設定される。

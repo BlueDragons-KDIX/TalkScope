@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Star } from 'lucide-react'
 import { useTermStore } from '../../../stores/termStore'
 import { useTranscriptStore } from '../../../stores/transcriptStore'
@@ -6,7 +6,6 @@ import type { Term } from '../../../domain/entities/Term'
 import { countTermFrequencies } from '../../../app/utils/termDetection'
 import { useThrottledValue } from '../../hooks/useThrottledValue'
 import {
-  estimateVisibleRankingCount,
   rankTermsByImportance,
   type RankingSignal,
 } from '../../utils/importanceRanking'
@@ -14,17 +13,18 @@ import type { WindowProps } from '../IWindowDefinition'
 import { useContentFontScaleStore } from '../../../stores/contentFontScaleStore'
 import { scaledContentFontPx } from '../../../app/utils/contentFontScale'
 import { useAccentTheme } from '../../../theme/AccentThemeContext'
-import { accentRgba, accentRgbSolid, accentSliderStyle } from '../../../theme/accentStyles'
+import { accentRgba, accentRgbSolid } from '../../../theme/accentStyles'
+import { useImportanceRankingWindowSettingsStore } from '../../../stores/importanceRankingWindowSettingsStore'
 
 const RANK_THROTTLE_MS = 160
-const MIN_ROW_HEIGHT = 50
-const MAX_ROW_HEIGHT = 86
+const BASE_ROW_HEIGHT = 66
+const BASE_RANK_BADGE_SIZE = 32
+const BASE_STAR_ICON_SIZE = 16
+const ROW_HEIGHT_PER_FONT = 2.6
+const RANK_BADGE_SIZE_PER_FONT = 1.9
 
 export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ darkMode = true }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const [visibleCount, setVisibleCount] = useState(6)
   const [filterMode, setFilterMode] = useState<'all' | 'starred'>('all')
-  const [rowSizeSlider, setRowSizeSlider] = useState(45)
 
   const transcript = useTranscriptStore(s => s.transcript)
   const activeTerms = useTermStore(s => s.activeTerms)
@@ -35,27 +35,24 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   const togglePin = useTermStore(s => s.togglePin)
 
   const contentFontScale = useContentFontScaleStore(s => s.scale)
+  const masterSizeScale = useImportanceRankingWindowSettingsStore(s => s.masterSizeScale)
+  const rankingFontSizePx = useImportanceRankingWindowSettingsStore(s => s.fontSizePx)
+  const visibleCount = useImportanceRankingWindowSettingsStore(s => s.visibleCount)
   const { rgb } = useAccentTheme()
 
   const throttledTranscript = useThrottledValue(transcript, RANK_THROTTLE_MS)
   const throttledTerms = useThrottledValue(activeTerms as Term[], RANK_THROTTLE_MS)
   const throttledWeights = useThrottledValue(termClickWeights, RANK_THROTTLE_MS)
-  const rowHeight = Math.round(
-    MIN_ROW_HEIGHT + (rowSizeSlider / 100) * (MAX_ROW_HEIGHT - MIN_ROW_HEIGHT),
-  )
-  const wordFontSizeBase = Math.round(15 + (rowSizeSlider / 100) * 12)
-  const wordFontSize = scaledContentFontPx(wordFontSizeBase, contentFontScale)
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const observer = new ResizeObserver((entries) => {
-      const height = entries[0]?.contentRect.height ?? 0
-      setVisibleCount(estimateVisibleRankingCount(height, rowHeight))
-    })
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [rowHeight])
+  const wordFontSize = scaledContentFontPx(rankingFontSizePx, contentFontScale)
+  const rowHeight = Math.round(Math.max(
+    BASE_ROW_HEIGHT * masterSizeScale,
+    wordFontSize * ROW_HEIGHT_PER_FONT,
+  ))
+  const rankBadgeSize = Math.round(Math.max(
+    BASE_RANK_BADGE_SIZE * masterSizeScale,
+    wordFontSize * RANK_BADGE_SIZE_PER_FONT,
+  ))
+  const starIconSize = Math.round(BASE_STAR_ICON_SIZE * masterSizeScale)
 
   const termFrequencies = useMemo(
     () => countTermFrequencies(throttledTranscript, throttledTerms),
@@ -77,6 +74,7 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
     if (filterMode === 'all') return ranked
     return ranked.filter(row => pinnedTermIds.has(row.term.id))
   }, [filterMode, ranked, pinnedTermIds])
+  const visibleRanked = filteredRanked.slice(0, visibleCount)
 
   const maxVisibleScore = filteredRanked[0]?.score ?? 1
   const dk = darkMode
@@ -93,7 +91,6 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
 
   return (
     <div
-      ref={containerRef}
       className={`h-full p-3 overflow-hidden ${dk ? 'bg-[#0d0e1a] text-slate-200' : 'bg-white text-slate-700'}`}
     >
       <div className={`h-full rounded-lg border flex flex-col ${dk ? 'border-slate-700/70 bg-slate-900/30' : 'border-slate-200 bg-slate-50/70'}`}>
@@ -133,20 +130,8 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
             </div>
           </div>
           <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
-            <span className={`text-[10px] font-bold shrink-0 ${dk ? 'text-slate-500' : 'text-slate-500'}`}>要素サイズ</span>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={rowSizeSlider}
-              onChange={(e) => setRowSizeSlider(Number(e.target.value))}
-              className="w-28 h-1.5 rounded-full appearance-none cursor-pointer"
-              style={{ background: dk ? '#334155' : '#cbd5e1', ...accentSliderStyle(rgb) }}
-              title={`要素サイズ: ${rowSizeSlider}`}
-            />
             <span className={`text-[10px] font-mono ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
-              {Math.min(visibleCount, filteredRanked.length)}/{filteredRanked.length}
+              {visibleRanked.length}/{filteredRanked.length}
             </span>
           </div>
         </div>
@@ -158,7 +143,7 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
             </div>
           ) : (
             <ol className="flex flex-col gap-1">
-              {filteredRanked.map((row, index) => (
+              {visibleRanked.map((row, index) => (
                 <li key={row.term.id}>
                   <div
                     onContextMenu={(event) => onTermContextMenu(event, row.term.id)}
@@ -183,7 +168,7 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
                       aria-label="スターを切り替え"
                       title="スターを切り替え"
                     >
-                      <Star size={16} fill={pinnedTermIds.has(row.term.id) ? 'currentColor' : 'none'} />
+                      <Star size={starIconSize} fill={pinnedTermIds.has(row.term.id) ? 'currentColor' : 'none'} />
                     </button>
                     <button
                       type="button"
@@ -191,16 +176,24 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
                       className="flex items-center gap-2 flex-1 min-w-0 text-left"
                     >
                       <span
-                        className="w-8 h-8 shrink-0 rounded-full border text-center text-[12px] font-black leading-[30px]"
+                        className="shrink-0 rounded-full border text-center font-black"
                         style={
                           dk
                             ? {
+                                width: rankBadgeSize,
+                                height: rankBadgeSize,
+                                lineHeight: `${Math.max(1, rankBadgeSize - 2)}px`,
+                                fontSize: wordFontSize,
                                 color: accentRgba(rgb, 0.96),
                                 borderColor: accentRgba(rgb, 0.55),
                                 background: `linear-gradient(to bottom, ${accentRgba(rgb, 0.75)}, ${accentRgba(rgb, 0.45)})`,
                                 boxShadow: `0 0 14px ${accentRgba(rgb, 0.4)}`,
                               }
                             : {
+                                width: rankBadgeSize,
+                                height: rankBadgeSize,
+                                lineHeight: `${Math.max(1, rankBadgeSize - 2)}px`,
+                                fontSize: wordFontSize,
                                 color: accentRgba(rgb, 0.95),
                                 borderColor: accentRgba(rgb, 0.4),
                                 background: `linear-gradient(to bottom, ${accentRgba(rgb, 0.18)}, ${accentRgba(rgb, 0.32)})`,

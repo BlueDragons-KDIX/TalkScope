@@ -21,6 +21,8 @@ interface TermBubbleProps {
   size?: number;
   isAutoPlay?: boolean;
   intervalSec?: number;
+  masterSizeScale?: number;
+  textFontSizePx?: number;
   /** 用語マップコンテナの参照（ツールチップを枠内に収めるため） */
   mapContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
@@ -36,6 +38,8 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   size: explicitSize,
   isAutoPlay = false,
   intervalSec = 5,
+  masterSizeScale = 1,
+  textFontSizePx = 12,
   mapContainerRef,
 }) => {
   const contentFontScale = useContentFontScaleStore(s => s.scale);
@@ -65,6 +69,8 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
   // 重要度によってサイズ（半径×2）を変える。ピン留め時は標準より一回り大きいサイズ(80)に固定
   const defaultSize = isPinned ? 80 : Math.max(60, 80 + weight * 10);
   const size = explicitSize ?? defaultSize;
+  const wordFontSizePx = textFontSizePx * masterSizeScale;
+  const descriptionFontSizePx = Math.max(8, textFontSizePx * 0.8 * masterSizeScale);
 
   const updateTooltipPos = useCallback(() => {
     if (!containerRef.current) {
@@ -220,7 +226,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
               <span
                 className="line-clamp-4 overflow-hidden w-full leading-tight font-medium"
                 style={{
-                  fontSize: scaledContentFontPx(Math.min(10, Math.max(6, size * 0.13)), contentFontScale),
+                  fontSize: scaledContentFontPx(descriptionFontSizePx, contentFontScale),
                 }}
               >
                 {term.shortDesc}
@@ -238,7 +244,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
               <span
                 className="w-full"
                 style={{
-                  fontSize: scaledContentFontPx(Math.min(14, Math.max(7, size * 0.18)), contentFontScale),
+                  fontSize: scaledContentFontPx(wordFontSizePx, contentFontScale),
                 }}
               >
                 {term.word}

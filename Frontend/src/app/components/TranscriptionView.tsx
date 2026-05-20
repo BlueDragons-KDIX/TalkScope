@@ -8,6 +8,7 @@ import { UseDemoStreamReturn } from '../../debug/hooks/useDemoStream';
 import type { MicrophoneDevice, TranscriptionMode } from '../../domain/interfaces/ITranscriptionService';
 import { RecordingToolbar } from '../../presentation/components/RecordingToolbar';
 import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
+import { useTranscriptionWindowSettingsStore } from '../../stores/transcriptionWindowSettingsStore';
 import { scaledContentFontPx } from '../utils/contentFontScale';
 import { useAccentTheme } from '../../theme/AccentThemeContext';
 import { accentRgba, accentRgbSolid, accentSliderStyle, termChipStyle } from '../../theme/accentStyles';
@@ -69,6 +70,9 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const termButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
   const contentFontScale = useContentFontScaleStore(s => s.scale);
+  const transcriptionMasterFontScale = useTranscriptionWindowSettingsStore(s => s.masterFontScale);
+  const plainTextFontSizePx = useTranscriptionWindowSettingsStore(s => s.plainTextFontSizePx);
+  const importantTermFontSizePx = useTranscriptionWindowSettingsStore(s => s.importantTermFontSizePx);
   const { rgb } = useAccentTheme();
   const [hoveredPartIndex, setHoveredPartIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; showBelow: boolean } | null>(null);
@@ -131,6 +135,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   const isPaused = demoStream?.status === 'paused';
   const isDone = demoStream?.status === 'done';
   const progress = demoStream?.progress ?? 0;
+  const effectiveFontScale = contentFontScale * transcriptionMasterFontScale;
 
   return (
     <div className={`flex flex-col h-full transition-colors ${dk ? 'bg-[#0d0e1a]' : 'bg-white'}`}>
@@ -232,7 +237,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
         ) : (
           <div
             className="whitespace-pre-wrap font-medium"
-            style={{ fontSize: scaledContentFontPx(14, contentFontScale) }}
+            style={{ fontSize: scaledContentFontPx(plainTextFontSizePx, effectiveFontScale) }}
           >
             {parts.map((part, index) => {
               if (part.type === 'term') {
@@ -249,7 +254,10 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                       onMouseEnter={() => { setHoveredPartIndex(index); onTermHover(term); }}
                       onMouseLeave={() => { setHoveredPartIndex(null); onTermHover(null); }}
                       className="px-1.5 py-0.5 rounded-md cursor-pointer transition-[filter,transform] font-bold hover:brightness-110"
-                      style={termChipStyle(dk, rgb)}
+                      style={{
+                        ...termChipStyle(dk, rgb),
+                        fontSize: scaledContentFontPx(importantTermFontSizePx, effectiveFontScale),
+                      }}
                     >
                       {part.content}
                     </button>
@@ -257,7 +265,11 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                   </span>
                 );
               }
-              return <span key={index}>{part.content}</span>;
+              return (
+                <span key={index} style={{ fontSize: scaledContentFontPx(plainTextFontSizePx, effectiveFontScale) }}>
+                  {part.content}
+                </span>
+              );
             })}
             {isListening && (
               <span
