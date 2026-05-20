@@ -307,7 +307,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                 className={dk ? 'text-slate-500' : 'text-slate-400'}
                 style={{ fontSize: scaledContentFontPx(10, contentFontScale) }}
               >
-                Lv.{hoveredTerm.level}
+                Score.{hoveredTerm.score}
               </span>
             </div>
             <div className="font-black mb-1" style={{ fontSize: scaledContentFontPx(14, contentFontScale) }}>

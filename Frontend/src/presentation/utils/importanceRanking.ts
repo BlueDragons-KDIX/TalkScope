@@ -18,10 +18,10 @@ const HEADER_HEIGHT = 44
 const CONTAINER_PADDING = 12
 
 export const defaultScoreStrategy: ScoreStrategy = (term, signal) => {
-  // 既存実装と整合するよう、頻度とクリック重みを主軸にして level を弱い補正として扱う。
+  // 既存実装と整合するよう、頻度とクリック重みを主軸にして score を弱い補正として扱う。
   const base = signal.frequency * 0.7 + signal.clickWeight * 0.3
-  const levelBonus = Math.max(0, Math.min(3, term.level)) * 0.15
-  return base + levelBonus
+  const scoreBonus = Math.max(0, Math.min(3, term.score)) * 0.15
+  return base + scoreBonus
 }
 
 export function rankTermsByImportance(

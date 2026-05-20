@@ -41,7 +41,7 @@ function entryToTerm(entry: ReferDictEntry): Term {
     shortDesc: firstSentence(entry.description),
     longDesc: entry.description,
     category: 'General',
-    level: 1,
+    score: 1,
     relatedTerms: [],
   };
 }

@@ -15,7 +15,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] UIライブラリ',
     longDesc: 'コンポーネントベースのフロントエンド向けライブラリ（デモデータ）。',
     category: 'Frontend',
-    level: 1,
+    score: 1,
     relatedTerms: [],
   },
   {
@@ -25,7 +25,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] 型付きJavaScript',
     longDesc: 'JavaScriptに静的型付けを足した言語（デモデータ）。',
     category: 'Frontend',
-    level: 2,
+    score: 2,
     relatedTerms: [],
   },
   {
@@ -35,7 +35,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] コンテナ',
     longDesc: 'アプリケーションのコンテナ化（デモデータ）。',
     category: 'Infra',
-    level: 2,
+    score: 2,
     relatedTerms: [],
   },
   {
@@ -45,7 +45,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] クラウド',
     longDesc: 'Amazon Web Services（デモデータ）。',
     category: 'Infra',
-    level: 1,
+    score: 1,
     relatedTerms: [],
   },
   {
@@ -55,7 +55,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] 継続的インテグレーション',
     longDesc: 'ビルド・テスト・デプロイの自動化（デモデータ）。',
     category: 'Infra',
-    level: 2,
+    score: 2,
     relatedTerms: [],
   },
   {
@@ -65,7 +65,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] リポジトリホスティング',
     longDesc: 'ソースコード管理と CI のトリガーに利用（デモデータ）。',
     category: 'General',
-    level: 1,
+    score: 1,
     relatedTerms: [],
   },
   {
@@ -75,7 +75,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] 関係DB向け言語',
     longDesc: 'リレーショナルデータベース向けクエリ言語（デモデータ）。',
     category: 'Backend',
-    level: 1,
+    score: 1,
     relatedTerms: [],
   },
   {
@@ -85,7 +85,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] 非リレーショナルDB',
     longDesc: 'ドキュメント・KV などの非リレーショナル DB（デモデータ）。',
     category: 'Backend',
-    level: 2,
+    score: 2,
     relatedTerms: [],
   },
   {
@@ -95,7 +95,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] 大規模言語モデル',
     longDesc: '大規模言語モデル（デモデータ）。',
     category: 'AI/Data',
-    level: 2,
+    score: 2,
     relatedTerms: [],
   },
   {
@@ -105,7 +105,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] アプリケーションインターフェース',
     longDesc: 'システム間のプログラム境界（デモデータ）。',
     category: 'Backend',
-    level: 1,
+    score: 1,
     relatedTerms: [],
   },
   {
@@ -115,7 +115,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] コンテナオーケストレーション',
     longDesc: 'コンテナのスケール・自己修復など（デモデータ）。',
     category: 'Infra',
-    level: 3,
+    score: 3,
     relatedTerms: [],
   },
   {
@@ -125,7 +125,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] クエリ言語',
     longDesc: 'クライアントが必要なフィールドだけ取得する API スタイル（デモデータ）。',
     category: 'Backend',
-    level: 2,
+    score: 2,
     relatedTerms: [],
   },
   {
@@ -135,7 +135,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] Python Webフレームワーク',
     longDesc: '高速な Python REST API 構築（デモデータ）。',
     category: 'Backend',
-    level: 2,
+    score: 2,
     relatedTerms: [],
   },
   {
@@ -145,7 +145,7 @@ export const MOCK_IMPORTANT_TERMS: Term[] = [
     shortDesc: '[デモ] ドキュメントDB',
     longDesc: 'ドキュメント指向 NoSQL（デモデータ）。',
     category: 'Backend',
-    level: 2,
+    score: 2,
     relatedTerms: [],
   },
 ]

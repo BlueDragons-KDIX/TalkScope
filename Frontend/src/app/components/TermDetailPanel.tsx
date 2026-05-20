@@ -53,8 +53,8 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
     );
   }
 
-  const getLevelInfo = (level: number) => {
-    switch (level) {
+  const getScoreInfo = (score: number) => {
+    switch (score) {
       case 1: return { text: '初級', color: dk ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-green-100 text-green-700' };
       case 2: return { text: '中級', color: dk ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-100 text-amber-700' };
       case 3: return { text: '上級', color: dk ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-red-100 text-red-700' };
@@ -62,7 +62,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
     }
   };
 
-  const levelInfo = getLevelInfo(term.level);
+  const scoreInfo = getScoreInfo(term.score);
   const related: Term[] = [];
 
   return (
@@ -72,8 +72,8 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${levelInfo.color}`}>
-                {levelInfo.text}
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${scoreInfo.color}`}>
+                {scoreInfo.text}
               </span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${dk ? 'bg-slate-800 text-slate-400 border border-slate-700/50' : 'bg-slate-100 text-slate-500'}`}>
                 {term.category}

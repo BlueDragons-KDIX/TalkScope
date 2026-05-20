@@ -5,12 +5,12 @@ import type { Term } from '../../domain/entities/Term'
 const term1: Term = {
   id: '1', word: 'React', kana: 'リアクト',
   shortDesc: 'UIライブラリ', longDesc: '詳細',
-  category: 'Frontend', level: 1, relatedTerms: [],
+  category: 'Frontend', score: 1, relatedTerms: [],
 }
 const term2: Term = {
   id: '2', word: 'Docker', kana: 'ドッカー',
   shortDesc: 'コンテナ', longDesc: '詳細',
-  category: 'Infra', level: 2, relatedTerms: [],
+  category: 'Infra', score: 2, relatedTerms: [],
 }
 
 describe('termStore', () => {
@@ -92,7 +92,7 @@ describe('termStore', () => {
       shortDesc: 'デモ',
       longDesc: 'デモ',
       category: 'Frontend',
-      level: 1,
+      score: 1,
       relatedTerms: [],
     }
     useTermStore.getState().addTerms([term1, demoTerm])

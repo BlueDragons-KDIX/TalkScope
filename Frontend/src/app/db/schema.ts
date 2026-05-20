@@ -51,7 +51,7 @@ export interface PinnedTermRow {
   shortDesc: string;
   longDesc: string;
   category: 'Frontend' | 'Backend' | 'Infra' | 'AI/Data' | 'General';
-  level: number;
+  score: number;
   relatedTerms: string[];
   externalUrl?: string;
 }

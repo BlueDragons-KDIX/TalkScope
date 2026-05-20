@@ -15,7 +15,7 @@ const sampleTerm: Term = {
   shortDesc: '検索拡張生成',
   longDesc: '検索と生成を組み合わせるアプローチの説明文です。',
   category: 'AI/Data',
-  level: 2,
+  score: 2,
   relatedTerms: ['ベクトル'],
 }
 

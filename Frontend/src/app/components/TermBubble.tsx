@@ -295,7 +295,7 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
                 className={dk ? 'text-slate-500' : 'text-slate-400'}
                 style={{ fontSize: scaledContentFontPx(9, contentFontScale) }}
               >
-                Lv.{term.level}
+                Score.{term.score}
               </span>
               {isPinned && (
                 <span

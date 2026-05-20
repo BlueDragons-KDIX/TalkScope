@@ -5,7 +5,7 @@ import type { Term } from '../../../domain/entities/Term'
 
 const makeTerm = (id: string): Term => ({
   id, word: `Term${id}`, kana: 'かな', shortDesc: '説明',
-  longDesc: '詳細', category: 'General', level: 1, relatedTerms: [],
+  longDesc: '詳細', category: 'General', score: 1, relatedTerms: [],
 })
 
 describe('BubbleImportanceUseCase', () => {
