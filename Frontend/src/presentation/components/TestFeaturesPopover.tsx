@@ -10,6 +10,8 @@ import {
   Clipboard,
   ClipboardCheck,
   FileJson,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DEMO_TEXT_INSTANT } from '../../debug/demo/demo'
@@ -17,9 +19,11 @@ import { useDemoTools } from '../context/DemoToolsContext'
 import { getTranscriptionService } from '../hooks/useTranscription'
 import { useDemoImportantMarkingStore } from '../../stores/demoImportantMarkingStore'
 import { useLayoutStore } from '../../stores/layoutStore'
+import { useLayoutTemplateStore } from '../../stores/layoutTemplateStore'
 import { usePhaseStore } from '../../stores/phaseStore'
 import { useAccentTheme } from '../../theme/AccentThemeContext'
 import { accentRgbSolid, accentSliderStyle } from '../../theme/accentStyles'
+import { formatLayoutTemplateMethod, parseLayoutTemplateText } from '../layout/layoutTemplateFormat'
 
 interface Props {
   darkMode?: boolean
@@ -36,26 +40,19 @@ function posToMs(pos: number): number {
   return Math.round(5000 - (pos / 100) * (5000 - 60))
 }
 
-const toPascalCase = (value: string): string =>
-  value
-    .split(/[^a-zA-Z0-9]+/)
-    .filter(Boolean)
-    .map(part => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-    .join('')
-
-const formatLayoutTemplate = (phaseId: string, layoutJson: string): string =>
-  `create${toPascalCase(phaseId)}SampleLayout(): LayoutNode {
-  return ${layoutJson}
-}`
-
 export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 'right' }) => {
   const [open, setOpen] = useState(false)
   const [layoutCopied, setLayoutCopied] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [templateSource, setTemplateSource] = useState('')
   const demoStream = useDemoTools()
   const demoMarkingEnabled = useDemoImportantMarkingStore(s => s.enabled)
   const setDemoMarkingEnabled = useDemoImportantMarkingStore(s => s.setEnabled)
   const currentPhaseId = usePhaseStore(s => s.currentPhaseId)
   const currentLayout = useLayoutStore(s => s.layouts[currentPhaseId])
+  const layoutTemplates = useLayoutTemplateStore(s => s.templates)
+  const addLayoutTemplate = useLayoutTemplateStore(s => s.addTemplate)
+  const removeLayoutTemplate = useLayoutTemplateStore(s => s.removeTemplate)
   const { rgb } = useAccentTheme()
   const dk = darkMode
 
@@ -64,13 +61,9 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
   const isDone = demoStream.status === 'done'
   const progress = demoStream.progress
   const pos = msToPos(demoStream.intervalMs)
-  const layoutJson = useMemo(
-    () => currentLayout ? JSON.stringify(currentLayout, null, 2) : '',
-    [currentLayout],
-  )
   const layoutTemplate = useMemo(
-    () => layoutJson ? formatLayoutTemplate(currentPhaseId, layoutJson) : '',
-    [currentPhaseId, layoutJson],
+    () => currentLayout ? formatLayoutTemplateMethod(currentPhaseId, currentLayout) : '',
+    [currentLayout, currentPhaseId],
   )
 
   const loadDemoText = () => {
@@ -107,6 +100,33 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
     }
   }
 
+  const fillTemplateSourceFromCurrentLayout = () => {
+    if (!layoutTemplate) {
+      toast.warning('現在のレイアウトがありません')
+      return
+    }
+    setTemplateSource(layoutTemplate)
+    if (!templateName.trim()) setTemplateName(`${currentPhaseId} sample`)
+  }
+
+  const registerLayoutTemplate = () => {
+    const name = templateName.trim()
+    if (!name) {
+      toast.warning('レイアウト名を入力してください')
+      return
+    }
+    try {
+      const layout = parseLayoutTemplateText(templateSource)
+      addLayoutTemplate(name, layout)
+      setTemplateName('')
+      setTemplateSource('')
+      toast.success(`「${name}」をレイアウトに追加しました`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'レイアウト情報を読み込めませんでした'
+      toast.error(message)
+    }
+  }
+
   const panelPos = align === 'left' ? 'left-0 right-auto' : 'right-0 left-auto'
   const focusRing =
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-2'
@@ -136,7 +156,7 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
             onClick={() => setOpen(false)}
           />
           <div
-            className={`absolute ${panelPos} top-full mt-1 z-[70] w-[min(92vw,420px)] rounded-xl border shadow-2xl p-3 ${dk
+            className={`absolute ${panelPos} top-full mt-1 z-[70] max-h-[min(82vh,760px)] w-[min(92vw,460px)] overflow-y-auto rounded-xl border shadow-2xl p-3 ${dk
               ? 'bg-[#0d0e1a] border-slate-700'
               : 'bg-white border-slate-200'}`}
             role="dialog"
@@ -273,6 +293,92 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
                       : 'border-slate-200 bg-white text-slate-700'}`}
                     aria-label="現在のレイアウト情報"
                   />
+                  <button
+                    type="button"
+                    onClick={fillTemplateSourceFromCurrentLayout}
+                    disabled={!layoutTemplate}
+                    className={`mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[10px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${dk
+                      ? 'border-slate-600 bg-slate-800/70 text-slate-300 hover:bg-slate-800'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
+                  >
+                    <Plus size={12} />
+                    このレイアウトを登録欄へ入れる
+                  </button>
+                </div>
+
+                <div
+                  className={`rounded-lg border p-2.5 ${dk ? 'border-slate-700 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}
+                >
+                  <div className="mb-2 flex items-start gap-2">
+                    <Plus size={14} className={`mt-0.5 shrink-0 ${dk ? 'text-emerald-300' : 'text-emerald-700'}`} />
+                    <div className="min-w-0">
+                      <p className={`text-xs font-bold leading-tight ${dk ? 'text-slate-200' : 'text-slate-800'}`}>
+                        レイアウトテンプレートを追加
+                      </p>
+                      <p className={`mt-1 text-[10px] leading-snug ${dk ? 'text-slate-500' : 'text-slate-500'}`}>
+                        名前とレイアウト情報を登録すると、上部の「レイアウト」ボタンに表示されます。
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    value={templateName}
+                    onChange={e => setTemplateName(e.target.value)}
+                    placeholder="例: 発表中 3分割"
+                    className={`mb-2 w-full rounded-md border px-2 py-1.5 text-xs outline-none ${dk
+                      ? 'border-slate-700 bg-[#080914] text-slate-200 placeholder:text-slate-600'
+                      : 'border-slate-200 bg-white text-slate-800 placeholder:text-slate-400'}`}
+                    aria-label="レイアウトテンプレート名"
+                  />
+                  <textarea
+                    value={templateSource}
+                    onChange={e => setTemplateSource(e.target.value)}
+                    placeholder="コピーしたレイアウト情報を貼り付け"
+                    className={`h-24 w-full resize-y rounded-md border p-2 font-mono text-[10px] leading-relaxed outline-none ${dk
+                      ? 'border-slate-700 bg-[#080914] text-slate-300 placeholder:text-slate-600'
+                      : 'border-slate-200 bg-white text-slate-700 placeholder:text-slate-400'}`}
+                    aria-label="追加するレイアウト情報"
+                  />
+                  <button
+                    type="button"
+                    onClick={registerLayoutTemplate}
+                    className={`mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[10px] font-bold transition-colors ${dk
+                      ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/18'
+                      : 'border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50'}`}
+                  >
+                    <Plus size={12} />
+                    レイアウトボタンに追加
+                  </button>
+
+                  {layoutTemplates.length > 0 ? (
+                    <div className={`mt-2 border-t pt-2 ${dk ? 'border-slate-700' : 'border-slate-200'}`}>
+                      <p className={`mb-1 text-[9px] font-bold uppercase tracking-wider ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+                        登録済み
+                      </p>
+                      <div className="flex flex-col gap-1">
+                        {layoutTemplates.map(template => (
+                          <div
+                            key={template.id}
+                            className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 ${dk ? 'bg-slate-950/50' : 'bg-white'}`}
+                          >
+                            <span className={`min-w-0 truncate text-[10px] font-bold ${dk ? 'text-slate-300' : 'text-slate-700'}`}>
+                              {template.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeLayoutTemplate(template.id)}
+                              className={`shrink-0 rounded p-1 transition-colors ${dk
+                                ? 'text-slate-500 hover:bg-red-500/15 hover:text-red-300'
+                                : 'text-slate-400 hover:bg-red-50 hover:text-red-600'}`}
+                              aria-label={`${template.name} を削除`}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className={`pt-2 mt-1 border-t ${dk ? 'border-slate-700/80' : 'border-slate-100'}`}>

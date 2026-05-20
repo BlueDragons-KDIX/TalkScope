@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { LayoutGrid } from 'lucide-react'
 import { useLayoutStore } from '../../stores/layoutStore'
+import { useLayoutTemplateStore } from '../../stores/layoutTemplateStore'
+import type { LayoutNode } from '../../domain/entities/Layout'
 import {
   makeDefaultLayout,
   makeLeftRightLayout,
@@ -8,6 +10,7 @@ import {
   makeHorizontalLayout,
   makeVerticalLayout,
 } from '../layout/layoutUtils'
+import { getScriptableLayoutTemplates } from '../layout/ScriptableLayoutTemplates'
 
 const PRESETS = [
   { key: 'default', label: 'デフォルト', make: makeDefaultLayout },
@@ -16,6 +19,8 @@ const PRESETS = [
   { key: 'horizontal', label: '横4列', make: makeHorizontalLayout },
   { key: 'vertical', label: '縦4列', make: makeVerticalLayout },
 ]
+
+const SCRIPTABLE_TEMPLATES = getScriptableLayoutTemplates()
 
 interface Props {
   darkMode?: boolean
@@ -38,6 +43,8 @@ export const LayoutPresetMenu: React.FC<Props> = ({
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const setLayout = useLayoutStore(s => s.setLayout)
+  const customTemplates = useLayoutTemplateStore(s => s.templates)
+  const hasScriptableTemplates = SCRIPTABLE_TEMPLATES.length > 0
   const menuPos = menuAlign === 'right' ? 'right-0 left-auto' : 'left-0'
   const ringOffset = darkMode ? 'focus-visible:ring-offset-[#0d0e1a]' : 'focus-visible:ring-offset-white'
   const dk = darkMode
@@ -120,6 +127,54 @@ export const LayoutPresetMenu: React.FC<Props> = ({
               </button>
             ))}
           </div>
+          {hasScriptableTemplates ? (
+            <div className={`border-t py-1 ${dk ? 'border-slate-700' : 'border-slate-200'}`}>
+              <div className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${dk ? 'text-emerald-300/80' : 'text-emerald-700/80'}`}>
+                スクリプトテンプレート
+              </div>
+              {SCRIPTABLE_TEMPLATES.map(template => (
+                <button
+                  key={template.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    const layout = JSON.parse(JSON.stringify(template.layout)) as LayoutNode
+                    setLayout(phaseId, layout)
+                    setOpen(false)
+                  }}
+                  className={`w-full px-3 py-2 text-left text-xs font-medium transition-colors ${dk
+                    ? 'text-slate-300 hover:bg-slate-800'
+                    : 'text-slate-700 hover:bg-slate-50'}`}
+                >
+                  {template.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {customTemplates.length > 0 ? (
+            <div className={`border-t py-1 ${dk ? 'border-slate-700' : 'border-slate-200'}`}>
+              <div className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${dk ? 'text-cyan-300/80' : 'text-cyan-700/80'}`}>
+                GUI追加テンプレート
+              </div>
+              {customTemplates.map(template => (
+                <button
+                  key={template.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    const layout = JSON.parse(JSON.stringify(template.layout)) as LayoutNode
+                    setLayout(phaseId, layout)
+                    setOpen(false)
+                  }}
+                  className={`w-full px-3 py-2 text-left text-xs font-medium transition-colors ${dk
+                    ? 'text-slate-300 hover:bg-slate-800'
+                    : 'text-slate-700 hover:bg-slate-50'}`}
+                >
+                  {template.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       )}
     </div>
