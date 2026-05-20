@@ -19,7 +19,8 @@ export interface ScriptableLayoutTemplate {
 export class ScriptableLayoutTemplates {
   templates(): ScriptableLayoutTemplate[] {
     return [
-      this.template('発表中 サンプル', this.createDuringSampleLayout()),
+      this.template('デフォルト', this.createDuringSampleLayout()),
+      this.template('バブル重視', this.createBubbleFocusedLayout()),
     ]
   }
 
@@ -78,6 +79,47 @@ export class ScriptableLayoutTemplates {
           type: 'leaf',
           id: 'n25',
           windowId: 'importanceRanking',
+        },
+      },
+    }
+  }
+
+  createBubbleFocusedLayout(): LayoutNode {
+    return {
+      type: 'split',
+      id: 'n8',
+      direction: 'h',
+      ratio: 0.3210777626193725,
+      a: {
+        type: 'leaf',
+        id: 'n6',
+        windowId: 'transcription',
+      },
+      b: {
+        type: 'split',
+        id: 'n18',
+        direction: 'h',
+        ratio: 0.5060604625837456,
+        a: {
+          type: 'leaf',
+          id: 'n7',
+          windowId: 'bubbleCloud',
+        },
+        b: {
+          type: 'split',
+          id: 'n20',
+          direction: 'v',
+          ratio: 0.7496740547588006,
+          a: {
+            type: 'leaf',
+            id: 'n17',
+            windowId: 'detail',
+          },
+          b: {
+            type: 'leaf',
+            id: 'n19',
+            windowId: 'systemControl',
+          },
         },
       },
     }
