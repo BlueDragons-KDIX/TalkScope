@@ -23,6 +23,17 @@ import {
   TRANSCRIPTION_PLAIN_FONT_SIZE_MIN,
   useTranscriptionWindowSettingsStore,
 } from '../../stores/transcriptionWindowSettingsStore'
+import {
+  TERM_MAP_AUTO_SWITCH_INTERVAL_MAX,
+  TERM_MAP_AUTO_SWITCH_INTERVAL_MIN,
+  TERM_MAP_BUBBLE_SIZE_SCALE_MAX,
+  TERM_MAP_BUBBLE_SIZE_SCALE_MIN,
+  TERM_MAP_MASTER_SIZE_SCALE_MAX,
+  TERM_MAP_MASTER_SIZE_SCALE_MIN,
+  TERM_MAP_TEXT_FONT_SIZE_MAX,
+  TERM_MAP_TEXT_FONT_SIZE_MIN,
+  useTermMapWindowSettingsStore,
+} from '../../stores/termMapWindowSettingsStore'
 
 const DropOverlay: React.FC<{ zone: DropZone; rgb: string }> = ({ zone, rgb }) => {
   const base: React.CSSProperties = {
@@ -178,6 +189,16 @@ const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
   const setMasterFontScale = useTranscriptionWindowSettingsStore(s => s.setMasterFontScale)
   const setPlainTextFontSizePx = useTranscriptionWindowSettingsStore(s => s.setPlainTextFontSizePx)
   const setImportantTermFontSizePx = useTranscriptionWindowSettingsStore(s => s.setImportantTermFontSizePx)
+  const termMapMasterSizeScale = useTermMapWindowSettingsStore(s => s.masterSizeScale)
+  const termMapBubbleSizeScale = useTermMapWindowSettingsStore(s => s.bubbleSizeScale)
+  const termMapTextFontSizePx = useTermMapWindowSettingsStore(s => s.textFontSizePx)
+  const termMapAutoSwitchEnabled = useTermMapWindowSettingsStore(s => s.autoSwitchEnabled)
+  const termMapAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.autoSwitchIntervalSec)
+  const setTermMapMasterSizeScale = useTermMapWindowSettingsStore(s => s.setMasterSizeScale)
+  const setTermMapBubbleSizeScale = useTermMapWindowSettingsStore(s => s.setBubbleSizeScale)
+  const setTermMapTextFontSizePx = useTermMapWindowSettingsStore(s => s.setTextFontSizePx)
+  const setTermMapAutoSwitchEnabled = useTermMapWindowSettingsStore(s => s.setAutoSwitchEnabled)
+  const setTermMapAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.setAutoSwitchIntervalSec)
   const dk = darkMode
 
   const modeButton = (value: TranscriptionMode, text: string) => {
@@ -315,6 +336,88 @@ const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
                 onChange={setImportantTermFontSizePx}
               />
             </div>
+          </section>
+        </div>
+      ) : windowId === 'bubbleCloud' ? (
+        <div className="space-y-3">
+          <section>
+            <div className={`mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+              <SlidersHorizontal size={11} /> サイズ
+            </div>
+            <div className="space-y-2.5">
+              <SettingsSlider
+                label="マスター"
+                valueLabel={`${Math.round(termMapMasterSizeScale * 100)}%`}
+                value={termMapMasterSizeScale}
+                min={TERM_MAP_MASTER_SIZE_SCALE_MIN}
+                max={TERM_MAP_MASTER_SIZE_SCALE_MAX}
+                step={0.05}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setTermMapMasterSizeScale}
+              />
+              <SettingsSlider
+                label="バブル"
+                valueLabel={`${Math.round(termMapBubbleSizeScale * 100)}%`}
+                value={termMapBubbleSizeScale}
+                min={TERM_MAP_BUBBLE_SIZE_SCALE_MIN}
+                max={TERM_MAP_BUBBLE_SIZE_SCALE_MAX}
+                step={0.1}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setTermMapBubbleSizeScale}
+              />
+              <SettingsSlider
+                label="テキスト"
+                valueLabel={`${termMapTextFontSizePx}px`}
+                value={termMapTextFontSizePx}
+                min={TERM_MAP_TEXT_FONT_SIZE_MIN}
+                max={TERM_MAP_TEXT_FONT_SIZE_MAX}
+                step={1}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setTermMapTextFontSizePx}
+              />
+            </div>
+          </section>
+
+          <section>
+            <div className={`mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+              <RefreshCw size={11} /> 自動切り替え
+            </div>
+            <button
+              type="button"
+              onClick={() => setTermMapAutoSwitchEnabled(!termMapAutoSwitchEnabled)}
+              className={`mb-2 flex w-full items-center justify-between rounded-lg border px-2.5 py-2 text-xs font-bold transition-colors ${termMapAutoSwitchEnabled
+                ? ''
+                : dk
+                  ? 'border-slate-700 bg-slate-800/50 text-slate-400 hover:bg-slate-800'
+                  : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
+              style={termMapAutoSwitchEnabled
+                ? {
+                    borderColor: `rgba(${accentRgb},0.62)`,
+                    backgroundColor: `rgba(${accentRgb},${dk ? 0.2 : 0.1})`,
+                    color: `rgba(${accentRgb},${dk ? 0.96 : 0.88})`,
+                  }
+                : undefined}
+              aria-pressed={termMapAutoSwitchEnabled}
+            >
+              <span>{termMapAutoSwitchEnabled ? 'ON' : 'OFF'}</span>
+              <span className="text-[10px] opacity-80">
+                {termMapAutoSwitchEnabled ? '説明と用語を切り替えます' : '手動表示にします'}
+              </span>
+            </button>
+            <SettingsSlider
+              label="切り替え間隔"
+              valueLabel={`${termMapAutoSwitchIntervalSec}秒`}
+              value={termMapAutoSwitchIntervalSec}
+              min={TERM_MAP_AUTO_SWITCH_INTERVAL_MIN}
+              max={TERM_MAP_AUTO_SWITCH_INTERVAL_MAX}
+              step={1}
+              darkMode={dk}
+              accentRgb={accentRgb}
+              onChange={setTermMapAutoSwitchIntervalSec}
+            />
           </section>
         </div>
       ) : (
