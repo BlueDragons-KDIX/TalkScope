@@ -7,13 +7,15 @@ export interface LayoutTemplate {
   layout: LayoutNode
 }
 
+export const MAX_ORIGINAL_LAYOUT_TEMPLATES = 5
+
 interface LayoutTemplateState {
   templates: LayoutTemplate[]
   addTemplate: (name: string, layout: LayoutNode) => LayoutTemplate
   removeTemplate: (id: string) => void
 }
 
-const STORAGE_KEY = 'talkscope:layout-templates'
+const STORAGE_KEY = 'talkscope:original-layout-templates'
 
 const createTemplateId = (): string =>
   `layout-template-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
@@ -40,6 +42,10 @@ export const useLayoutTemplateStore = create<LayoutTemplateState>((set, get) => 
   templates: loadTemplates(),
 
   addTemplate: (name, layout) => {
+    if (get().templates.length >= MAX_ORIGINAL_LAYOUT_TEMPLATES) {
+      throw new Error(`オリジナルレイアウトは最大${MAX_ORIGINAL_LAYOUT_TEMPLATES}個まで保存できます`)
+    }
+
     const template: LayoutTemplate = {
       id: createTemplateId(),
       name: name.trim(),
