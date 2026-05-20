@@ -32,7 +32,7 @@ JSON オブジェクト `{ "語1": 2.34, ... }` は開発向け **`IDF_JSON_PATH
 2. **読み込めない／0 行**のとき：環境変数 **`IDF_JSON_PATH`** の JSON があればそちら（ローカル・移行間のフォールバック）。
 3. どちらも無効なら IDF は使わずスコアの他項目のみとする。
 
-`POST /analysis/score/terms` は `get_idf_table()` の結果を渡す（`weights.idf_weight > 0` のときのみ `idf_scaled`）。
+`POST /analysis/score/terms` は `get_idf_table()` の結果を渡す（`term_score` 内のサーバ固定係数 `_SCORE_IDF_WEIGHT > 0` のときのみ `idf_scaled`）。
 
 ### インポート例（概念）
 
