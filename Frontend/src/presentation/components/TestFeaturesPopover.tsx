@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   FlaskConical,
   Play,
@@ -7,12 +7,17 @@ import {
   LoaderCircle,
   Square,
   Highlighter,
+  Clipboard,
+  ClipboardCheck,
+  FileJson,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DEMO_TEXT_INSTANT } from '../../debug/demo/demo'
 import { useDemoTools } from '../context/DemoToolsContext'
 import { getTranscriptionService } from '../hooks/useTranscription'
 import { useDemoImportantMarkingStore } from '../../stores/demoImportantMarkingStore'
+import { useLayoutStore } from '../../stores/layoutStore'
+import { usePhaseStore } from '../../stores/phaseStore'
 import { useAccentTheme } from '../../theme/AccentThemeContext'
 import { accentRgbSolid, accentSliderStyle } from '../../theme/accentStyles'
 
@@ -31,11 +36,26 @@ function posToMs(pos: number): number {
   return Math.round(5000 - (pos / 100) * (5000 - 60))
 }
 
+const toPascalCase = (value: string): string =>
+  value
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map(part => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join('')
+
+const formatLayoutTemplate = (phaseId: string, layoutJson: string): string =>
+  `create${toPascalCase(phaseId)}SampleLayout(): LayoutNode {
+  return ${layoutJson}
+}`
+
 export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 'right' }) => {
   const [open, setOpen] = useState(false)
+  const [layoutCopied, setLayoutCopied] = useState(false)
   const demoStream = useDemoTools()
   const demoMarkingEnabled = useDemoImportantMarkingStore(s => s.enabled)
   const setDemoMarkingEnabled = useDemoImportantMarkingStore(s => s.setEnabled)
+  const currentPhaseId = usePhaseStore(s => s.currentPhaseId)
+  const currentLayout = useLayoutStore(s => s.layouts[currentPhaseId])
   const { rgb } = useAccentTheme()
   const dk = darkMode
 
@@ -44,6 +64,14 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
   const isDone = demoStream.status === 'done'
   const progress = demoStream.progress
   const pos = msToPos(demoStream.intervalMs)
+  const layoutJson = useMemo(
+    () => currentLayout ? JSON.stringify(currentLayout, null, 2) : '',
+    [currentLayout],
+  )
+  const layoutTemplate = useMemo(
+    () => layoutJson ? formatLayoutTemplate(currentPhaseId, layoutJson) : '',
+    [currentPhaseId, layoutJson],
+  )
 
   const loadDemoText = () => {
     const svc = getTranscriptionService()
@@ -61,6 +89,22 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
   const stopDemo = () => {
     demoStream.stopStream()
     toast.info('ライブデモを停止しました')
+  }
+
+  const copyLayoutTemplate = async () => {
+    if (!layoutTemplate) {
+      toast.warning('コピーできるレイアウトがありません')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(layoutTemplate)
+      setLayoutCopied(true)
+      toast.success('現在のレイアウトをコピーしました')
+      window.setTimeout(() => setLayoutCopied(false), 1600)
+    } catch {
+      toast.error('クリップボードへのコピーに失敗しました')
+    }
   }
 
   const panelPos = align === 'left' ? 'left-0 right-auto' : 'right-0 left-auto'
@@ -92,7 +136,7 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
             onClick={() => setOpen(false)}
           />
           <div
-            className={`absolute ${panelPos} top-full mt-1 z-[70] w-[min(92vw,280px)] rounded-xl border shadow-2xl p-3 ${dk
+            className={`absolute ${panelPos} top-full mt-1 z-[70] w-[min(92vw,420px)] rounded-xl border shadow-2xl p-3 ${dk
               ? 'bg-[#0d0e1a] border-slate-700'
               : 'bg-white border-slate-200'}`}
             role="dialog"
@@ -193,6 +237,43 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
                     ライブデモをリセット
                   </button>
                 )}
+
+                <div
+                  className={`rounded-lg border p-2.5 ${dk ? 'border-slate-700 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}
+                >
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 items-start gap-2">
+                      <FileJson size={14} className={`mt-0.5 shrink-0 ${dk ? 'text-cyan-300' : 'text-cyan-700'}`} />
+                      <div className="min-w-0">
+                        <p className={`text-xs font-bold leading-tight ${dk ? 'text-slate-200' : 'text-slate-800'}`}>
+                          現在のレイアウト
+                        </p>
+                        <p className={`mt-1 text-[10px] leading-snug ${dk ? 'text-slate-500' : 'text-slate-500'}`}>
+                          `{currentPhaseId}` フェーズの状態をクラスに貼れるメソッド形式で表示します。
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={copyLayoutTemplate}
+                      disabled={!layoutTemplate}
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${dk
+                        ? 'border-cyan-500/35 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/18'
+                        : 'border-cyan-200 bg-white text-cyan-700 hover:bg-cyan-50'}`}
+                    >
+                      {layoutCopied ? <ClipboardCheck size={12} /> : <Clipboard size={12} />}
+                      {layoutCopied ? 'コピー済み' : 'コピー'}
+                    </button>
+                  </div>
+                  <textarea
+                    readOnly
+                    value={layoutTemplate || '現在のフェーズにはまだレイアウトがありません。'}
+                    className={`h-32 w-full resize-y rounded-md border p-2 font-mono text-[10px] leading-relaxed outline-none ${dk
+                      ? 'border-slate-700 bg-[#080914] text-slate-300'
+                      : 'border-slate-200 bg-white text-slate-700'}`}
+                    aria-label="現在のレイアウト情報"
+                  />
+                </div>
 
                 <div className={`pt-2 mt-1 border-t ${dk ? 'border-slate-700/80' : 'border-slate-100'}`}>
                   <div className="flex items-center justify-between mb-1">
