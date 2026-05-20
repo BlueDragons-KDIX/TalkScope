@@ -38,14 +38,41 @@
 現在は `app/services/refer_dictionary_v1.py` で、次期実装の流れを試作している段階。
 まだ既存 endpoint から実行する前提ではなく、既存の `app/services/refer_dictionary.py` の動作を壊さない範囲で進める。
 
+2026-05-17 時点では、SSE 対応そのものより先に、`refer_dictionary_v1.refer_dictionary()` を通して非同期処理の特徴を学びながら整理する方針。
+`service_analyze_text()` は未完成のまま残し、まずは `refer_dictionary()` 単体を async generator として手動実行できる状態にする。
+そのため、pytest ではなく `Backend/scripts/test_refer_dictionary_v1.py` を簡易動作環境として用意している。
+
 直近で進めていた内容:
 
 1. `_extract_search_targets()` で抽出した複合語タプルを `set` で dedup する
 2. 複合語タプルを文字列へ連結し、`WHERE term IN (...)` 相当の ORM クエリで DB を一括検索する
 3. DB hit 分を `TermInfo` に変換し、後続の意味選択・返却処理につなげる準備をする
+4. `refer_dictionary()` の `async for` / `yield` の流れを、簡易スクリプトで観察できるようにする
 
 現時点では発話順の維持は優先しない。
 また、MVP では 1 単語に対して複数意味を生成しない。複数 sense の生成・意味ごとの embedding・文脈に応じた best sense 選択は、必要になってから拡張する。
+
+### 非同期学習メモ
+
+`refer_dictionary_v1.refer_dictionary()` は `async def` の中で `yield` しているため、async generator として扱う。
+呼び出し側は `await refer_dictionary(text)` ではなく、`async for entries in refer_dictionary(text):` で chunk を受け取る。
+
+現状の `yield` 単位は以下の想定。
+
+1. DB hit 分の `list[DictionaryEntry]`
+2. DB miss 後に LLM / embedding / DB 保存を経由した `list[DictionaryEntry]`
+
+この構造を観察するための最小スクリプト:
+
+```bash
+cd Backend
+uv run python -m scripts.test_refer_dictionary_v1
+```
+
+注意点として、`refer_dictionary()` 自体は async generator だが、内部の DB 検索、LLM 呼び出し、embedding、DB 保存はまだ同期関数を直接呼んでいる。
+そのため、現時点の async は「分割して返す形を学ぶための入口」であり、イベントループをブロックしない実装にするには、後で `asyncio.to_thread(...)` などによる調整が必要。
+
+SSE 化する段階では、`service_analyze_text()` を async generator として実装し、`refer_dictionary()` から受け取った chunk を `data: ...\n\n` 形式へ整形して `StreamingResponse` に渡す。
 
 ### 問題点
 

@@ -26,7 +26,11 @@ async def service_analyze_text(text: str):
 
 # embedding APIを呼び出す関数の型定義
 CallableEmbeddingAPIProtocol = Callable[[str], list[float]]
+# DBに用語情報を挿入する関数の型定義
 InsertDBTermInfosProtocol = Callable[[list[TermInfo]], None]
+# DBから用語情報を読み取る関数の型定義
+FetchTermInfosProtocol = Callable[[list[str]], list[TermInfo]]
+
 
 # ================================= Service ======================================
 
@@ -67,14 +71,20 @@ async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry]
     unique_joined_terms = ["".join(term_tuple) for term_tuple in unique_terms]
 
     # DB検索(バッチで検索)
-    results_term = crud_dict_v1.read_term_infos(unique_joined_terms)
+    results_term = _fetch_term_infos_or_empty(
+        fetch_term_infos=crud_dict_v1.read_term_infos, 
+        terms=unique_joined_terms
+    )
 
     # hitはbest sense選択して返す (今は1単語1意味の想定なのでそのまま返す)
     yield _best_sense_selection(term_infos=results_term, text_embedding=[], source="db")
     
     # missの場合
     terms_db_miss = [term for term in unique_joined_terms if term not in {r.term for r in results_term}] 
-    
+    # missがなければ終了
+    if not terms_db_miss:
+        return
+
     # missした用語の意味候補をLLMで生成
     result_senses = _generate_senses_for_terms(terms_db_miss, group_size=10)
     results_terms = _embed_terms(call_embedding_api=sp_emb.call_embedding_api, terms=result_senses)
@@ -125,8 +135,23 @@ def _embed_terms(call_embedding_api: CallableEmbeddingAPIProtocol, terms: dict[s
         results_terms.append(term_info)
     return results_terms
 
+def _fetch_term_infos_or_empty(fetch_term_infos: FetchTermInfosProtocol, terms: list[str]) -> list[TermInfo]:
+    """
+    DBから用語情報を取得し、失敗時は空リストにフォールバックする。
+    Args:
+        fetch_term_infos: 用語情報を取得する関数
+        terms: 検索対象の用語リスト
+    Returns:
+        term_infos: DBから取得した用語情報。DB検索失敗時は空リスト。
+    """
+    try:
+        return fetch_term_infos(terms)
+    except Exception as e:
+        logger.exception("DB検索に失敗: %s\n フォールバックとして空の結果を返します。", e)
+        return []
 
 # 旧実装のためコメント化
+# _fetch_term_infos_or_emptyの引数に設定することで、旧実装も利用可能
 # def _search_dictionary(terms: list[str]) -> list[TermInfo]:
 #     """
 #     DBから複数の用語情報を検索する関数

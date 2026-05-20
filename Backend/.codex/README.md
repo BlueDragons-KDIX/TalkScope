@@ -13,8 +13,10 @@
 ここは現在作業として注目している箇所について記載しています。状況に応じて随時変更すること。
 
 - `refer_dictionary_v1.py` での次期 refer_dictionary 処理フロー試作
+- `refer_dictionary_v1.refer_dictionary()` を題材にした async / async generator / SSE 向け処理の学習と段階的整理
 - 複合語タプルの dedup と DB 一括検索（`WHERE term IN (...)`）の導入準備
 - DB hit 結果を `TermInfo` に変換し、意味選択ロジックへ接続するための整理
+- `Backend/scripts/test_refer_dictionary_v1.py` による pytest ではない簡易動作確認
 - 既存 API 仕様を壊さない範囲での段階的な修正
 
 ## ドキュメント一覧
