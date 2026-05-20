@@ -22,6 +22,7 @@ export class ScriptableLayoutTemplates {
       this.template('デフォルト', this.createDuringSampleLayout()),
       this.template('バブル重視', this.createBubbleFocusedLayout()),
       this.template('重要リスト重視', this.createImportanceListFocusedLayout()),
+      this.template('フルカスタム', this.createFullCustomLayout()),
     ]
   }
 
@@ -162,6 +163,69 @@ export class ScriptableLayoutTemplates {
           type: 'leaf',
           id: 'n19',
           windowId: 'systemControl',
+        },
+      },
+    }
+  }
+
+  createFullCustomLayout(): LayoutNode {
+    return {
+      type: 'split',
+      id: 'n21',
+      direction: 'h',
+      ratio: 0.1145975443383356,
+      a: {
+        type: 'leaf',
+        id: 'n20',
+        windowId: 'systemControl',
+      },
+      b: {
+        type: 'split',
+        id: 'n19',
+        direction: 'h',
+        ratio: 0.4,
+        a: {
+          type: 'leaf',
+          id: 'n11',
+          windowId: 'transcription',
+        },
+        b: {
+          type: 'split',
+          id: 'n18',
+          direction: 'v',
+          ratio: 0.38,
+          a: {
+            type: 'leaf',
+            id: 'n12',
+            windowId: 'bubbleCloud',
+          },
+          b: {
+            type: 'split',
+            id: 'n17',
+            direction: 'h',
+            ratio: 0.5,
+            a: {
+              type: 'leaf',
+              id: 'n13',
+              windowId: 'detail',
+            },
+            b: {
+              type: 'split',
+              id: 'n16',
+              direction: 'v',
+              ratio: 0.5,
+              a: {
+                type: 'leaf',
+                id: 'n14',
+                windowId: 'importanceRanking',
+              },
+              b: {
+                type: 'leaf',
+                id: 'n15',
+                windowId: 'history',
+              },
+            },
+          },
         },
       },
     }
