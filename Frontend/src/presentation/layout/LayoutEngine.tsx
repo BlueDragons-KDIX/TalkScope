@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { GripHorizontal, X } from 'lucide-react'
+import { GripHorizontal, RefreshCw, Settings, SlidersHorizontal, X } from 'lucide-react'
 import type { DropZone, LayoutNode } from '../../domain/entities/Layout'
 import { movePanel, updateRatio } from './layoutUtils'
 import { getWindowDefinition } from '../windows/registry'
@@ -11,6 +11,9 @@ import {
   SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
 } from '../constants/systemControlWindow'
 import { getAccentRgb } from '../../theme/accentTokens'
+import { useTranscription } from '../hooks/useTranscription'
+import { accentRgba } from '../../theme/accentStyles'
+import type { TranscriptionMode } from '../../domain/interfaces/ITranscriptionService'
 
 const DropOverlay: React.FC<{ zone: DropZone; rgb: string }> = ({ zone, rgb }) => {
   const base: React.CSSProperties = {
@@ -93,6 +96,134 @@ const systemControlMinStyle = (node: LayoutNode): React.CSSProperties =>
       }
     : { minWidth: 0, minHeight: 0 }
 
+interface WindowSettingsPanelProps {
+  windowId: string
+  label: string
+  darkMode: boolean
+  accentRgb: string
+  onClose: () => void
+}
+
+const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
+  windowId,
+  label,
+  darkMode,
+  accentRgb,
+  onClose,
+}) => {
+  const {
+    mode,
+    setMode,
+    microphones,
+    selectedMicrophoneId,
+    selectMicrophone,
+    refreshMicrophones,
+  } = useTranscription()
+  const dk = darkMode
+
+  const modeButton = (value: TranscriptionMode, text: string) => {
+    const active = mode === value
+    return (
+      <button
+        type="button"
+        onClick={() => setMode(value)}
+        className={`flex-1 rounded-md border px-2 py-1.5 text-[11px] font-bold transition-colors ${active
+          ? ''
+          : dk
+            ? 'border-slate-700 text-slate-400 hover:bg-slate-800'
+            : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+        style={active
+          ? {
+              borderColor: `rgba(${accentRgb},0.62)`,
+              backgroundColor: `rgba(${accentRgb},${dk ? 0.2 : 0.1})`,
+              color: `rgba(${accentRgb},${dk ? 0.96 : 0.88})`,
+            }
+          : undefined}
+      >
+        {text}
+      </button>
+    )
+  }
+
+  return (
+    <div
+      className={`absolute right-2 top-10 z-[70] w-[min(92vw,280px)] rounded-xl border p-3 shadow-2xl ${dk
+        ? 'border-slate-700 bg-[#0d0e1a] text-slate-200'
+        : 'border-slate-200 bg-white text-slate-800'}`}
+      role="dialog"
+      aria-label={`${label} の設定`}
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Settings size={14} style={{ color: accentRgba(accentRgb, dk ? 0.9 : 0.75) }} />
+          <p className="min-w-0 truncate text-xs font-black">{label} の設定</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className={`shrink-0 rounded-md p-1 transition-colors ${dk ? 'text-slate-500 hover:bg-slate-800 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-800'}`}
+          aria-label="設定を閉じる"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      {windowId === SYSTEM_CONTROL_WINDOW_ID ? (
+        <div className="space-y-3">
+          <section>
+            <div className={`mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+              <SlidersHorizontal size={11} /> 文字起こしモード
+            </div>
+            <div className="flex gap-2">
+              {modeButton('fast', '速度重視')}
+              {modeButton('accurate', '品質重視')}
+            </div>
+            <p className={`mt-1 text-[10px] leading-snug ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+              {mode === 'fast' ? 'リアルタイム性を優先します。' : '停止後の高精度化を優先します。'}
+            </p>
+          </section>
+
+          <section>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className={`text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+                マイク
+              </span>
+              <button
+                type="button"
+                onClick={() => refreshMicrophones()}
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold transition-colors ${dk
+                  ? 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`}
+                title="マイク一覧を再取得"
+              >
+                <RefreshCw size={10} />
+                更新
+              </button>
+            </div>
+            <select
+              value={selectedMicrophoneId}
+              onChange={e => selectMicrophone(e.target.value)}
+              className={`w-full rounded-lg border px-2.5 py-1.5 text-xs ${dk
+                ? 'border-slate-700 bg-slate-800 text-slate-200'
+                : 'border-slate-300 bg-white text-slate-700'}`}
+            >
+              {microphones.length === 0 && <option value="">利用可能マイクなし</option>}
+              {microphones.map(mic => (
+                <option key={mic.deviceId} value={mic.deviceId}>{mic.label}</option>
+              ))}
+            </select>
+          </section>
+        </div>
+      ) : (
+        <p className={`text-xs leading-relaxed ${dk ? 'text-slate-400' : 'text-slate-500'}`}>
+          このウィンドウ固有の設定は今後追加予定です。
+        </p>
+      )}
+    </div>
+  )
+}
+
 export interface LayoutEngineProps {
   layout: LayoutNode
   onLayoutChange: (layout: LayoutNode) => void
@@ -115,6 +246,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
   const [dragging, setDragging] = useState<string | null>(null)
   const [dropInfo, setDropInfo] = useState<{ windowId: string; zone: DropZone } | null>(null)
   const [resizing, setResizing] = useState<ResizeState | null>(null)
+  const [settingsWindowId, setSettingsWindowId] = useState<string | null>(null)
   const layoutRef = useRef(layout)
   layoutRef.current = layout
 
@@ -177,16 +309,44 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
             <GripHorizontal size={14} className="opacity-35 flex-shrink-0 transition-all group-hover:opacity-75 group-hover:scale-110" />
             <span className="text-[10px] font-bold uppercase tracking-[0.12em]">{label}</span>
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                type="button"
+                draggable={false}
+                onMouseDown={e => e.stopPropagation()}
+                onClick={e => {
+                  e.stopPropagation()
+                  setSettingsWindowId(prev => prev === node.windowId ? null : node.windowId)
+                }}
+                className={`p-0.5 rounded transition-colors ${darkMode ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-200 hover:text-black'}`}
+                aria-label={`${label} の設定`}
+                title={`${label} の設定`}
+              >
+                <Settings size={12} />
+              </button>
             {onClose && closable && (
               <button
+                type="button"
+                draggable={false}
+                onMouseDown={e => e.stopPropagation()}
                 onClick={e => { e.stopPropagation(); onClose(node.windowId) }}
-                className={`ml-auto p-0.5 rounded transition-colors ${darkMode ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-200 hover:text-black'}`}
+                className={`p-0.5 rounded transition-colors ${darkMode ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-200 hover:text-black'}`}
                 aria-label="閉じる"
               >
                 <X size={12} />
               </button>
             )}
+            </div>
           </div>
+          {settingsWindowId === node.windowId && (
+            <WindowSettingsPanel
+              windowId={node.windowId}
+              label={label}
+              darkMode={darkMode}
+              accentRgb={accentRgb}
+              onClose={() => setSettingsWindowId(null)}
+            />
+          )}
           <div
             style={{
               flex: 1,
@@ -290,7 +450,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
       </div>
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dragging, dropInfo, darkMode, accentRgb, borderStyle, headerBg, dotColor, panelGlow, calcZone, onLayoutChange, onClose])
+  }, [dragging, dropInfo, settingsWindowId, darkMode, accentRgb, borderStyle, headerBg, dotColor, panelGlow, calcZone, onLayoutChange, onClose])
 
   const rootMinStyle = systemControlMinStyle(layout)
 

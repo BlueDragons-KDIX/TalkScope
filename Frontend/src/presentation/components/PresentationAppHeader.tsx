@@ -67,7 +67,7 @@ export const PresentationAppHeader: React.FC<PresentationAppHeaderProps> = ({
         <button
           type="button"
           onClick={onOpenAppearance}
-          title="設定（表示・文字起こし・マイクなど）"
+          title="設定（表示・用語表示など）"
           className={`flex min-h-10 shrink-0 flex-row items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold transition-colors ${focusRing} ${ringOffset} ${settingsPill}`}
           aria-haspopup="dialog"
           aria-label="設定を開く"
