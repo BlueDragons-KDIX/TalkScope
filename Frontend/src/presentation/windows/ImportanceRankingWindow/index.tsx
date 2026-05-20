@@ -210,12 +210,6 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
                         >
                           {row.term.word}
                         </span>
-                        <span
-                          className={`block ${dk ? 'text-slate-500' : 'text-slate-400'}`}
-                          style={{ fontSize: scaledContentFontPx(10, contentFontScale) }}
-                        >
-                          Lv.{row.term.level} / {row.term.category}
-                        </span>
                         <span className={`mt-1 block h-1.5 w-full rounded-full ${dk ? 'bg-slate-700' : 'bg-slate-200'}`}>
                           <span
                             className="block h-1.5 rounded-full"

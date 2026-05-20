@@ -305,23 +305,6 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                 <Star size={12} fill="currentColor" />
               </div>
             )}
-            <div className="flex items-center gap-2 mb-1.5">
-              <span
-                className="font-bold"
-                style={{
-                  fontSize: scaledContentFontPx(10, contentFontScale),
-                  color: accentRgba(rgb, dk ? 0.92 : 0.85),
-                }}
-              >
-                {hoveredTerm.category}
-              </span>
-              <span
-                className={dk ? 'text-slate-500' : 'text-slate-400'}
-                style={{ fontSize: scaledContentFontPx(10, contentFontScale) }}
-              >
-                Lv.{hoveredTerm.level}
-              </span>
-            </div>
             <div className="font-black mb-1" style={{ fontSize: scaledContentFontPx(14, contentFontScale) }}>
               {hoveredTerm.word}
             </div>

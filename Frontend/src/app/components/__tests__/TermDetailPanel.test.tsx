@@ -15,7 +15,7 @@ const sampleTerm: Term = {
   shortDesc: '検索拡張生成',
   longDesc: '検索と生成を組み合わせるアプローチの説明文です。',
   category: 'AI/Data',
-  level: 2,
+  score: 2,
   relatedTerms: ['ベクトル'],
 }
 
@@ -47,6 +47,7 @@ describe('TermDetailPanel (PR #28: Hooks 順序)', () => {
     )
     expect(view.getByText('RAG')).toBeTruthy()
     expect(view.getByText(/検索と生成を組み合わせる/)).toBeTruthy()
+    expect(view.queryByText('AI/Data')).toBeNull()
   })
 
   it('同一ルートで null → term に切り替えてもフック順エラーにならない', () => {

@@ -4,8 +4,10 @@ export interface Term {
   kana: string;
   shortDesc: string;
   longDesc: string;
-  category: "Frontend" | "Backend" | "Infra" | "AI/Data" | "General";
-  level: number; // 1: Beginner, 2: Intermediate, 3: Advanced
+  /** @deprecated 互換のため残す（表示・正規化は domain の normalizeTermCategory に従う） */
+  category: string;
+  /** @deprecated 互換のため残す */
+  score: number;
   relatedTerms: string[];
   externalUrl?: string;
 }

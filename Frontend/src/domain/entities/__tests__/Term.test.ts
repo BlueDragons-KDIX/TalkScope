@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test'
-import { isTerm } from '../Term'
+import { isTerm, normalizeTermCategory } from '../Term'
 import type { Term } from '../Term'
 
 const validTerm: Term = {
@@ -9,7 +9,7 @@ const validTerm: Term = {
   shortDesc: 'UIライブラリ',
   longDesc: '詳細説明',
   category: 'Frontend',
-  level: 1,
+  score: 1,
   relatedTerms: ['Next.js'],
 }
 
@@ -37,5 +37,16 @@ describe('isTerm', () => {
 
   it('relatedTermsが配列でない場合を拒否する', () => {
     expect(isTerm({ ...validTerm, relatedTerms: 'not-array' })).toBe(false)
+  })
+})
+
+describe('normalizeTermCategory', () => {
+  it('null / undefined / 任意の値は空文字', () => {
+    expect(normalizeTermCategory(null)).toBe('')
+    expect(normalizeTermCategory(undefined)).toBe('')
+    expect(normalizeTermCategory('')).toBe('')
+    expect(normalizeTermCategory('unknown')).toBe('')
+    expect(normalizeTermCategory('Frontend')).toBe('')
+    expect(normalizeTermCategory(123)).toBe('')
   })
 })

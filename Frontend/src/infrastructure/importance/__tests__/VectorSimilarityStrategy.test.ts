@@ -9,7 +9,7 @@ const mockTerm: Term = {
   shortDesc: 'UIライブラリ',
   longDesc: '詳細説明',
   category: 'Frontend',
-  level: 1,
+  score: 1,
   relatedTerms: [],
 }
 

@@ -5,12 +5,12 @@ import type { Term } from '../../domain/entities/Term'
 const term1: Term = {
   id: '1', word: 'React', kana: 'リアクト',
   shortDesc: 'UIライブラリ', longDesc: '詳細',
-  category: 'Frontend', level: 1, relatedTerms: [],
+  category: 'Frontend', score: 1, relatedTerms: [],
 }
 const term2: Term = {
   id: '2', word: 'Docker', kana: 'ドッカー',
   shortDesc: 'コンテナ', longDesc: '詳細',
-  category: 'Infra', level: 2, relatedTerms: [],
+  category: 'Infra', score: 2, relatedTerms: [],
 }
 
 describe('termStore', () => {
@@ -84,6 +84,15 @@ describe('termStore', () => {
     expect(Object.keys(s.termClickWeights)).toHaveLength(0)
   })
 
+  it('addTerms は category を常に空文字に正規化する', () => {
+    useTermStore.getState().addTerms([
+      { ...term1, category: 'Frontend' },
+      { ...term2, category: 'unknown' as Term['category'] },
+    ])
+    expect(useTermStore.getState().activeTerms[0]?.category).toBe('')
+    expect(useTermStore.getState().activeTerms[1]?.category).toBe('')
+  })
+
   it('stripDemoImportantTerms は demo-important- の用語だけ除去する', () => {
     const demoTerm: Term = {
       id: 'demo-important-react',
@@ -92,7 +101,7 @@ describe('termStore', () => {
       shortDesc: 'デモ',
       longDesc: 'デモ',
       category: 'Frontend',
-      level: 1,
+      score: 1,
       relatedTerms: [],
     }
     useTermStore.getState().addTerms([term1, demoTerm])

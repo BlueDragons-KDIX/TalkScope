@@ -6,14 +6,14 @@ import {
 } from '../importanceRanking'
 import type { Term } from '../../../domain/entities/Term'
 
-const makeTerm = (id: string, level: number): Term => ({
+const makeTerm = (id: string, score: number): Term => ({
   id,
   word: `word-${id}`,
   kana: `かな-${id}`,
   shortDesc: 'desc',
   longDesc: 'long',
   category: 'General',
-  level,
+  score,
   relatedTerms: [],
 })
 
