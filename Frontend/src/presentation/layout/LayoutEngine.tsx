@@ -249,6 +249,7 @@ const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
 
   return (
     <div
+      data-window-settings-panel="true"
       className={`absolute right-2 top-10 z-[70] w-[min(92vw,280px)] rounded-xl border p-3 shadow-2xl ${dk
         ? 'border-slate-700 bg-[#0d0e1a] text-slate-200'
         : 'border-slate-200 bg-white text-slate-800'}`}
@@ -552,6 +553,18 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
   }, [resizing, onLayoutChange])
 
+  useEffect(() => {
+    if (!settingsWindowId) return
+    const onMouseDown = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      if (target.closest('[data-window-settings-panel="true"], [data-window-settings-trigger="true"]')) return
+      setSettingsWindowId(null)
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [settingsWindowId])
+
   const calcZone = useCallback((e: React.DragEvent, el: HTMLElement): DropZone => {
     const r = el.getBoundingClientRect()
     const x = e.clientX - r.left, y = e.clientY - r.top
@@ -600,6 +613,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
             <span className="text-[10px] font-bold uppercase tracking-[0.12em]">{label}</span>
             <div className="ml-auto flex items-center gap-1">
               <button
+                data-window-settings-trigger="true"
                 type="button"
                 draggable={false}
                 onMouseDown={e => e.stopPropagation()}
