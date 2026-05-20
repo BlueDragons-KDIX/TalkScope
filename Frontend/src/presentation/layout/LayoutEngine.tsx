@@ -14,6 +14,15 @@ import { getAccentRgb } from '../../theme/accentTokens'
 import { useTranscription } from '../hooks/useTranscription'
 import { accentRgba } from '../../theme/accentStyles'
 import type { TranscriptionMode } from '../../domain/interfaces/ITranscriptionService'
+import {
+  TRANSCRIPTION_IMPORTANT_FONT_SIZE_MAX,
+  TRANSCRIPTION_IMPORTANT_FONT_SIZE_MIN,
+  TRANSCRIPTION_MASTER_FONT_SCALE_MAX,
+  TRANSCRIPTION_MASTER_FONT_SCALE_MIN,
+  TRANSCRIPTION_PLAIN_FONT_SIZE_MAX,
+  TRANSCRIPTION_PLAIN_FONT_SIZE_MIN,
+  useTranscriptionWindowSettingsStore,
+} from '../../stores/transcriptionWindowSettingsStore'
 
 const DropOverlay: React.FC<{ zone: DropZone; rgb: string }> = ({ zone, rgb }) => {
   const base: React.CSSProperties = {
@@ -96,6 +105,50 @@ const systemControlMinStyle = (node: LayoutNode): React.CSSProperties =>
       }
     : { minWidth: 0, minHeight: 0 }
 
+interface SettingsSliderProps {
+  label: string
+  valueLabel: string
+  value: number
+  min: number
+  max: number
+  step: number
+  darkMode: boolean
+  accentRgb: string
+  onChange: (value: number) => void
+}
+
+const SettingsSlider: React.FC<SettingsSliderProps> = ({
+  label,
+  valueLabel,
+  value,
+  min,
+  max,
+  step,
+  darkMode,
+  accentRgb,
+  onChange,
+}) => (
+  <div>
+    <div className="mb-1 flex items-center justify-between gap-2">
+      <span className="text-[11px] font-bold">{label}</span>
+      <span className={`text-[10px] font-mono font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+        {valueLabel}
+      </span>
+    </div>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={e => onChange(Number(e.target.value))}
+      className="w-full cursor-pointer"
+      style={{ accentColor: `rgb(${accentRgb})` }}
+      aria-label={label}
+    />
+  </div>
+)
+
 interface WindowSettingsPanelProps {
   windowId: string
   label: string
@@ -119,6 +172,12 @@ const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
     selectMicrophone,
     refreshMicrophones,
   } = useTranscription()
+  const masterFontScale = useTranscriptionWindowSettingsStore(s => s.masterFontScale)
+  const plainTextFontSizePx = useTranscriptionWindowSettingsStore(s => s.plainTextFontSizePx)
+  const importantTermFontSizePx = useTranscriptionWindowSettingsStore(s => s.importantTermFontSizePx)
+  const setMasterFontScale = useTranscriptionWindowSettingsStore(s => s.setMasterFontScale)
+  const setPlainTextFontSizePx = useTranscriptionWindowSettingsStore(s => s.setPlainTextFontSizePx)
+  const setImportantTermFontSizePx = useTranscriptionWindowSettingsStore(s => s.setImportantTermFontSizePx)
   const dk = darkMode
 
   const modeButton = (value: TranscriptionMode, text: string) => {
@@ -213,6 +272,49 @@ const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
                 <option key={mic.deviceId} value={mic.deviceId}>{mic.label}</option>
               ))}
             </select>
+          </section>
+        </div>
+      ) : windowId === 'transcription' ? (
+        <div className="space-y-3">
+          <section>
+            <div className={`mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+              <SlidersHorizontal size={11} /> フォントサイズ
+            </div>
+            <div className="space-y-2.5">
+              <SettingsSlider
+                label="マスター"
+                valueLabel={`${Math.round(masterFontScale * 100)}%`}
+                value={masterFontScale}
+                min={TRANSCRIPTION_MASTER_FONT_SCALE_MIN}
+                max={TRANSCRIPTION_MASTER_FONT_SCALE_MAX}
+                step={0.05}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setMasterFontScale}
+              />
+              <SettingsSlider
+                label="通常文字"
+                valueLabel={`${plainTextFontSizePx}px`}
+                value={plainTextFontSizePx}
+                min={TRANSCRIPTION_PLAIN_FONT_SIZE_MIN}
+                max={TRANSCRIPTION_PLAIN_FONT_SIZE_MAX}
+                step={1}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setPlainTextFontSizePx}
+              />
+              <SettingsSlider
+                label="重要単語"
+                valueLabel={`${importantTermFontSizePx}px`}
+                value={importantTermFontSizePx}
+                min={TRANSCRIPTION_IMPORTANT_FONT_SIZE_MIN}
+                max={TRANSCRIPTION_IMPORTANT_FONT_SIZE_MAX}
+                step={1}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setImportantTermFontSizePx}
+              />
+            </div>
           </section>
         </div>
       ) : (
