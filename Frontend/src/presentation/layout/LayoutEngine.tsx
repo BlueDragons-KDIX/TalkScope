@@ -43,6 +43,11 @@ import {
   IMPORTANCE_RANKING_VISIBLE_COUNT_MIN,
   useImportanceRankingWindowSettingsStore,
 } from '../../stores/importanceRankingWindowSettingsStore'
+import {
+  DETAIL_WINDOW_FONT_SIZE_MAX,
+  DETAIL_WINDOW_FONT_SIZE_MIN,
+  useDetailWindowSettingsStore,
+} from '../../stores/detailWindowSettingsStore'
 
 const DropOverlay: React.FC<{ zone: DropZone; rgb: string }> = ({ zone, rgb }) => {
   const base: React.CSSProperties = {
@@ -214,6 +219,8 @@ const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
   const setImportanceRankingMasterSizeScale = useImportanceRankingWindowSettingsStore(s => s.setMasterSizeScale)
   const setImportanceRankingFontSizePx = useImportanceRankingWindowSettingsStore(s => s.setFontSizePx)
   const setImportanceRankingVisibleCount = useImportanceRankingWindowSettingsStore(s => s.setVisibleCount)
+  const detailFontSizePx = useDetailWindowSettingsStore(s => s.fontSizePx)
+  const setDetailFontSizePx = useDetailWindowSettingsStore(s => s.setFontSizePx)
   const dk = darkMode
 
   const modeButton = (value: TranscriptionMode, text: string) => {
@@ -476,6 +483,25 @@ const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
                 onChange={setImportanceRankingVisibleCount}
               />
             </div>
+          </section>
+        </div>
+      ) : windowId === 'detail' ? (
+        <div className="space-y-3">
+          <section>
+            <div className={`mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+              <SlidersHorizontal size={11} /> フォントサイズ
+            </div>
+            <SettingsSlider
+              label="詳細テキスト"
+              valueLabel={`${detailFontSizePx}px`}
+              value={detailFontSizePx}
+              min={DETAIL_WINDOW_FONT_SIZE_MIN}
+              max={DETAIL_WINDOW_FONT_SIZE_MAX}
+              step={1}
+              darkMode={dk}
+              accentRgb={accentRgb}
+              onChange={setDetailFontSizePx}
+            />
           </section>
         </div>
       ) : (
