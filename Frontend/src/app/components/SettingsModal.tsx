@@ -1,8 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings, X, Moon, Sun, Palette, SlidersHorizontal, Loader2, Mic, Type } from 'lucide-react';
-import { useTranscription } from '../../presentation/hooks/useTranscription';
-import type { TranscriptionMode } from '../../domain/interfaces/ITranscriptionService';
+import { Settings, X, Moon, Sun, Palette, SlidersHorizontal, Loader2, Type } from 'lucide-react';
 import {
   CONTENT_FONT_SCALE_MAX,
   CONTENT_FONT_SCALE_MIN,
@@ -52,7 +50,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   similarityReferenceWord = 'it',
   similarityReady = false,
 }) => {
-  const { mode, setMode, microphones, selectedMicrophoneId, selectMicrophone, refreshMicrophones } = useTranscription();
   const contentFontScale = useContentFontScaleStore(s => s.scale);
   const setContentFontScale = useContentFontScaleStore(s => s.setScale);
   const { rgb } = useAccentTheme();
@@ -60,30 +57,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   if (!isOpen) return null;
 
   const dk = settings.darkMode;
-
-  const modeBtn = (val: TranscriptionMode, label: string) => {
-    const active = mode === val;
-    return (
-      <button
-        key={val}
-        onClick={() => setMode(val)}
-        className={`flex-1 rounded-lg border py-1.5 text-xs font-bold transition-colors ${
-          active ? '' : dk ? 'border-slate-700 text-slate-400 hover:bg-slate-800' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-        }`}
-        style={
-          active
-            ? {
-                borderColor: accentRgba(rgb, dk ? 0.65 : 0.5),
-                backgroundColor: accentRgba(rgb, dk ? 0.2 : 0.1),
-                color: accentRgba(rgb, dk ? 0.96 : 0.88),
-              }
-            : undefined
-        }
-      >
-        {label}
-      </button>
-    );
-  };
 
   return (
     <AnimatePresence>
@@ -184,54 +157,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <p className={`text-[10px] leading-snug ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
                   各ウィンドウ内の重要語・説明文のみ拡大／縮小します。ウィンドウタイトルやこの設定画面の文字サイズは変わりません。
                 </p>
-              </section>
-
-              {/* 文字起こし（モード・マイク）— 操作ドックの詳細はここに集約 */}
-              <section>
-                <div className={`flex items-center gap-1.5 mb-2.5 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
-                  <Mic size={12} /> 文字起こし
-                </div>
-
-                <div className="mb-3">
-                  <span className="text-xs font-bold block mb-1.5">モード</span>
-                  <div className="flex gap-2">
-                    {modeBtn('fast', '速度重視')}
-                    {modeBtn('accurate', '正確さ重視')}
-                  </div>
-                  <p className={`mt-1 text-[10px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
-                    {mode === 'fast' ? 'WebSpeechでリアルタイム寄り' : '停止後にローカルSTTで高精度化'}
-                  </p>
-                </div>
-
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold">マイク</span>
-                    <button
-                      type="button"
-                      onClick={() => void refreshMicrophones()}
-                      className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-bold transition-colors ${
-                        dk
-                          ? 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
-                          : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
-                      }`}
-                      title="マイク一覧を再取得"
-                    >
-                      更新
-                    </button>
-                  </div>
-                  <select
-                    value={selectedMicrophoneId}
-                    onChange={(e) => selectMicrophone(e.target.value)}
-                    className={`w-full rounded-lg border px-2.5 py-1.5 text-xs ${
-                      dk ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-700'
-                    }`}
-                  >
-                    {microphones.length === 0 && <option value="">利用可能マイクなし</option>}
-                    {microphones.map((mic) => (
-                      <option key={mic.deviceId} value={mic.deviceId}>{mic.label}</option>
-                    ))}
-                  </select>
-                </div>
               </section>
 
               {/* Similarity Filter Settings */}
