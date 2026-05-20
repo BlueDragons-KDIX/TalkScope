@@ -5,6 +5,7 @@ import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
 import { scaledContentFontPx } from '../utils/contentFontScale';
 import { useAccentTheme } from '../../theme/AccentThemeContext';
 import { accentRgba, micStartButtonStyle } from '../../theme/accentStyles';
+import { useDetailWindowSettingsStore } from '../../stores/detailWindowSettingsStore';
 
 interface TermDetailPanelProps {
   term: Term | null;
@@ -25,6 +26,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
 }) => {
   const dk = darkMode;
   const contentFontScale = useContentFontScaleStore(s => s.scale);
+  const fontSizePx = useDetailWindowSettingsStore(s => s.fontSizePx);
   const { rgb } = useAccentTheme();
   const [copied, setCopied] = useState<'word' | 'desc' | null>(null);
 
@@ -80,7 +82,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
               </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-black" style={{ fontSize: scaledContentFontPx(24, contentFontScale) }}>
+              <h2 className="font-black" style={{ fontSize: scaledContentFontPx(fontSizePx + 10, contentFontScale) }}>
                 {term.word}
               </h2>
               <button
@@ -94,7 +96,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
             </div>
             <p
               className={`mt-0.5 ${dk ? 'text-slate-500' : 'text-slate-400'}`}
-              style={{ fontSize: scaledContentFontPx(14, contentFontScale) }}
+              style={{ fontSize: scaledContentFontPx(fontSizePx, contentFontScale) }}
             >
               {term.kana}
             </p>
@@ -152,7 +154,7 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
           {copied === 'desc' && <p className="text-[10px] font-bold text-emerald-500 mb-1">コピーしました</p>}
           <p
             className={`leading-relaxed ${dk ? 'text-slate-300' : 'text-slate-600'}`}
-            style={{ fontSize: scaledContentFontPx(14, contentFontScale) }}
+            style={{ fontSize: scaledContentFontPx(fontSizePx, contentFontScale) }}
           >
             {term.longDesc}
           </p>
