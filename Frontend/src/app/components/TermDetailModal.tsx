@@ -32,17 +32,6 @@ export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose,
 
   const dk = darkMode;
 
-  const getScoreLabel = (score: number) => {
-    switch(score) {
-      case 1: return { text: "初級", color: dk ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" : "bg-green-100 text-green-700" };
-      case 2: return { text: "中級", color: dk ? "bg-amber-500/15 text-amber-400 border border-amber-500/20" : "bg-amber-100 text-amber-700" };
-      case 3: return { text: "上級", color: dk ? "bg-red-500/15 text-red-400 border border-red-500/20" : "bg-red-100 text-red-700" };
-      default: return { text: "不明", color: dk ? "bg-slate-500/15 text-slate-400 border border-slate-500/20" : "bg-slate-100 text-slate-700" };
-    }
-  };
-
-  const scoreInfo = getScoreLabel(term.score);
-
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -64,11 +53,6 @@ export const TermDetailModal: React.FC<TermDetailModalProps> = ({ term, onClose,
           <div className="p-6">
             <div className="flex justify-between items-start mb-5">
               <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${scoreInfo.color}`}>
-                    {scoreInfo.text}
-                  </span>
-                </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-2xl font-black">{term.word}</h2>
                   <button

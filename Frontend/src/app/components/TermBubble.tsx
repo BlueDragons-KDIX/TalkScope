@@ -284,28 +284,16 @@ export const TermBubble: React.FC<TermBubbleProps> = ({
             top: tooltipPos.top,
           }}
         >
-            <div className="flex items-center gap-1.5 mb-1">
-              <span
-                className="font-bold"
-                style={{ fontSize: scaledContentFontPx(9, contentFontScale), color: accentRgba(rgb, dk ? 0.92 : 0.88) }}
-              >
-                {term.category}
-              </span>
-              <span
-                className={dk ? 'text-slate-500' : 'text-slate-400'}
-                style={{ fontSize: scaledContentFontPx(9, contentFontScale) }}
-              >
-                Score.{term.score}
-              </span>
-              {isPinned && (
+            {isPinned && (
+              <div className="flex justify-end mb-1">
                 <span
-                  className="font-bold text-yellow-400 flex items-center gap-0.5 ml-auto"
+                  className="font-bold text-yellow-400 flex items-center gap-0.5"
                   style={{ fontSize: scaledContentFontPx(9, contentFontScale) }}
                 >
                   <Star size={8} fill="currentColor" />ピン中
                 </span>
-              )}
-            </div>
+              </div>
+            )}
             <div className="font-bold mb-0.5" style={{ fontSize: scaledContentFontPx(12, contentFontScale) }}>
               {term.word}
             </div>

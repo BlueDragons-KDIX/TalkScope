@@ -53,16 +53,6 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
     );
   }
 
-  const getScoreInfo = (score: number) => {
-    switch (score) {
-      case 1: return { text: '初級', color: dk ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-green-100 text-green-700' };
-      case 2: return { text: '中級', color: dk ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-100 text-amber-700' };
-      case 3: return { text: '上級', color: dk ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-red-100 text-red-700' };
-      default: return { text: '不明', color: dk ? 'bg-slate-500/20 text-slate-300 border border-slate-500/30' : 'bg-slate-100 text-slate-700' };
-    }
-  };
-
-  const scoreInfo = getScoreInfo(term.score);
   const related: Term[] = [];
 
   return (
@@ -71,11 +61,6 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
       <div className={`p-5 border-b flex-shrink-0 ${dk ? 'border-slate-800/60' : 'border-slate-100'}`}>
         <div className="flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${scoreInfo.color}`}>
-                {scoreInfo.text}
-              </span>
-            </div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-black" style={{ fontSize: scaledContentFontPx(24, contentFontScale) }}>
                 {term.word}

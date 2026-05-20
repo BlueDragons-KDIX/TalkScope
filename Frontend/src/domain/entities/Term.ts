@@ -1,7 +1,7 @@
 /** @deprecated 互換のため型のみ残す */
 export type TermCategory = string
 
-/** 1: 初級, 2: 中級, 3: 上級 */
+/** @deprecated 互換のため型のみ残す（初級/中級/上級ランクは廃止） */
 export type TermScore = number
 
 /** 廃止フィールド category 用。null / undefined / 任意の値はいずれも空文字にする */
@@ -17,7 +17,8 @@ export interface Term {
   longDesc: string // 長い説明のみ残す
   /** 不要になったカテゴリは空文字に正規化して保持 */
   category: string
-  score: TermScore // スコアに変更(計算アルゴリズムはサーバー側で行う、出現頻度とクリック回数はフロントで維持)
+  /** @deprecated 互換のためフィールドを残す（ランク表示・算出は廃止） */
+  score: TermScore
   relatedTerms: string[] // 無くす予定
   externalUrl?: string
 }
