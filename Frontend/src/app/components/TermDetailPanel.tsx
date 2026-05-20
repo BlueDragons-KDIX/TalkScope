@@ -75,9 +75,6 @@ export const TermDetailPanel: React.FC<TermDetailPanelProps> = ({
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${scoreInfo.color}`}>
                 {scoreInfo.text}
               </span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${dk ? 'bg-slate-800 text-slate-400 border border-slate-700/50' : 'bg-slate-100 text-slate-500'}`}>
-                {term.category}
-              </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-black" style={{ fontSize: scaledContentFontPx(24, contentFontScale) }}>

@@ -84,6 +84,15 @@ describe('termStore', () => {
     expect(Object.keys(s.termClickWeights)).toHaveLength(0)
   })
 
+  it('addTerms は category を常に空文字に正規化する', () => {
+    useTermStore.getState().addTerms([
+      { ...term1, category: 'Frontend' },
+      { ...term2, category: 'unknown' as Term['category'] },
+    ])
+    expect(useTermStore.getState().activeTerms[0]?.category).toBe('')
+    expect(useTermStore.getState().activeTerms[1]?.category).toBe('')
+  })
+
   it('stripDemoImportantTerms は demo-important- の用語だけ除去する', () => {
     const demoTerm: Term = {
       id: 'demo-important-react',

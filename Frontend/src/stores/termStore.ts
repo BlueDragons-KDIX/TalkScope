@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Term } from '../domain/entities/Term'
+import { normalizeTermCategory } from '../domain/entities/Term'
 import { DEMO_IMPORTANT_TERM_ID_PREFIX } from '../debug/demo/mockImportantTerms'
 
 interface TermState {
@@ -36,7 +37,10 @@ export const useTermStore = create<TermState>((set) => ({
     for (const t of terms) {
       if (!existingIds.has(t.id)) {
         existingIds.add(t.id)
-        newTerms.push(t)
+        newTerms.push({
+          ...t,
+          category: normalizeTermCategory(t.category),
+        })
       }
     }
     return { activeTerms: [...state.activeTerms, ...newTerms] }

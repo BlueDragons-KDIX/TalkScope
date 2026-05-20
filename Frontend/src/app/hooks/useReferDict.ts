@@ -7,6 +7,7 @@ import {
   type ReferDictResponse,
 } from '../utils/referDictWithOverlaps';
 import type { Term } from '../data/terms';
+import { normalizeTermCategory } from '../../domain/entities/Term';
 
 
 
@@ -40,7 +41,7 @@ function entryToTerm(entry: ReferDictEntry): Term {
     kana: '',
     shortDesc: firstSentence(entry.description),
     longDesc: entry.description,
-    category: 'General',
+    category: normalizeTermCategory('General'),
     score: 1,
     relatedTerms: [],
   };
