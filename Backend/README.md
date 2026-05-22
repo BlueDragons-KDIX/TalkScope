@@ -134,13 +134,14 @@ Cloud Run へのデプロイ手順は以下を参照してください。
 
 - `POST /analysis/theme/chunk`
   - セッション単位で会話テーマベクトルを **EMA 1 ステップ**更新する（相槌・短文はスキップされ得る）
+  - **既定は無効**（`app/services/term_score.py` の `THEME_EMA_ENABLED = False`）。有効化は同ファイルで `True` に変更して再起動
   - ボディ例: `{"session_id":"abc","text":"チャンク全文"}`。EMA の α・文ベクトル正規化・更新スキップ下限は `app/schemas/score_analysis.py` の `THEME_EMA_ALPHA_DEFAULT`（0.10）および `term_score` の固定値
 
 - `POST /analysis/theme/session/reset`
-  - 指定 `session_id` のテーマベクトルをストアから削除する
+  - 指定 `session_id` のテーマベクトルをストアから削除する（EMA 無効時も呼べるが、スコア側はテーマを参照しない）
 
 - `POST /analysis/score/terms`
-  - 複数用語の **素点＋バフ**（テーマ類似・IDF）を一括計算。テーマは同一 `session_id` で `theme/chunk` 済みのものを使用
+  - 複数用語の **素点＋バフ**（IDF 等）を一括計算。**テーマ類似バフ**は `THEME_EMA_ENABLED=True` かつ同一 `session_id` で `theme/chunk` 済みのときのみ
   - **IDF バフ**: DB の `term_idf` を起動時に読み込む（オプション `TERM_IDF_LOAD_MIN_VALUE` でその IDF 以上の語だけに間引ける）。開発用は `IDF_JSON_PATH`。詳細は `Backend/docs/IDF_DATA_PIPELINE.md`
   - 係数は `app/services/term_score.py` のサーバ定数。クライアントからは変更不可
   - 各用語には `term_vector`（テーマと同一次元）が必須

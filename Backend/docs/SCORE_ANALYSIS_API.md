@@ -6,14 +6,29 @@ IDF は [IDF_DATA_PIPELINE.md](./IDF_DATA_PIPELINE.md)。スキーマは `app/sc
 
 ---
 
+## テーマ EMA の有効化（重要）
+
+チャンクごとの会話テーマと **`buffs.theme_linear`** は、コード定数 **`THEME_EMA_ENABLED`**（`app/services/term_score.py`）が `True` のときだけ有効。
+
+| 状態 | `POST /analysis/theme/chunk` | `POST /analysis/score/terms` のテーマ |
+|------|------------------------------|--------------------------------------|
+| **`THEME_EMA_ENABLED = False`（既定）** | 更新しない。`updated: false`、`diagnostics.reason: theme_ema_disabled` | `theme_linear` なし、`theme_vector_used: null` |
+| **`THEME_EMA_ENABLED = True`** | EMA 更新（従来どおり） | `theme/chunk` 済みセッションのベクトルを使用 |
+
+有効化: `term_score.py` で `THEME_EMA_ENABLED = True` に書き換え、アプリを再起動する（環境変数・DB では切り替えない）。
+
+エンドポイントは残る。オフ時も 200 で応答し、クライアントはテーマ系を無視してよい。
+
+---
+
 ## 呼び出しの目安
 
 1. 会話用の `session_id` をクライアントで発行する。  
-2. **発話／チャンクが確定するたび** `POST /analysis/theme/chunk`（テーマ類似によるスコア加算を使うなら必須に近い）
+2. （**テーマを使う場合のみ**）発話／チャンク確定のたび `POST /analysis/theme/chunk`（要 `THEME_EMA_ENABLED=True`）
 3. **スコアを計算・取得する時** `POST /analysis/score/terms`。  
-4. 会話終了時・会話切り替え時 `POST /analysis/theme/session/reset`。同一会話で `session_id` を使い回さないなら省略可。
+4. （任意）会話終了時 `POST /analysis/theme/session/reset`。
 
-テーマは**プロセス内メモリ**。再起動・別ワーカーでは共有されない。
+テーマ有効時は**プロセス内メモリ**。再起動・別ワーカーでは共有されない。
 
 ---
 
@@ -28,6 +43,8 @@ IDF は [IDF_DATA_PIPELINE.md](./IDF_DATA_PIPELINE.md)。スキーマは `app/sc
 ---
 
 ## `POST /analysis/theme/chunk`
+
+`THEME_EMA_ENABLED` が `False` のときは **ベクトル化・EMA を行わない**（即座にスキップ応答）。
 
 **Body**
 
@@ -53,7 +70,20 @@ IDF は [IDF_DATA_PIPELINE.md](./IDF_DATA_PIPELINE.md)。スキーマは `app/sc
 }
 ```
 
-**レスポンス例**（`updated: true` でテーマが更新された場合。数値は例）
+**レスポンス例**（`THEME_EMA_ENABLED = False` 時）
+
+```json
+{
+  "theme_vector": [],
+  "updated": false,
+  "diagnostics": {
+    "skipped": true,
+    "reason": "theme_ema_disabled"
+  }
+}
+```
+
+**レスポンス例**（`THEME_EMA_ENABLED = True` かつ `updated: true`。数値は例）
 
 ```json
 {
@@ -135,7 +165,7 @@ IDF は [IDF_DATA_PIPELINE.md](./IDF_DATA_PIPELINE.md)。スキーマは `app/sc
 | フィールド | 型 | 必須 | 備考 |
 |-----------|-----|------|------|
 | `lemma` | string | ○ | 基本形（IDF と揃える） |
-| `occurrence_count` | int | ○ | ≥0。サーバは保存せず素点に使用 |
+| `occurrence_count` | int | × | ≥0。**省略可**。指定時のみ下表の素点を計算 |
 | `term_vector` | number[] | ○ | テーマと**同一次元** |
 
 **200**
@@ -150,7 +180,7 @@ IDF は [IDF_DATA_PIPELINE.md](./IDF_DATA_PIPELINE.md)。スキーマは `app/sc
 | フィールド | 説明 |
 |-----------|------|
 | `lemma` | 基本形 |
-| `base` | 素点 |
+| `base` | 素点（`occurrence_count` 省略時は `0`） |
 | `buffs` | バフ内訳オブジェクト（キーは付いたバフだけ。空なら `{}`） |
 | `final` | 合成スコア（表示に多く使う） |
 
@@ -203,6 +233,36 @@ IDF は [IDF_DATA_PIPELINE.md](./IDF_DATA_PIPELINE.md)。スキーマは `app/sc
 ```
 
 `theme_vector_used` が `null` のときはテーマ類似バフなし（`buffs.theme_linear` も通常付かない）。
+
+**リクエスト例**（`occurrence_count` を省略。素点は付けずバフのみ）
+
+```json
+{
+  "session_id": "s1",
+  "terms": [
+    {"lemma": "語", "term_vector": [0.0, 0.0, 0.1]}
+  ]
+}
+```
+
+**レスポンス例**（上記リクエスト。`base` は `0`）
+
+```json
+{
+  "results": [
+    {
+      "lemma": "語",
+      "base": 0.0,
+      "buffs": {
+        "theme_linear": 0.2,
+        "idf_scaled": 0.05
+      },
+      "final": 0.25
+    }
+  ],
+  "theme_vector_used": [0.01, -0.02, 0.05]
+}
+```
 
 ---
 

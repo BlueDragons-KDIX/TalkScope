@@ -48,6 +48,8 @@
 
 R3 は**本番環境での最適化論点**である。`/analysis/theme/*` とセッション付きテーマは**プロセス内メモリ**で実装済み。複数ワーカーや再起動で共有する必要があるときは **Redis 等への差し替え**とセッション寿命を別タスクで設計する。
 
+**運用フラグ**: チャンクテーマ EMA と ``theme_linear`` は ``app/services/term_score.py`` の ``THEME_EMA_ENABLED``（既定 ``False``）で切替。詳細は ``docs/SCORE_ANALYSIS_API.md`` の「テーマ EMA の有効化」。
+
 ---
 
 ## 4. 機能要件（スコア）

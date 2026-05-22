@@ -35,7 +35,11 @@ class SessionResetResponse(BaseModel):
 
 class TermScoreInput(BaseModel):
     lemma: str = Field(min_length=1, description="基本形（IDF と揃える想定）")
-    occurrence_count: int = Field(ge=0)
+    occurrence_count: int | None = Field(
+        default=None,
+        ge=0,
+        description="会話内出現回数。省略時は素点（base）の計算をスキップし base=0",
+    )
     term_vector: list[float] = Field(description="用語ベクトル（テーマ次元と同一であること）")
 
 

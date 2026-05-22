@@ -151,3 +151,61 @@ def test_compute_term_score_additive_structure(monkeypatch: pytest.MonkeyPatch, 
     assert r["final"] >= 0.0
     assert "theme_linear" in r["buffs"]
     assert "idf_scaled" in r["buffs"]
+
+
+def test_get_theme_returns_none_when_ema_disabled(monkeypatch: pytest.MonkeyPatch, ts: Any) -> None:
+    monkeypatch.setattr("app.services.term_score.THEME_EMA_ENABLED", False)
+    ts.set_theme("sess-off", [1.0, 0.0])
+    assert ts.get_theme("sess-off") is None
+
+
+def test_compute_term_scores_for_request_no_theme_when_ema_disabled(
+    monkeypatch: pytest.MonkeyPatch, ts: Any
+) -> None:
+    from app.schemas.score_analysis import TermScoreInput
+
+    monkeypatch.setattr(ts, "THEME_EMA_ENABLED", False)
+    ts.set_theme("sess-off", [1.0, 0.0, 0.0])
+    out = ts.compute_term_scores_for_request(
+        "sess-off",
+        [TermScoreInput(lemma="自然", occurrence_count=1, term_vector=[1.0, 0.0, 0.0])],
+    )
+    assert out.theme_vector_used is None
+    assert "theme_linear" not in out.results[0].buffs
+
+
+def test_compute_term_scores_for_request_uses_theme_when_ema_enabled(
+    monkeypatch: pytest.MonkeyPatch, ts: Any
+) -> None:
+    from app.schemas.score_analysis import TermScoreInput
+
+    monkeypatch.setattr(ts, "THEME_EMA_ENABLED", True)
+    ts.set_theme("sess-on", [1.0, 0.0, 0.0])
+    out = ts.compute_term_scores_for_request(
+        "sess-on",
+        [TermScoreInput(lemma="自然", occurrence_count=1, term_vector=[1.0, 0.0, 0.0])],
+    )
+    assert out.theme_vector_used == [1.0, 0.0, 0.0]
+    assert "theme_linear" in out.results[0].buffs
+
+
+def test_compute_term_score_additive_skips_base_when_occurrence_count_omitted(
+    monkeypatch: pytest.MonkeyPatch, ts: Any
+) -> None:
+    from app.services.score_building_blocks import IdfLookupTable
+
+    tbl = IdfLookupTable({"自然": 4.0})
+    theme = [1.0, 0.0, 0.0]
+    termv = [1.0, 0.0, 0.0]
+    r = ts.compute_term_score_additive(
+        "自然",
+        occurrence_count=None,
+        theme_vector=theme,
+        term_vector=termv,
+        idf_table=tbl,
+        count_cap=100,
+    )
+    assert r["base"] == 0.0
+    assert "theme_linear" in r["buffs"]
+    assert "idf_scaled" in r["buffs"]
+    assert r["final"] == pytest.approx(r["buffs"]["theme_linear"] + r["buffs"]["idf_scaled"])

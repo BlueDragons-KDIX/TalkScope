@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 __all__ = [
+    "THEME_EMA_ENABLED",
     "adjacent_bigrams_for_scoring_text",
     "apply_theme_chunk",
     "clear_all_sessions",
@@ -63,6 +64,9 @@ _SCORE_THEME_SIM_WEIGHT = 0.5
 _SCORE_IDF_WEIGHT = 0.08
 # 出現回数から作る素点の上限 → 応答 base（count_axis_weight の cap）
 _SCORE_COUNT_CAP = 100
+
+# チャンクごとのテーマベクトル と score/terms の theme_linear（True にすると有効）
+THEME_EMA_ENABLED: bool = False
 
 # POST /analysis/theme/chunk の固定値（API からは変更不可）
 _THEME_CHUNK_NORMALIZE_SENTENCE = True
@@ -141,7 +145,7 @@ def update_theme_ema_chunk(
 def compute_term_score_additive(
     lemma: str,
     *,
-    occurrence_count: int,
+    occurrence_count: int | None = None,
     theme_vector: list[float] | None = None,
     term_vector: list[float] | None = None,
     idf_table: IdfLookupTable | None = None,
@@ -152,12 +156,16 @@ def compute_term_score_additive(
     """
     1用語ぶんの素点と各種バフを足し込み最終値を決める関数。
 
-    - **素点**: ``occurrence_count`` を ``count_axis_weight`` に通した値。
-    - **テーマ類似バフ**: セッション等のテーマベクトルと ``term_vector`` の類似。
-    - **IDF バフ**: ``idf_table`` が非 ``None`` かつ ``idf_weight != 0`` のときのみ。
-      テーブルは通常 ``idf_runtime.get_idf_table()``（起動時に DB ``term_idf`` または JSON から構築済み）。
+    ``occurrence_count`` を使うのは **素点（``base``）のみ**（``count_axis_weight``）。
+    省略（``None``）のときは素点計算をスキップし ``base=0``。
+
+    - **テーマ類似バフ**（``buffs["theme_linear"]``）: ``term_vector`` とテーマベクトル（``occurrence_count`` 非使用）。
+    - **IDF バフ**（``buffs["idf_scaled"]``）: ``lemma`` と IDF テーブル（``occurrence_count`` 非使用）。
     """
-    base = count_axis_weight(occurrence_count, cap=count_cap)
+    if occurrence_count is None:
+        base = 0.0
+    else:
+        base = count_axis_weight(occurrence_count, cap=count_cap)
     buffs: dict[str, float] = {}
 
     if (
@@ -190,7 +198,12 @@ _sessions: dict[str, list[float]] = {}
 
 
 def get_theme(session_id: str) -> list[float] | None:
-    """セッションに保存済みのテーマベクトルを返す（未設定なら ``None``）。コピーなのでミュータブル変更はしないこと。"""
+    """セッションに保存済みのテーマベクトルを返す（未設定なら ``None``）。コピーなのでミュータブル変更はしないこと。
+
+    ``THEME_EMA_ENABLED`` が ``False`` のときは常に ``None``（ストアを読まない）。
+    """
+    if not THEME_EMA_ENABLED:
+        return None
     with _lock:
         v = _sessions.get(session_id)
         return None if v is None else list(v)
@@ -231,6 +244,13 @@ def clear_all_sessions() -> None:
 
 def apply_theme_chunk(req: ThemeChunkRequest) -> ThemeChunkResponse:
     """``POST .../theme/chunk`` 用のオーケストレーション更新・インメモリ保存・レスポンス組み立て。"""
+    if not THEME_EMA_ENABLED:
+        return ThemeChunkResponse(
+            theme_vector=[],
+            updated=False,
+            diagnostics={"skipped": True, "reason": "theme_ema_disabled"},
+        )
+
     prev = get_theme(req.session_id)
     new_theme, updated, diagnostics = update_theme_ema_chunk(
         req.text,
@@ -256,7 +276,8 @@ def compute_term_scores_for_request(
 ) -> TermScoreBatchResponse:
     """``POST .../score/terms`` 用：複数用語の素点・テーマ類似・IDF バフを一括算出する。
 
-    テーマは ``session_id`` に ``theme/chunk`` で保存済みのベクトルのみ使用する（未設定ならテーマバフなし）。
+    テーマは ``THEME_EMA_ENABLED`` が ``True`` のときのみ ``session_id`` に ``theme/chunk`` で保存済みのベクトルを使う。
+    無効時は ``theme_linear`` を付けず ``theme_vector_used`` は ``null``。
     IDF は ``get_idf_table()`` のシングルトンを使用する。
     """
     theme: list[float] | None = get_theme(session_id)
@@ -271,7 +292,7 @@ def compute_term_scores_for_request(
             term_vector=t.term_vector,
             idf_table=idf_table_loaded,
             count_cap=_SCORE_COUNT_CAP,
-            theme_sim_weight=_SCORE_THEME_SIM_WEIGHT,
+            theme_sim_weight=_SCORE_THEME_SIM_WEIGHT if THEME_EMA_ENABLED else 0.0,
             idf_weight=_SCORE_IDF_WEIGHT if _SCORE_IDF_WEIGHT > 0 else 0.0,
         )
         results.append(_score_raw_to_term_result(raw))

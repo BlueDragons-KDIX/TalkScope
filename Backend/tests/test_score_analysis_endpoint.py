@@ -27,7 +27,66 @@ def _clear_sessions():
     clear_all_sessions()
 
 
-def test_theme_chunk_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.fixture
+def enable_theme_ema(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.term_score.THEME_EMA_ENABLED", True)
+
+
+def test_theme_chunk_disabled_by_default() -> None:
+    res = client.post(
+        "/analysis/theme/chunk",
+        json={"session_id": "s1", "text": "チャンク"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["updated"] is False
+    assert body["theme_vector"] == []
+    assert body["diagnostics"]["reason"] == "theme_ema_disabled"
+
+
+def test_score_terms_no_theme_buff_when_ema_disabled() -> None:
+    """EMA 無効時はストアにテーマがあっても score/terms で theme_linear を付けない。"""
+    from app.services.term_score import set_theme
+
+    set_theme("s_off", [0.6, 0.8])
+    res = client.post(
+        "/analysis/score/terms",
+        json={
+            "session_id": "s_off",
+            "terms": [
+                {"lemma": "自然", "occurrence_count": 1, "term_vector": [0.6, 0.8]},
+            ],
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["theme_vector_used"] is None
+    assert "theme_linear" not in body["results"][0]["buffs"]
+
+
+def test_score_terms_no_theme_after_chunk_when_ema_disabled() -> None:
+    """EMA 無効時は theme/chunk を呼んでも score/terms ではテーマを使わない。"""
+    chunk = client.post(
+        "/analysis/theme/chunk",
+        json={"session_id": "s_off2", "text": "チャンク"},
+    )
+    assert chunk.status_code == 200
+    assert chunk.json()["diagnostics"]["reason"] == "theme_ema_disabled"
+
+    res = client.post(
+        "/analysis/score/terms",
+        json={
+            "session_id": "s_off2",
+            "terms": [{"lemma": "自然", "occurrence_count": 1, "term_vector": [0.6, 0.8]}],
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["theme_vector_used"] is None
+    assert "theme_linear" not in body["results"][0]["buffs"]
+
+
+def test_theme_chunk_skipped(enable_theme_ema: None, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "app.services.term_score.update_theme_ema_chunk",
         lambda *_a, **_kw: ([], False, {"skipped": True}),
@@ -42,7 +101,7 @@ def test_theme_chunk_skipped(monkeypatch: pytest.MonkeyPatch) -> None:
     assert body["theme_vector"] == []
 
 
-def test_theme_chunk_persists(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_theme_chunk_persists(enable_theme_ema: None, monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_update(
         text: str,
         theme: list[float] | None,
@@ -105,6 +164,36 @@ def test_score_terms_rejects_unknown_body_field() -> None:
         },
     )
     assert res.status_code == 422
+
+
+def test_score_terms_without_occurrence_count(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_update(
+        text: str,
+        theme: list[float] | None,
+        alpha: float,
+        *,
+        normalize_sentence: bool = True,
+        min_content_tokens: int = 2,
+    ):
+        return [0.6, 0.8], True, {"skipped": False}
+
+    monkeypatch.setattr("app.services.term_score.update_theme_ema_chunk", fake_update)
+    client.post(
+        "/analysis/theme/chunk",
+        json={"session_id": "s_occ", "text": "チャンク"},
+    )
+    res = client.post(
+        "/analysis/score/terms",
+        json={
+            "session_id": "s_occ",
+            "terms": [{"lemma": "自然", "term_vector": [0.6, 0.8]}],
+        },
+    )
+    assert res.status_code == 200
+    r0 = res.json()["results"][0]
+    assert r0["lemma"] == "自然"
+    assert r0["base"] == 0.0
+    assert r0["final"] >= 0.0
 
 
 def test_score_terms_validation() -> None:
