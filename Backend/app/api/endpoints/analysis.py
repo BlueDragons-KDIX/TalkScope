@@ -142,3 +142,29 @@ async def refer_dictionary_get_scores(
         content=rf_dict_v1.service_analyze_text(body.text), 
         media_type="text/event-stream"
         )
+
+
+@router.post(
+    "/refer_dictionary_v1_test",
+    response_model=ReferDictionaryResponse,
+    summary="テキスト中の名詞を辞書検索し、意味を取得する",
+    description=(
+        "テスト用エンドポイント: v1 の refer_dictionary を呼び出す。"
+        "入力テキストを形態素解析して名詞を抽出し、各名詞の意味をDB またはLLM から取得します。"
+        " DB にキャッシュがあればそちらを返し、なければ LLM で生成して DB に登録します。"
+    ),
+    responses={
+        200: {"description": "辞書検索成功"},
+        422: {"description": "入力バリデーションエラー（text が空など）"},
+    },
+)
+async def refer_dictionary_v1_test_endpoint(
+    body: ReferDictionaryRequest,
+) -> ReferDictionaryResponse:
+    entries = []
+    async for chunk in rf_dict_v1.refer_dictionary(body.text):
+        entries.extend(chunk)
+    return ReferDictionaryResponse(
+        text=body.text,
+        entries=[ReferDictionaryEntry(**e) for e in entries],
+    )

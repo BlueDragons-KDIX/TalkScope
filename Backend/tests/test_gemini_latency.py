@@ -62,6 +62,7 @@ from pathlib import Path
 
 import dotenv
 import fastapi
+import httpx
 import pytest
 
 dotenv.load_dotenv(Path(__file__).parents[1] / ".env")
@@ -452,6 +453,21 @@ def _build_skipped_v1_result(terms: list[str], reason: str) -> LatencyResult:
     )
 
 
+async def _call_v1_prompts_parallel(prompts: list[str]) -> list[str]:
+    """
+    v1方式のGemini呼び出しを並列実行し、JSON parse前の本文文字列を返す。
+
+    Args:
+        prompts: Geminiへ送るプロンプトリスト
+    Returns:
+        response_texts: Gemini応答から抽出した本文文字列リスト
+    """
+    async with httpx.AsyncClient() as client:
+        return await asyncio.gather(
+            *(gemini_llm._call_gemini_async(prompt, client) for prompt in prompts)
+        )
+
+
 def _measure_v1_terms(terms: list[str], senses_per_term: int, group_size: int) -> LatencyResult:
     """
     v1方式のレイテンシを測定する。
@@ -477,9 +493,9 @@ def _measure_v1_terms(terms: list[str], senses_per_term: int, group_size: int) -
         timer.add_prompt(prompt)
 
     timer.start()
-    for prompt in prompts:
+    response_texts = asyncio.run(_call_v1_prompts_parallel(prompts))
+    for response_text in response_texts:
         # refer_dictionary_v1側: dictにマッピングする前のJSON文字列を取得して長さを測る
-        response_text = gemini_llm._call_gemini(prompt)
         raw_response_chars += len(response_text)
         # refer_dictionary_v1側: _generate_senses_for_terms内部と同じJSON parseを行う
         senses.update(gemini_llm._parse_json_response(response_text))

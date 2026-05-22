@@ -18,7 +18,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # ---------------------------------------------------------------------------
 # 公開関数
 # ---------------------------------------------------------------------------
-def generate_json(prompt: str) -> dict[str, list[str]]:
+async def generate_term_senses(prompt: str) -> dict[str, list[str]]:
     """Geminiを呼び出して、用語ごとの意味候補JSONを返す。
 
     この関数は「LLM呼び出しの薄い入口」として使う。
@@ -40,15 +40,16 @@ def generate_json(prompt: str) -> dict[str, list[str]]:
     if not normalized_prompt:
         raise fastapi.HTTPException(status_code=422, detail="prompt must not be blank")
 
-    response_text = _call_gemini(normalized_prompt)
+    async with httpx.AsyncClient() as client:
+        response_text = await _call_gemini_async(normalized_prompt, client)
     return _parse_json_response(response_text)
 
 
 # ---------------------------------------------------------------------------
 # Gemini呼び出し
 # ---------------------------------------------------------------------------
-def _call_gemini(prompt: str) -> str:
-    """Gemini REST APIを同期で呼び出し、応答本文テキストだけを返す。
+async def _call_gemini_async(prompt: str, client: httpx.AsyncClient) -> str:
+    """Gemini REST APIを非同期で呼び出し、応答本文テキストだけを返す。
 
     services.dictionary の _call_gemini と同じ方針で、
     設定不足・タイムアウト・上流エラーを FastAPI の HTTPException に変換する。
@@ -76,7 +77,7 @@ def _call_gemini(prompt: str) -> str:
 
     # httpxの例外を、API利用側が扱いやすいHTTPステータスへ変換する。
     try:
-        response = httpx.post(
+        response = await client.post(
             url,
             headers={"Content-Type": "application/json"},
             json=payload,

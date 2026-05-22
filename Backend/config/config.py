@@ -36,3 +36,5 @@ def get_database_url_env_key() -> str:
 
 
 ZERO_VECTOR_300: list[float] = [0.0] * 300  # 300次元のゼロベクトル
+REFER_DICTIONARY_V1_GROUP_SIZE: int = 10
+REFER_DICTIONARY_V1_GENERATE_MAX_SENSE: int = 3
