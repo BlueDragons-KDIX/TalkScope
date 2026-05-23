@@ -33,6 +33,8 @@ async def service_analyze_text(text: str) -> AsyncGenerator[str, None]:
             ).model_dump()
             for term, description, score in score_results
         ]
+        if not response:
+            continue
         yield f"data: {json.dumps(response, ensure_ascii=False)}\n\n"
 
 # ========================== Protocols / Type Aliases ===============================
@@ -122,8 +124,9 @@ async def refer_dictionary(text: str) -> AsyncGenerator[tuple[list[TermInfo], li
         terms_db_miss = [term for term in unique_joined_terms if term not in {r.term for r in results_term}] 
         miss_task = asyncio.create_task(_miss_terms_handler(terms_db_miss))
 
-    # hitはbest sense選択して返す (今は1単語1意味の想定なのでそのまま返す)
-    yield (results_term, text_vector, "db")
+    # hitした用語だけ先に返す。
+    if results_term:
+        yield (results_term, text_vector, "db")
     if miss_task is None:
         # missがない場合はここで終わり
         return
@@ -140,8 +143,9 @@ async def refer_dictionary(text: str) -> AsyncGenerator[tuple[list[TermInfo], li
         )
     )
     
-    # 最後にbest sense選択して返す
-    yield (results_terms, text_vector, "llm")
+    # missした用語を返す。
+    if results_terms:
+        yield (results_terms, text_vector, "llm")
     await storetask
 
 

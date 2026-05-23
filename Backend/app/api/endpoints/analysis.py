@@ -18,6 +18,25 @@ import app.services.refer_dictionary_v1 as rf_dict_v1
 router = fastapi.APIRouter()
 
 
+def _refer_dictionary_scores_streaming_response(text: str) -> StreamingResponse:
+    """
+    refer_dictionary_get_scores のSSEレスポンスを組み立てる。
+
+    Args:
+        text: 辞書検索とスコア計算の対象テキスト。
+    Returns:
+        response: SSE形式のStreamingResponse。
+    """
+    return StreamingResponse(
+        content=rf_dict_v1.service_analyze_text(text),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @router.post(
     "/vectorize",
     response_model=VectorizeResponse,
@@ -138,7 +157,29 @@ async def refer_dictionary_endpoint(
 async def refer_dictionary_get_scores(
     body: ReferDictionaryRequest,
 ) -> StreamingResponse:
-    return StreamingResponse(
-        content=rf_dict_v1.service_analyze_text(body.text), 
-        media_type="text/event-stream"
-        )
+    return _refer_dictionary_scores_streaming_response(body.text)
+
+
+@router.get(
+    "/refer_dictionary_get_scores/stream",
+    summary="GETパラメータで辞書スコアSSEを受け取る",
+    description=(
+        "ブラウザの EventSource などで確認しやすいように、text クエリパラメータから"
+        "辞書検索と関連スコア計算を実行し、SSEで順次返します。"
+    ),
+    responses={
+        200: {"description": "SSEストリーム開始"},
+        422: {"description": "入力バリデーションエラー（text が空など）"},
+    },
+)
+async def refer_dictionary_get_scores_stream(
+    text: str = fastapi.Query(
+        ...,
+        min_length=1,
+        description="辞書検索とスコア計算の対象テキスト",
+        examples=["量子計算と画像認識と音声合成"],
+    ),
+) -> StreamingResponse:
+    if not text.strip():
+        raise fastapi.HTTPException(status_code=422, detail="text must not be blank")
+    return _refer_dictionary_scores_streaming_response(text)
