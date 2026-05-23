@@ -36,7 +36,7 @@ __all__ = [
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
     """コサイン類似度を ``[-1, 1]`` で返す。どちらかのノルムが 0 のときは ``0.0``。"""
-    if len(a) == 0 or len(b) == 0:
+    if len(a) == 0 or len(b) == 0 or a is None or b is None:
         return 0.0
     n = min(len(a), len(b))
     dot = 0.0

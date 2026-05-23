@@ -199,3 +199,9 @@ class TermInfo:
         self.idf_wiki : float | None = idf_wiki
         # 意味とベクトルの対応付けをしつつ、複数の意味を保持できるようにする
         self.description_embeddings : list[tuple[str, list[float]]] = description_embeddings
+
+class ResponseTermScore(BaseModel):
+    term : str = Field(description="重要単語")
+    description : str = Field(description="重要単語の説明")
+    score : float = Field(description="基本スコア")
+    source : str = Field(description='回答ソース')

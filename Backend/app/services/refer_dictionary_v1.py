@@ -1,31 +1,39 @@
 import asyncio
+import json
 from typing import AsyncGenerator, Awaitable
 
 from fastapi.logger import logger
 
-from app.schemas.dictionary import TermInfo
+import app.services.term_score as term_score
+from app.schemas.dictionary import ResponseTermScore, TermInfo
 from config.config import (
     REFER_DICTIONARY_V1_GENERATE_MAX_SENSE,
     REFER_DICTIONARY_V1_GROUP_SIZE,
-    ZERO_VECTOR_300,
 )
 import app.services.refer_dictionary as rd
-import app.crud.dictionary as crud_dict
 import app.crud.dictionary_v1 as crud_dict_v1
 import app.services.llm as llm
 from app.services.enbedding import spacy_enbedding as sp_emb
 from typing import Callable
 
-# 
-
 # ================================ endpoint_service ======================================
-async def service_analyze_text(text: str):
-    async for entry in refer_dictionary(text):
-        # スコア計算
-        for term in entry:
-            pass
-        # 結果の整形
-        pass
+async def service_analyze_text(text: str) -> AsyncGenerator[str, None]:
+    async for term_infos, text_vector, source in refer_dictionary(text):
+        score_results = term_score.compute_term_score_by_term_info(
+            term_infos=term_infos,
+            text_vector=text_vector,
+        )
+        # パース
+        response = [
+            ResponseTermScore(
+                term=term,
+                description=description,
+                score=score,
+                source=source,
+            ).model_dump()
+            for term, description, score in score_results
+        ]
+        yield f"data: {json.dumps(response, ensure_ascii=False)}\n\n"
 
 # ========================== Protocols / Type Aliases ===============================
 
@@ -41,7 +49,7 @@ GenerateTermSensesProtocol = Callable[[str], Awaitable[dict[str, list[str]]]]
 
 # ================================= Service ======================================
 
-async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry], None]:
+async def refer_dictionary(text: str) -> AsyncGenerator[tuple[list[TermInfo], list[float], str]]:
     """
     テキスト中の名詞を辞書検索し、結果を返す。
     処理フローメモ
@@ -78,12 +86,17 @@ async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry]
     
     # TODO: エンベディングと形態素・DB検索の並列化の検討 (しばらくは実装に着手しない)
     # 入力テキストのembeddingを先に計算しておく（意味的な近さの計算に使うため）
-    # test_embedding = asyncio.create_task(_compute_text_embedding(sp_emb.call_embedding_api, text))
+    input_text_embedding_task = asyncio.create_task(
+        asyncio.to_thread(
+            _compute_text_embedding,
+            call_embedding_api=sp_emb.call_embedding_api,
+            text=text,
+        )
+    )
 
     # 形態素解析で検索対象の抽出
     search_targets = rd._extract_search_targets(text)
     if not search_targets:
-        yield []
         return
     
     # dedup（複数の形態素が同じ単語を指す場合があるため）
@@ -91,11 +104,17 @@ async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry]
     unique_joined_terms = ["".join(term_tuple) for term_tuple in unique_terms]
 
     # DB検索(バッチで検索)
-    results_term = await asyncio.to_thread(
-        _fetch_term_infos_or_empty,
-        fetch_term_infos=crud_dict_v1.read_term_infos,
-        terms=unique_joined_terms
+    fetch_term_info_task = asyncio.create_task(
+        asyncio.to_thread(
+            _fetch_term_infos_or_empty,
+            fetch_term_infos=crud_dict_v1.read_term_infos,
+            terms=unique_joined_terms
+        )
     )
+
+    await asyncio.gather(input_text_embedding_task, fetch_term_info_task)
+    text_vector = input_text_embedding_task.result()
+    results_term = fetch_term_info_task.result()
 
     miss_task: asyncio.Task | None = None
     # missがあれば、事前に並列実行
@@ -104,7 +123,7 @@ async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry]
         miss_task = asyncio.create_task(_miss_terms_handler(terms_db_miss))
 
     # hitはbest sense選択して返す (今は1単語1意味の想定なのでそのまま返す)
-    yield _best_sense_selection(term_infos=results_term, text_embedding=[], source="db")
+    yield (results_term, text_vector, "db")
     if miss_task is None:
         # missがない場合はここで終わり
         return
@@ -122,7 +141,7 @@ async def refer_dictionary(text: str) -> AsyncGenerator[list[rd.DictionaryEntry]
     )
     
     # 最後にbest sense選択して返す
-    yield _best_sense_selection(term_infos=results_terms, text_embedding=[], source="llm")
+    yield (results_terms, text_vector, "llm")
     await storetask
 
 
@@ -142,8 +161,8 @@ def _compute_text_embedding(*, call_embedding_api: CallableEmbeddingAPIProtocol,
         embedding = call_embedding_api(text)
         return embedding
     except Exception as e:
-        logger.exception("Embedding APIの呼び出しに失敗: %s\n ゼロベクトルを返します。", e)
-        return ZERO_VECTOR_300.copy()
+        logger.exception("Embedding APIの呼び出しに失敗: %s\n 空ベクトルを返します。", e)
+        return []
 
 def _embed_terms(call_embedding_api: CallableEmbeddingAPIProtocol, terms: dict[str, list[str]]) -> list[TermInfo]:
     """
@@ -246,31 +265,31 @@ def store_term_infos(*, insert_db_term_infos: InsertDBTermInfosProtocol, term_in
     except Exception as e:
         logger.exception("DB保存に失敗: %s\n 処理は継続します。", e)
 
-def _best_sense_selection(term_infos: list[TermInfo], text_embedding: list[float], source: str) -> list[rd.DictionaryEntry]:
-    """
-        DBから複数エントリがヒットした場合の意味選択ロジック
-        Args:
-            term_infos: DBからヒットした用語情報のリスト
-            text_embedding: 入力テキストのembedding
-            source: 用語のソース（DBかLLMか）を示す文字列
-        Returns:
-            best_info: term_infosの中でtext_embeddingに最も意味的に近い
-    """
-    # TODO: text_embeddingとterm_infosの意味ベクトルを比較して最も近いものを選ぶロジックを実装する（現状は単純に先頭の意味を選ぶ）
-    # また、ゼロベクトルを想定したハンドリングも必要(スコア計算も同じく)
-    results: list[rd.DictionaryEntry] = []
-    for term_info in term_infos:
-        if not term_info.description_embeddings:
-            continue
-        results.append(
-            rd.DictionaryEntry(
-                term=term_info.term,
-                description=term_info.description_embeddings[0][0],
-                meaning_vector=term_info.description_embeddings[0][1],
-                source=source,
-            )
-        )
-    return results
+# def _best_sense_selection(term_infos: list[TermInfo], text_embedding: list[float], source: str) -> list[rd.DictionaryEntry]:
+#     """
+#         DBから複数エントリがヒットした場合の意味選択ロジック
+#         Args:
+#             term_infos: DBからヒットした用語情報のリスト
+#             text_embedding: 入力テキストのembedding
+#             source: 用語のソース（DBかLLMか）を示す文字列
+#         Returns:
+#             best_info: term_infosの中でtext_embeddingに最も意味的に近い
+#     """
+#     # TODO: text_embeddingとterm_infosの意味ベクトルを比較して最も近いものを選ぶロジックを実装する（現状は単純に先頭の意味を選ぶ）
+#     # また、空ベクトルを想定したハンドリングも必要(スコア計算も同じく)
+#     results: list[rd.DictionaryEntry] = []
+#     for term_info in term_infos:
+#         if not term_info.description_embeddings:
+#             continue
+#         results.append(
+#             rd.DictionaryEntry(
+#                 term=term_info.term,
+#                 description=term_info.description_embeddings[0][0],
+#                 meaning_vector=term_info.description_embeddings[0][1],
+#                 source=source,
+#             )
+#         )
+#     return results
 
 def _build_prompts(terms: list[str], group_size: int = 10, generate_max_sense: int = 3) -> list[str]:
     """

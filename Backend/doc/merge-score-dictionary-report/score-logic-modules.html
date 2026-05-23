@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>スコア計算ロジックと利用可能モジュール</title>
+  <style>
+    :root {
+      --ink: #162033;
+      --muted: #58657a;
+      --paper: #ffffff;
+      --line: #d8e0ef;
+      --blue: #1f6fff;
+      --green: #11976f;
+      --rose: #d93672;
+      --slate: #273449;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.8;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 40px 28px 64px;
+      color: var(--ink);
+      background: linear-gradient(135deg, #edf5ff 0%, #f2fff9 48%, #fff4f8 100%);
+    }
+    body::before {
+      content: "score logic";
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      color: var(--blue);
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(31, 111, 255, 0.24);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(32px, 5vw, 54px);
+      line-height: 1.08;
+    }
+    h2 {
+      margin-top: 36px;
+      color: var(--slate);
+      border-left: 7px solid var(--green);
+      padding: 8px 0 8px 12px;
+      line-height: 1.3;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 8px;
+    }
+    p, li { color: var(--muted); }
+    code {
+      background: #edf4ff;
+      color: #1649a7;
+      padding: 0.15em 0.4em;
+      border-radius: 5px;
+      font-weight: 650;
+    }
+    pre {
+      overflow: auto;
+      border: 1px solid #c9d8f4;
+      border-radius: 10px;
+      padding: 16px;
+      background: #111827;
+      box-shadow: 0 12px 30px rgba(17, 24, 39, 0.12);
+    }
+    pre code {
+      color: #d9f99d;
+      background: transparent;
+      padding: 0;
+      font-weight: 500;
+    }
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--paper);
+      box-shadow: 0 12px 30px rgba(31, 71, 110, 0.08);
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 12px 14px;
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: 0; }
+    th {
+      color: #ffffff;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      text-align: left;
+    }
+    ul {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px 22px 16px 34px;
+    }
+  </style>
+</head>
+<body>
+  <h1>スコア計算ロジックの説明と利用可能モジュール</h1>
+  <p>
+    マージで増えたスコア計算関連のファイル、主要関数、入力と出力を整理する。
+    現時点では「使えそうな部品」と「HTTPで実際に使っている部品」を分けて見る。
+  </p>
+
+  <h2>追加・関連モジュール一覧</h2>
+  <table>
+    <thead>
+      <tr><th>ファイル</th><th>役割</th><th>現行HTTP経路での利用</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>app/api/endpoints/score_analysis.py</code></td>
+        <td><code>/analysis/theme/chunk</code>, <code>/analysis/theme/session/reset</code>, <code>/analysis/score/terms</code> を公開する薄いAPI層。</td>
+        <td>利用あり</td>
+      </tr>
+      <tr>
+        <td><code>app/schemas/score_analysis.py</code></td>
+        <td>テーマEMAと用語スコアAPIのPydanticスキーマ。</td>
+        <td>利用あり</td>
+      </tr>
+      <tr>
+        <td><code>app/services/term_score.py</code></td>
+        <td>形態素フィルタ、テーマEMA、インメモリセッション、用語スコア計算のオーケストレーション。</td>
+        <td>利用あり</td>
+      </tr>
+      <tr>
+        <td><code>app/services/score_building_blocks.py</code></td>
+        <td>コサイン類似度、EMA、IDF辞書、出現回数素点、PMI、加算合成などの純関数群。</td>
+        <td>一部利用あり</td>
+      </tr>
+      <tr>
+        <td><code>app/services/idf_runtime.py</code></td>
+        <td>起動時にDBまたはJSONからIDF辞書を読み、プロセス内シングルトンにする。</td>
+        <td>設計上は利用あり。ただし現状は <code>main.py</code> で呼び出しコメントアウト。</td>
+      </tr>
+      <tr>
+        <td><code>app/models/term_idf.py</code></td>
+        <td>IDFマスタ <code>term_idf</code> のORMモデル。</td>
+        <td>IDFロードが有効なら利用</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>API入力と出力</h2>
+  <table>
+    <thead>
+      <tr><th>API</th><th>入力</th><th>出力</th><th>備考</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>POST /analysis/theme/chunk</code></td>
+        <td><code>{ session_id: string, text: string }</code></td>
+        <td><code>{ theme_vector: float[], updated: bool, diagnostics: object }</code></td>
+        <td><code>THEME_EMA_ENABLED=False</code> のため、デフォルトでは更新されない。</td>
+      </tr>
+      <tr>
+        <td><code>POST /analysis/theme/session/reset</code></td>
+        <td><code>{ session_id: string }</code></td>
+        <td><code>{ session_id: string, cleared: bool }</code></td>
+        <td>インメモリのテーマセッションを削除する。</td>
+      </tr>
+      <tr>
+        <td><code>POST /analysis/score/terms</code></td>
+        <td><code>{ session_id: string, terms: [{ lemma, occurrence_count?, term_vector }] }</code></td>
+        <td><code>{ results: [{ lemma, base, buffs, final }], theme_vector_used }</code></td>
+        <td>IDFテーブルがあれば <code>buffs.idf_scaled</code>、テーマ有効なら <code>buffs.theme_linear</code> が付く。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>主な計算部品</h2>
+  <table>
+    <thead>
+      <tr><th>関数・クラス</th><th>入力</th><th>出力</th><th>使いどころ</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>compute_term_score_additive()</code></td>
+        <td><code>lemma</code>, <code>occurrence_count?</code>, <code>theme_vector?</code>, <code>term_vector?</code>, <code>idf_table?</code></td>
+        <td><code>{ base, buffs, debuffs, final, lemma }</code></td>
+        <td>1語ぶんのスコアを計算する中心関数。</td>
+      </tr>
+      <tr>
+        <td><code>compute_term_scores_for_request()</code></td>
+        <td><code>session_id</code>, <code>TermScoreInput[]</code></td>
+        <td><code>TermScoreBatchResponse</code></td>
+        <td>HTTPリクエスト単位の複数語スコア計算。</td>
+      </tr>
+      <tr>
+        <td><code>count_axis_weight()</code></td>
+        <td><code>count: int</code>, <code>cap: int</code></td>
+        <td><code>float</code></td>
+        <td>出現回数から素点 <code>base</code> を作る。中間が最大になる放物線。</td>
+      </tr>
+      <tr>
+        <td><code>cosine_similarity()</code></td>
+        <td><code>float[]</code>, <code>float[]</code></td>
+        <td><code>-1.0..1.0</code></td>
+        <td>テーマベクトルと用語ベクトルの類似度計算。</td>
+      </tr>
+      <tr>
+        <td><code>linear_cosine_similarity_to_unit()</code></td>
+        <td><code>-1.0..1.0</code></td>
+        <td><code>0.0..1.0</code></td>
+        <td>コサイン類似度をバフにしやすい値へ変換。</td>
+      </tr>
+      <tr>
+        <td><code>ema_theme_step()</code></td>
+        <td><code>theme?</code>, <code>v_t</code>, <code>alpha</code></td>
+        <td><code>float[]</code></td>
+        <td>チャンクごとの文ベクトルをテーマベクトルへなじませる。</td>
+      </tr>
+      <tr>
+        <td><code>IdfLookupTable</code></td>
+        <td><code>{ lemma: idf }</code></td>
+        <td><code>lookup(term): float</code></td>
+        <td>IDF値を引く。未収録語は平均IDFにフォールバック。</td>
+      </tr>
+      <tr>
+        <td><code>load_idf_table_from_json()</code></td>
+        <td><code>JSON path</code>, <code>min_idf?</code></td>
+        <td><code>IdfLookupTable</code></td>
+        <td>開発用IDF JSONの読み込み。</td>
+      </tr>
+      <tr>
+        <td><code>morph_tokens_for_scoring()</code></td>
+        <td><code>text</code></td>
+        <td><code>token dict[]</code></td>
+        <td>名詞・固有名詞中心にスコア対象トークンを抽出。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>スコア式の現状</h2>
+  <p>
+    現行の <code>compute_term_score_additive()</code> は以下の足し算で最終値を作る。
+  </p>
+  <pre><code>base = count_axis_weight(occurrence_count, cap=100)
+theme_linear = 0.5 * linear_cosine_similarity_to_unit(cosine(term_vector, theme_vector))
+idf_scaled = 0.08 * idf_table.lookup(lemma)
+final = max(0.0, base + sum(buffs))</code></pre>
+  <p>
+    <code>occurrence_count</code> が省略された場合は <code>base=0</code>。
+    <code>THEME_EMA_ENABLED=False</code> の場合はテーマベクトルを使わない。
+    <code>idf_table</code> が <code>None</code> の場合はIDFバフを付けない。
+  </p>
+
+  <h2>既存機能への接続候補</h2>
+  <ul>
+    <li>
+      <code>term_vector</code> は既存辞書DBの <code>Dictionary.meaning_vector</code> または <code>InfoTable.meaning_vector</code> と接続できそう。
+      ただし次元や意味の粒度を揃える必要がある。
+    </li>
+    <li>
+      <code>morph_tokens_for_scoring()</code> は既存 <code>analysis</code> の形態素解析結果と接続できる。
+      ただし動詞・形容詞を含める既存TF-IDFとはフィルタ方針が違う。
+    </li>
+    <li>
+      <code>IdfLookupTable</code> は、将来 <code>dictionary_terms.idf_wiki</code> を使うなら変換レイヤを用意できる。
+      現状は新規 <code>term_idf</code> テーブルが正として設計されている。
+    </li>
+  </ul>
+</body>
+</html>

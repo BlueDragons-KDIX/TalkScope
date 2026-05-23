@@ -22,7 +22,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from app.core.database import db
+from app.core.database import get_database
 from app.models.term_idf import TermIdf
 from app.services.score_building_blocks import IdfLookupTable, load_idf_table_from_json
 
@@ -30,6 +30,7 @@ _logger = logging.getLogger(__name__)
 
 _table: IdfLookupTable | None = None
 
+db = get_database()
 
 def _term_idf_load_min_value_from_env() -> float | None:
     """読み込み対象とする下限 IDF（``TERM_IDF_LOAD_MIN_VALUE``）。未設定または不正なら ``None``＝下限なし。"""

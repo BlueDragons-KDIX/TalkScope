@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from app.schemas.dictionary import TermInfo
+
 __all__ = [
     "THEME_EMA_ENABLED",
     "adjacent_bigrams_for_scoring_text",
@@ -320,3 +322,46 @@ def _score_raw_to_term_result(raw: dict[str, object]) -> TermScoreResult:
         buffs=bs,
         final=_nf(raw.get("final")),
     )
+
+
+# =============== スコア計算エントリ =======================
+def compute_term_score_by_term_info(
+    term_infos: list[TermInfo],
+    text_vector: list[float] | None = None,
+) -> list[tuple[str, str, float]]:
+    """
+    Args:
+        term_infos: 用語情報のリスト。複数意味がある場合は複数エントリになる想定。
+        text_vector: チャンク全体のベクトル。テーマ類似の計算に使う。未提供ならテーマ類似はスコアに入れない
+    Returns:
+        用語、説明、スコアのタプルのリスト。スコアはテーマ類似とIDFを加味したもの。
+    """
+    score_results = []
+    for term_info in term_infos:
+        term = term_info.term
+        idf = term_info.idf_wiki
+        if not term_info.description_embeddings:
+            continue
+
+        # 全部の説明のベクトルと類似度を取り、最も文脈に近い説明を選ぶ。
+        if text_vector and term_info.description_embeddings:
+            best_description, best_similarity = max(
+                [
+                    (description, cosine_similarity(embedding, text_vector))
+                    for description, embedding in term_info.description_embeddings
+                ],
+                key=lambda x: x[1],
+            )
+        elif term_info.description_embeddings:
+            best_description, _ = term_info.description_embeddings[0]
+            best_similarity = 0.0
+        
+        if idf is None:
+            # idfを求める
+            # コーパスが完成してから実装予定
+            pass
+        # scoreと意味を決定
+        score = _SCORE_THEME_SIM_WEIGHT * linear_cosine_similarity_to_unit(best_similarity) + _SCORE_IDF_WEIGHT * (idf or 0.0)
+        score_results.append((term, best_description, score))
+    return score_results
+
