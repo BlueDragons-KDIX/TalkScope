@@ -5,7 +5,7 @@
  * `id`・`kana`・`category` は空文字、`relatedTerms` は空配列。
  */
 import type { Term } from '../../domain/entities/Term'
-import type { TermRow } from './termScoreApiTypes'
+import type { TermRow } from './StreamTypes'
 
 const EMPTY_LEGACY = {
   id: '',
