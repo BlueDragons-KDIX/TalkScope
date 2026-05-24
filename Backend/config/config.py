@@ -26,7 +26,7 @@ def get_database_url_env_key() -> str:
     while True:
         selected = input(
             "DATABASE_ENV_KEY が未指定です。使用するDBを選んでください "
-            "[dev/production]: "
+            "[dev/prod]: "
         ).strip().lower()
         if selected in {"dev", "development", "d"}:
             return "DEV_DATABASE_URL"
