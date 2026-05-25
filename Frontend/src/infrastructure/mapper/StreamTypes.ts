@@ -4,6 +4,7 @@
  */
 
 export interface TermRow {
+  id: string
   term: string
   description: string
   score: number
