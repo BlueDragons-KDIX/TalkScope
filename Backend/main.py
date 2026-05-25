@@ -1,6 +1,3 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import os
 import logging
 from contextlib import asynccontextmanager
@@ -21,16 +18,14 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
     """アプリの起動・終了時に実行されるライフスパンイベント。"""
-    # 起動時: 明示的に有効化された場合のみ DB 初期化を実行する。
-    db_init_enabled = os.environ.get("ENABLE_DB_INIT", "").lower() in {"1", "true", "yes"}
-    if db_init_enabled and os.environ.get("DATABASE_URL"):
-        from app.core.database import db
+    from app.core.database import get_database
+
+    db = get_database()
+    if db.is_available:
         db.init_db()
         logger.info("DB 初期化完了")
-    elif os.environ.get("DATABASE_URL"):
-        logger.info("DATABASE_URL は設定済みだが ENABLE_DB_INIT が無効のためスキップ")
     else:
-        logger.warning("DATABASE_URL 未設定のため、DB 初期化をスキップ")
+        logger.warning("%s 未設定または接続失敗のため、DB 初期化をスキップ", db.env_key)
     yield
     # 終了時: 必要に応じてクリーンアップ
 
@@ -44,7 +39,7 @@ app = fastapi.FastAPI(
         " フロント連携時は /analysis/vectorize を利用してください。"
     ),
     openapi_tags=[
-        {"name": "analysis", "description": "テキスト解析・ベクトル化API"},
+        {"name": "analysis", "description": "テキスト解析・ベクトル化・用語スコア・テーマEMA"},
         {"name": "dictionary", "description": "単語の意味概要検索API"},
         {"name": "hoge", "description": "サンプルAPI"},
     ],

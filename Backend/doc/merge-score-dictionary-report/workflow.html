@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>merge-score-dictionary 今後のワークフロー</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #58677d;
+      --paper: #ffffff;
+      --line: #d6e3ea;
+      --teal: #0f9f93;
+      --blue: #2563eb;
+      --amber: #d88714;
+    }
+    * { box-sizing: border-box; }
+    body {
+      counter-reset: phase;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.8;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 40px 28px 64px;
+      color: var(--ink);
+      background: linear-gradient(135deg, #effcf9 0%, #f3f7ff 50%, #fff8eb 100%);
+    }
+    body::before {
+      content: "workflow";
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      color: var(--teal);
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(15, 159, 147, 0.25);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(32px, 5vw, 54px);
+      line-height: 1.08;
+    }
+    h2 {
+      margin: 0 0 12px;
+      line-height: 1.3;
+      color: var(--blue);
+    }
+    p, li { color: var(--muted); }
+    code {
+      background: #eaf4ff;
+      color: #174ea6;
+      padding: 0.15em 0.4em;
+      border-radius: 5px;
+      font-weight: 650;
+    }
+    .phase {
+      counter-increment: phase;
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px 20px 18px 74px;
+      margin: 18px 0;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 12px 30px rgba(31, 77, 92, 0.08);
+    }
+    .phase::before {
+      content: counter(phase);
+      position: absolute;
+      left: 20px;
+      top: 20px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--teal), var(--blue));
+      font-weight: 900;
+    }
+    .phase:nth-of-type(2n)::before { background: linear-gradient(135deg, var(--amber), var(--blue)); }
+    ol, ul { padding-left: 20px; }
+    body > ul {
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px 22px 16px 34px;
+    }
+  </style>
+</head>
+<body>
+  <h1>今後のワークフロー</h1>
+  <p>
+    スコア計算ロジックと辞書DBまわりを安全に統合するための作業順。
+    いきなり修正せず、調査・判断・最小修正・検証の順で進める。
+  </p>
+
+  <div class="phase">
+    <h2>Phase 1: 現状固定と問題分類</h2>
+    <ol>
+      <li><code>git status --short</code> で未解決・未追跡・意図しない差分を確認する。</li>
+      <li><code>Backend/main.py</code> の衝突解消後の状態を確認する。</li>
+      <li>DB接続方式、IDFロード方式、API登録状態、テスト追加分を分類する。</li>
+      <li>本ディレクトリの調査HTMLを更新する。</li>
+    </ol>
+  </div>
+
+  <div class="phase">
+    <h2>Phase 2: 方針決定</h2>
+    <ol>
+      <li>IDFバフを今回有効にするか、将来用として無効のまま残すか決める。</li>
+      <li><code>term_idf</code> と <code>dictionary_terms.idf_wiki</code> の正を決める。</li>
+      <li><code>term_vector</code> の生成元を決める。</li>
+      <li><code>THEME_EMA_ENABLED</code> の切り替え方法をコード定数のままにするか決める。</li>
+      <li><code>.env</code> 読み込み方針をAGENTSのルールと合わせる。</li>
+    </ol>
+  </div>
+
+  <div class="phase">
+    <h2>Phase 3: 最小修正候補</h2>
+    <ol>
+      <li>
+        <code>idf_runtime.py</code> の <code>db</code> 参照を現在のDB APIに合わせる。
+        例: <code>get_database()</code> を使う。
+      </li>
+      <li>
+        <code>main.py</code> の <code>init_idf_table</code> を呼ぶか、呼ばないならimportとドキュメントを整理する。
+      </li>
+      <li>
+        <code>term_idf</code> の実データがない前提で、IDFなしでもAPIが落ちないことを確認する。
+      </li>
+      <li>
+        未使用の将来用関数は残す場合、ドキュメントに「HTTP未使用」と明記する。
+      </li>
+    </ol>
+  </div>
+
+  <div class="phase">
+    <h2>Phase 4: テスト整理</h2>
+    <ol>
+      <li><code>cd Backend &amp;&amp; uv run pytest tests/test_score_building_blocks.py</code></li>
+      <li><code>cd Backend &amp;&amp; uv run pytest tests/test_term_score.py</code></li>
+      <li><code>cd Backend &amp;&amp; uv run pytest tests/test_idf_runtime.py</code></li>
+      <li><code>cd Backend &amp;&amp; uv run pytest tests/test_score_analysis_endpoint.py</code></li>
+      <li>辞書系との結合確認として <code>tests/test_dictionary_*.py</code> と <code>tests/test_refer_dictionary_endpoint.py</code> を必要範囲で実行する。</li>
+    </ol>
+    <p>
+      DBが必要なテストは <code>integration</code> marker やDB availability skipを前提に扱う。
+      依存同期が必要な場合は <code>uv sync</code> がインストール系コマンドに該当するため、事前確認を取る。
+    </p>
+  </div>
+
+  <div class="phase">
+    <h2>Phase 5: README / docs 同期</h2>
+    <ol>
+      <li><code>Backend/README.md</code> のスコアAPI説明を実装状態に合わせる。</li>
+      <li><code>Backend/docs/IDF_DATA_PIPELINE.md</code> に、IDF実データが未同梱であることを書くか判断する。</li>
+      <li><code>Backend/docs/SCORE_ANALYSIS_API.md</code> に、テーマEMAがデフォルト無効である点を明確にする。</li>
+      <li>ルートREADMEへの影響があるなら提出テンプレートを崩さない形で同期する。</li>
+    </ol>
+  </div>
+
+  <h2>完了条件</h2>
+  <ul>
+    <li>アプリ起動時に <code>idf_runtime</code> のimportで落ちない。</li>
+    <li>IDFデータがなくても <code>/analysis/score/terms</code> が正常に動く。</li>
+    <li>IDFデータを入れた場合の読み込み経路が1つに説明できる。</li>
+    <li>辞書DBの <code>idf_wiki</code> とスコアDBの <code>term_idf</code> の関係が説明できる。</li>
+    <li>スコア系・辞書系の主要テストの実行方法がREADMEまたはdocsに揃っている。</li>
+  </ul>
+</body>
+</html>

@@ -5,7 +5,7 @@ import re
 import fastapi
 from sqlalchemy.exc import IntegrityError
 
-from app.core.database import db
+from app.core.database import get_database
 from app.crud.dictionary import (
     create_dictionary,
     delete_dictionary,
@@ -31,6 +31,7 @@ from app.services.text_analysis import vectorize_pretokenized_words
 
 router = fastapi.APIRouter()
 _TERM_SPLIT_RE = re.compile(r"[,\s、，]+")
+db = get_database()
 
 
 def _ensure_db_available() -> None:

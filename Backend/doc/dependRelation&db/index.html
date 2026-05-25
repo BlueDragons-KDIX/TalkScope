@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TalkScope Backend Survey</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">TalkScope Backend Survey</p>
+      <h1>関数依存・DB調査レポート</h1>
+      <p>調査日: 2026-05-10 / 対象: <code>Backend/app</code>, <code>Backend/db</code>, <code>Backend/scripts</code>, <code>Backend/tests</code></p>
+      <p><a href="./workflow.html">調査ワークフロー</a> に沿って、読み取り調査と静的解析を実施。書き込みは本ディレクトリ配下のみ。</p>
+    </header>
+
+    <section class="section">
+      <h2>結論</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>循環依存</h3>
+          <p class="status-good">アプリ内モジュールの循環importは検出なし。</p>
+          <p>ASTで <code>app.*</code> と <code>config.*</code> のimportグラフを抽出した範囲では閉路なし。関数呼び出しも主要フロー上の再帰・閉路は見当たらない。</p>
+        </article>
+        <article class="card">
+          <h3>依存構造</h3>
+          <p class="status-warn">API層からCRUD/サービスへ直接依存する箇所が混在。</p>
+          <p><code>analysis</code> はサービス経由が中心。<code>dictionary</code> はエンドポイントがCRUD、LLM、ベクトル化を直接束ねている。</p>
+        </article>
+        <article class="card">
+          <h3>DB現状</h3>
+          <p class="status-warn">実質PostgreSQL + pgvector前提。</p>
+          <p><code>DATABASE_URL</code> は汎用名だが、DDLとモデルは <code>VECTOR(300)</code>, <code>SERIAL</code>, <code>TIMESTAMPTZ</code>, <code>CREATE EXTENSION vector</code> に依存。</p>
+        </article>
+        <article class="card">
+          <h3>Turso移行</h3>
+          <p class="status-warn">難易度: 中。</p>
+          <p>CRUDの基本操作は移せるが、ベクトル型、DDL、接続ドライバ、SQLAlchemy型、日付型、リトライ方針の差し替えが必要。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>主要依存図</h2>
+      <div class="diagram">
+        <svg class="flow" viewBox="0 0 1200 700" role="img" aria-label="Backend dependency graph">
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#2563eb"></path>
+            </marker>
+            <marker id="arrow-alt" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#8b5cf6"></path>
+            </marker>
+            <style>
+              .box{fill:#fff;stroke:#94a3b8;stroke-width:1.5;rx:10}
+              .box2{fill:#eff6ff;stroke:#60a5fa;stroke-width:1.8;rx:10}
+              .db{fill:#faf5ff;stroke:#a78bfa;stroke-width:1.5;rx:10}
+              .txt{font:600 13px 'Inter',-apple-system,BlinkMacSystemFont,sans-serif;fill:#1e293b}
+              .small{font-size:11px;font-weight:400;fill:#64748b}
+              .edge{stroke:#2563eb;stroke-width:1.5;fill:none;marker-end:url(#arrow)}
+              .edge-alt{stroke:#8b5cf6;stroke-width:1.5;fill:none;marker-end:url(#arrow-alt);stroke-dasharray:6,3}
+              .layer{fill:#f8fafc;stroke:#e2e8f0;stroke-width:1;rx:12}
+              .layer-label{font:600 11px 'Inter',sans-serif;fill:#94a3b8;letter-spacing:.05em}
+            </style>
+          </defs>
+
+          <!-- ═══ LAYER BANDS ═══ -->
+          <rect class="layer" x="10" y="8"   width="1180" height="60"></rect>
+          <rect class="layer" x="10" y="78"  width="1180" height="60"></rect>
+          <rect class="layer" x="10" y="148" width="1180" height="60"></rect>
+          <rect class="layer" x="10" y="218" width="1180" height="200"></rect>
+          <rect class="layer" x="10" y="423" width="1180" height="70"></rect>
+          <rect class="layer" x="10" y="498" width="1180" height="200"></rect>
+          <text class="layer-label" x="24" y="33">ENTRY</text>
+          <text class="layer-label" x="24" y="103">ROUTER</text>
+          <text class="layer-label" x="24" y="173">ENDPOINTS</text>
+          <text class="layer-label" x="24" y="243">SERVICES</text>
+          <text class="layer-label" x="24" y="453">DATA ACCESS</text>
+          <text class="layer-label" x="24" y="523">DATABASE</text>
+
+          <!-- ═══ ROW 0: Entry ═══ -->
+          <rect class="box2" x="500" y="14" width="200" height="48"></rect>
+          <text class="txt" x="548" y="38">main.py</text>
+          <text class="small" x="548" y="52">FastAPI / lifespan</text>
+
+          <!-- ═══ ROW 1: Router ═══ -->
+          <rect class="box2" x="500" y="84" width="200" height="48"></rect>
+          <text class="txt" x="548" y="108">app.api</text>
+          <text class="small" x="548" y="122">router集約 / endpoints読込</text>
+
+          <!-- ═══ ROW 2: Endpoints ═══ -->
+          <rect class="box" x="240" y="154" width="210" height="48"></rect>
+          <text class="txt" x="275" y="183">analysis endpoint</text>
+          <rect class="box" x="750" y="154" width="220" height="48"></rect>
+          <text class="txt" x="790" y="183">dictionary endpoint</text>
+
+          <!-- ═══ ROW 3: Services ═══ -->
+          <rect class="box" x="120" y="240" width="180" height="48"></rect>
+          <text class="txt" x="152" y="269">text_analysis</text>
+
+          <rect class="box" x="340" y="240" width="180" height="48"></rect>
+          <text class="txt" x="368" y="269">refer_dictionary</text>
+
+          <rect class="box" x="560" y="240" width="200" height="48"></rect>
+          <text class="txt" x="588" y="269">refer_dictionary_v1</text>
+
+          <rect class="box" x="800" y="240" width="180" height="48"></rect>
+          <text class="txt" x="828" y="269">dictionary service</text>
+
+          <rect class="box" x="560" y="340" width="200" height="56"></rect>
+          <text class="txt" x="590" y="367">llm / embedding</text>
+          <text class="small" x="590" y="383">v1試作用helpers</text>
+
+          <!-- ═══ ROW 4: Data Access ═══ -->
+          <rect class="db" x="460" y="434" width="200" height="48"></rect>
+          <text class="txt" x="505" y="463">crud.dictionary</text>
+
+          <!-- ═══ ROW 5: DB Core ═══ -->
+          <rect class="db" x="460" y="520" width="200" height="48"></rect>
+          <text class="txt" x="505" y="549">core.database</text>
+
+          <rect class="db" x="160" y="520" width="180" height="48"></rect>
+          <text class="txt" x="195" y="544">Transaction</text>
+          <text class="small" x="195" y="558">Manager</text>
+
+          <!-- ═══ ROW 6: Models ═══ -->
+          <rect class="db" x="460" y="620" width="200" height="48"></rect>
+          <text class="txt" x="498" y="649">models.Dictionary</text>
+
+          <rect class="db" x="740" y="620" width="200" height="48"></rect>
+          <text class="txt" x="778" y="649">dictionary table</text>
+
+
+          <!-- ══════════════════════════════════════════ -->
+          <!-- ═══ EDGES ═══ -->
+          <!-- ══════════════════════════════════════════ -->
+
+          <!-- main.py → app.api -->
+          <path class="edge" d="M600,62 L600,84"></path>
+
+          <!-- app.api → analysis endpoint (y=140 channel) -->
+          <path class="edge" d="M520,132 L520,140 L345,140 L345,154"></path>
+
+          <!-- app.api → dictionary endpoint (y=140 channel, separated) -->
+          <path class="edge" d="M680,132 L680,140 L860,140 L860,154"></path>
+
+          <!-- analysis ep → text_analysis -->
+          <path class="edge" d="M290,202 L240,240"></path>
+
+          <!-- analysis ep → refer_dictionary -->
+          <path class="edge" d="M370,202 L410,240"></path>
+
+          <!-- analysis ep → refer_dictionary_v1 -->
+          <path class="edge" d="M450,178 L640,178 L640,240"></path>
+
+          <!-- dictionary ep → dictionary service -->
+          <path class="edge" d="M870,202 L870,240"></path>
+
+          <!-- dictionary ep → text_analysis (y=210 channel, below endpoints) -->
+          <path class="edge" d="M810,202 L810,210 L210,210 L210,240"></path>
+
+          <!-- dictionary ep → crud.dictionary (right channel, enters crud top) -->
+          <path class="edge" d="M950,202 L950,216 L1000,216 L1000,420 L620,420 L620,434"></path>
+
+          <!-- dictionary ep → core.database (x=1060, avoids dict_service box) -->
+          <path class="edge" d="M965,202 L965,210 L1060,210 L1060,544 L660,544"></path>
+
+          <!-- refer_dictionary → text_analysis -->
+          <path class="edge" d="M340,264 L300,264"></path>
+
+          <!-- refer_dictionary → dictionary service (above refer_dict_v1) -->
+          <path class="edge" d="M520,250 L535,250 L535,228 L850,228 L850,240"></path>
+
+          <!-- refer_dictionary → crud.dictionary -->
+          <path class="edge" d="M430,288 L430,320 L490,320 L490,434"></path>
+
+          <!-- refer_dictionary → core.database (routes above TxManager) -->
+          <path class="edge" d="M370,288 L370,500 L480,500 L480,520"></path>
+
+          <!-- refer_dictionary_v1 → crud.dictionary (left of llm box) -->
+          <path class="edge" d="M620,288 L620,296 L545,296 L545,434"></path>
+
+          <!-- refer_dictionary_v1 → refer_dictionary -->
+          <path class="edge" d="M560,275 L520,275"></path>
+
+          <!-- refer_dictionary_v1 → text_analysis (above service boxes) -->
+          <path class="edge" d="M580,240 L580,220 L280,220 L280,240"></path>
+
+          <!-- refer_dictionary_v1 → llm/embedding -->
+          <path class="edge" d="M660,288 L660,340"></path>
+
+          <!-- crud.dictionary → core.database -->
+          <path class="edge" d="M560,482 L560,520"></path>
+
+          <!-- crud.dictionary → models.Dictionary (left channel, avoids right-side crossings) -->
+          <path class="edge" d="M460,465 L420,465 L420,640 L460,640"></path>
+
+          <!-- core.database → TransactionManager -->
+          <path class="edge" d="M460,540 L340,540"></path>
+
+          <!-- core.database → models.Dictionary -->
+          <path class="edge" d="M560,568 L560,620"></path>
+
+          <!-- models.Dictionary → dictionary table (ORM概念対応, not import) -->
+          <path class="edge-alt" d="M660,650 L740,650"></path>
+
+          <!-- main.py → core.database (lifespan, dashed, enters bottom) -->
+          <path class="edge-alt" d="M500,38 L50,38 L50,590 L500,590 L500,568"></path>
+        </svg>
+      </div>
+      <p class="note">矢印は「importまたは主要な実行時呼び出し」の向きです。<code>core.database</code> から <code>app.api</code> への依存はありません。<code>main.py</code> が <code>app.api</code> を読み込み、lifespanで条件付きに <code>core.database</code> を呼びます。</p>
+    </section>
+
+    <section class="section">
+      <h2>関数依存の整理</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>入口</th><th>主要呼び出し</th><th>評価</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>main.lifespan</code></td>
+              <td><code>get_database_url_env_key</code> → 必要時 <code>get_database</code> → <code>Database.init_db</code> → <code>Base.metadata.create_all</code></td>
+              <td>起動時DB初期化は <code>ENABLE_DB_INIT</code> が明示された時だけ。DB未設定でもAPI起動可能。</td>
+            </tr>
+            <tr>
+              <td><code>/analysis/vectorize</code></td>
+              <td><code>vectorize_content_tokens</code> → <code>morphological_analysis</code> → <code>_sudachi_analysis</code> または <code>_fallback_split</code> → <code>_get_doc_vector</code> / <code>_build_hashed_vector</code></td>
+              <td>NLP処理はDB非依存。フォールバックが厚く、DB移行の影響は小さい。</td>
+            </tr>
+            <tr>
+              <td><code>/analysis/refer_dictionary</code></td>
+              <td><code>refer_dictionary</code> → <code>_extract_search_targets</code> → <code>_lookup_or_create</code> → <code>read_dictionary_by_term</code> / <code>lookup_term_summary</code> / <code>vectorize_pretokenized_words</code> / <code>create_dictionary</code></td>
+              <td>DBキャッシュがあればDB、なければLLM生成してDB登録。DB例外時はLLM結果を返す設計。</td>
+            </tr>
+            <tr>
+              <td><code>/analysis/refer_dictionary_get_scores</code></td>
+              <td><code>refer_dictionary_v1.service_analyze_text</code> → <code>refer_dictionary_v1.refer_dictionary</code> → <code>_search_dictionary</code> / <code>_generate_senses_for_terms</code> / <code>_compute_text_embedding</code></td>
+              <td>試作途中。<code>service_analyze_text</code> は未完成で、<code>await _compute_text_embedding</code> は同期関数に対するawaitになっている。</td>
+            </tr>
+            <tr>
+              <td><code>/dictionary/lookup</code></td>
+              <td><code>lookup_term_summary</code> または <code>lookup_terms_summaries</code> → <code>_build_prompt</code> → <code>_call_gemini</code></td>
+              <td>READMEどおりDB未連携。<code>_lookup_term_from_db</code> は常に <code>None</code>。</td>
+            </tr>
+            <tr>
+              <td><code>/dictionary/entries*</code></td>
+              <td><code>_ensure_db_available</code> → <code>list/read/update/delete/create_dictionary</code>。bulkでは <code>lookup_term_summary</code> と <code>vectorize_pretokenized_words</code> も呼ぶ。</td>
+              <td>エンドポイントがCRUD、LLM、ベクトル化を直接調停。移行時はこの層の接続確認が必要。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>循環依存チェック</h2>
+      <p><span class="tag">静的解析</span><span class="tag">AST</span><span class="tag">app/config対象</span></p>
+      <p>抽出した主要importは以下。Tarjan法で強連結成分を確認した結果、2モジュール以上の閉路はありませんでした。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>モジュール</th><th>依存先</th></tr></thead>
+          <tbody>
+            <tr><td><code>main</code></td><td><code>app.api</code>, <code>app.core.database</code>, <code>config.config</code></td></tr>
+            <tr><td><code>app.api.endpoints.analysis</code></td><td><code>schemas.analysis</code>, <code>services.text_analysis</code>, <code>services.refer_dictionary</code>, <code>services.refer_dictionary_v1</code></td></tr>
+            <tr><td><code>app.api.endpoints.dictionary</code></td><td><code>core.database</code>, <code>crud.dictionary</code>, <code>schemas.dictionary</code>, <code>services.dictionary</code>, <code>services.text_analysis</code></td></tr>
+            <tr><td><code>app.core.database</code></td><td><code>TransactionManager</code>, <code>models</code>, <code>config.config</code></td></tr>
+            <tr><td><code>app.crud.dictionary</code></td><td><code>core.database</code>, <code>models.dictionary</code></td></tr>
+            <tr><td><code>app.services.refer_dictionary</code></td><td><code>core.database</code>, <code>crud.dictionary</code>, <code>services.dictionary</code>, <code>services.text_analysis</code></td></tr>
+            <tr><td><code>app.services.refer_dictionary_v1</code></td><td><code>crud.dictionary</code>, <code>services.refer_dictionary</code>, <code>services.text_analysis</code>, <code>services.llm</code>, <code>services.enbedding</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">注意: Pythonの実行時代入、monkeypatch、文字列経由の参照までは静的解析では追っていません。ただし、通常importに基づく循環依存リスクは低い状態です。</p>
+    </section>
+
+    <section class="section">
+      <h2>DBの現状</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>接続</h3>
+          <p><code>config.config.get_database_url_env_key()</code> が <code>DATABASE_ENV_KEY</code> を見て、未指定なら <code>DATABASE_URL</code> を使う。テストでは <code>DEV_DATABASE_URL</code> を強制。</p>
+        </article>
+        <article class="card">
+          <h3>モデル</h3>
+          <p><code>Dictionary</code>: <code>id</code>, <code>term</code>, <code>description</code>, <code>meaning_vector</code>, <code>created_at</code>, <code>updated_at</code>。ベクトルは <code>pgvector.sqlalchemy.Vector(300)</code>。</p>
+        </article>
+        <article class="card">
+          <h3>CRUD</h3>
+          <p>全操作は <code>TransactionManager.run</code> 経由。競合時はSQLSTATE <code>40001</code> を文字列判定してリトライ。</p>
+        </article>
+        <article class="card">
+          <h3>DDL</h3>
+          <p><code>Backend/db/dictionary.sql</code> と <code>reset_dictionary_db.py</code> はPostgres DDL。<code>CREATE EXTENSION vector</code> が必要。</p>
+        </article>
+      </div>
+
+      <h3>評価</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>観点</th><th>良い点</th><th>気になる点</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>可用性</td>
+              <td>DB未設定でも <code>/analysis/vectorize</code> などは動く。辞書参照はDB障害時にLLMへフォールバックする。</td>
+              <td><code>dictionary</code> endpointはモジュール読込時の <code>db = get_database()</code> を保持するため、環境変数切替後の再初期化に弱い。</td>
+            </tr>
+            <tr>
+              <td>整合性</td>
+              <td><code>term</code> にユニーク制約。bulkは既存語をスキップ。</td>
+              <td><code>meaning_vector</code> はDB上NOT NULLだが、<code>create_dictionary</code> は <code>None</code> を受けられる。テストにもIntegrityError許容の痕跡がある。</td>
+            </tr>
+            <tr>
+              <td>拡張性</td>
+              <td>CRUDは1ファイルにまとまり、差し替え箇所は比較的少ない。</td>
+              <td>DB、LLM、ベクトル化の orchestration がendpoint/serviceに分散。<code>services.dictionary</code> のDB参照は未実装。</td>
+            </tr>
+            <tr>
+              <td>移植性</td>
+              <td>SQLAlchemyを使っているため、単純CRUDはDB差し替え余地がある。</td>
+              <td><code>pgvector.Vector</code> とPostgres DDLに強く依存。CockroachDB向け依存もあるが実コードはPostgres互換前提。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Turso移行評価</h2>
+      <p>Turso公式ドキュメントでは、Python/SQLAlchemy連携に <code>sqlalchemy-libsql</code> を使い、remote onlyでは <code>sqlite+{TURSO_DATABASE_URL}?secure=true</code> と <code>auth_token</code> を指定する例が示されています。ベクトルは拡張不要のネイティブ機能で、保存先はSQLite系の <code>BLOB</code>、投入時に <code>vector32(...)</code> などの関数を使う方式です。</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>現在</th><th>Turso/libSQL側</th><th>対応</th><th>難度</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><code>create_engine(DATABASE_URL, connect_args={"application_name": ...})</code></td>
+              <td><code>sqlalchemy-libsql</code> + <code>sqlite+libsql</code> / Turso URL + <code>auth_token</code></td>
+              <td>接続設定を分岐。<code>TURSO_DATABASE_URL</code>, <code>TURSO_AUTH_TOKEN</code> を追加。</td>
+              <td>低〜中</td>
+            </tr>
+            <tr>
+              <td><code>id SERIAL PRIMARY KEY</code></td>
+              <td><code>INTEGER PRIMARY KEY</code></td>
+              <td>DDLとSQLAlchemy型をSQLite互換へ変更。</td>
+              <td>低</td>
+            </tr>
+            <tr>
+              <td><code>TIMESTAMPTZ DEFAULT NOW()</code></td>
+              <td>SQLite互換の <code>TEXT</code> / <code>DATETIME</code> / <code>CURRENT_TIMESTAMP</code></td>
+              <td>UTC文字列保存かSQLAlchemy側defaultに寄せる。</td>
+              <td>低</td>
+            </tr>
+            <tr>
+              <td><code>pgvector.Vector(300)</code>, <code>VECTOR(300)</code></td>
+              <td><code>BLOB</code> + <code>vector32('[...]')</code>、検索は <code>vector_distance_cos</code> 等</td>
+              <td>カスタムTypeDecoratorかCRUDで変換。既存APIは <code>list[float]</code> を返すため取り出し時に <code>vector_extract</code> が必要。</td>
+              <td>中〜高</td>
+            </tr>
+            <tr>
+              <td><code>CREATE EXTENSION vector</code></td>
+              <td>不要</td>
+              <td>初期化SQLから削除。</td>
+              <td>低</td>
+            </tr>
+            <tr>
+              <td><code>term.ilike("%q%")</code></td>
+              <td>SQLite系は大文字小文字・日本語照合が異なる</td>
+              <td><code>like</code> か正規化列の追加を検討。</td>
+              <td>中</td>
+            </tr>
+            <tr>
+              <td>SQLSTATE <code>40001</code> リトライ</td>
+              <td>SQLite/libSQL/Tursoの競合エラーは別体系</td>
+              <td>例外判定とリトライ方針を差し替え。</td>
+              <td>中</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>移行手順案</h3>
+      <ol class="steps">
+        <li><strong>DB抽象化を薄く追加</strong><span><code>Database</code> にdialect判定を入れ、PostgresとTursoの接続生成を分ける。</span></li>
+        <li><strong>DDLを分岐</strong><span>Postgres用 <code>dictionary.sql</code> とTurso用DDLを分ける。Tursoは <code>meaning_vector BLOB NOT NULL</code>。</span></li>
+        <li><strong>ベクトル変換を隔離</strong><span><code>list[float]</code> とDB保存形式の相互変換をCRUD層に閉じ込める。</span></li>
+        <li><strong>CRUDテストをSQLite/Turso互換で追加</strong><span>まずlocal libSQLまたはSQLite互換で <code>create/read/list/update/delete</code> を通す。</span></li>
+        <li><strong>類似度検索を導入する場合だけTurso vector関数へ進む</strong><span>現状は完全な近傍検索を使っておらず、保存と取得が主用途。検索機能は後段でよい。</span></li>
+      </ol>
+
+      <p class="note">判断: 今すぐTursoに変える場合、辞書CRUDだけなら中難度。<code>pgvector</code> 相当のベクトル保存・抽出をきれいに保つなら中〜高難度。まず「DB保存形式をCRUD内へ隠す」小改修を入れてから移行すると安全です。</p>
+    </section>
+
+    <section class="section">
+      <h2>改善メモ</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>優先度 高</h3>
+          <p><code>meaning_vector</code> のNULL方針を統一。DBがNOT NULLなら <code>create_dictionary</code> で必ず300次元ベクトルを要求する。</p>
+        </article>
+        <article class="card">
+          <h3>優先度 高</h3>
+          <p><code>refer_dictionary_v1</code> は未完成endpointから呼ばれているため、公開するなら同期/非同期バグとSSE出力形式を修正する。</p>
+        </article>
+        <article class="card">
+          <h3>優先度 中</h3>
+          <p><code>dictionary</code> endpointのCRUD/LLM/embedding調停をservice層へ寄せると、DB差し替え時の修正範囲が狭まる。</p>
+        </article>
+        <article class="card">
+          <h3>優先度 中</h3>
+          <p>起動時・テスト時にDBインスタンスがキャッシュされる点を明示し、環境切替テストでは <code>reset_database_instances</code> を使う。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>参照</h2>
+      <p><strong>ローカル:</strong> <code>Backend/main.py</code>, <code>app/api/endpoints/*.py</code>, <code>app/core/database.py</code>, <code>app/core/TransactionManager.py</code>, <code>app/crud/dictionary.py</code>, <code>app/models/dictionary.py</code>, <code>app/services/*.py</code>, <code>Backend/db/dictionary.sql</code>, <code>Backend/tests/*dictionary*</code></p>
+      <p><strong>外部:</strong> <a href="https://docs.turso.tech/sdk/python/orm/sqlalchemy">Turso SQLAlchemy docs</a>, <a href="https://docs.turso.tech/guides/vector-search">Turso Vector Search docs</a>, <a href="https://docs.turso.tech/sdk/python/reference">Turso Python SDK reference</a></p>
+    </section>
+  </main>
+</body>
+</html>

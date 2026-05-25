@@ -1,7 +1,7 @@
 [project]
-name = "lexiflow-backend"
+name = "TalkScope"
 version = "0.1.0"
-description = "FastAPI backend for LexiFlow"
+description = "FastAPI backend for TalkScope"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -24,4 +24,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.2.0",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that use external services such as DB or LLM",
 ]

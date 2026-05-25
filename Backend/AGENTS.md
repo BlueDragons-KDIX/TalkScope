@@ -1,6 +1,6 @@
 # FastAPI 開発ガイド（このプロジェクト向け）
 
-このドキュメントは、LexiFlow の Backend を実装・改修する際のガイドです。  
+このドキュメントは、TalkScope の Backend を実装・改修する際のガイドです。  
 方針は「小規模でシンプルに保ちつつ、後から拡張しやすくする」です。
 
 ## 1. 基本方針
@@ -11,7 +11,15 @@
 - すべての公開 API に `response_model` を付ける
 - 例外は `HTTPException` か共通例外ハンドラで返し、レスポンス形式を揃える
 
-## 1.1 依存管理（uv）
+## 1.1 詳細ドキュメントの置き場所
+
+- 人間が読みやすいように、この `AGENTS.md` は入口と共通ルールに絞る
+- 詳しい方針や作業メモは `Backend/.codex/` 配下に追加していく
+- まず読むドキュメント:
+  - `Backend/.codex/README.md`
+  - `Backend/.codex/instructions.md`
+
+## 1.2 依存管理（uv）
 
 - Python 依存管理は `uv` を使用する
 - 依存定義は `pyproject.toml` を正とする
@@ -118,6 +126,7 @@ class AnalyzeResponse(BaseModel):
 - 早期に Celery・マイクロサービス化などを導入しない
 - DB 未導入段階で ORM 層を作り込みすぎない
 - 「将来のため」に抽象化を増やしすぎない
+- あなたが.envファイルを読まない
 
 ## 10. 変更時チェックリスト
 

@@ -40,22 +40,25 @@ from typing import Any, TypedDict
 from app.services.text_analysis import morphological_analysis, vectorize_pretokenized_words
 from app.services.dictionary import lookup_term_summary
 from app.crud.dictionary import read_dictionary_by_term, create_dictionary
-from app.core.database import db
+from app.core.database import get_database
 
 logger = logging.getLogger(__name__)
+db = get_database()
 
 # ---------------------------------------------------------------------------
-# DB 書き込み直列化セマフォ（遅延初期化）
+# DB 書き込み直列化セマフォ（イベントループごとに遅延初期化）
 # ---------------------------------------------------------------------------
-_DB_SEM: asyncio.Semaphore | None = None
+_DB_SEMS: dict[asyncio.AbstractEventLoop, asyncio.Semaphore] = {}
 
 
 def _get_db_sem() -> asyncio.Semaphore:
     """イベントループに安全な遅延初期化でセマフォを返す。"""
-    global _DB_SEM
-    if _DB_SEM is None:
-        _DB_SEM = asyncio.Semaphore(1)
-    return _DB_SEM
+    loop = asyncio.get_running_loop()
+    sem = _DB_SEMS.get(loop)
+    if sem is None:
+        sem = asyncio.Semaphore(1)
+        _DB_SEMS[loop] = sem
+    return sem
 
 
 # ---------------------------------------------------------------------------

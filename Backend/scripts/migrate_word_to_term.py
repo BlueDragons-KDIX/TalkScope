@@ -10,11 +10,12 @@ create_all では既存テーブルの列リネームに対応できないため
 import os
 from dotenv import load_dotenv
 from sqlalchemy import text
-from app.core.database import db
+from app.core.database import get_database
 
 def run_migration() -> None:
     # .env を読み込む
     load_dotenv()
+    db = get_database()
     
     if not db.is_available:
         print("❌ DATABASE_URL が設定されていないか、DBに接続できません。")

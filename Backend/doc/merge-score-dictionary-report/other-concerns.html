@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>merge-score-dictionary その他気になる事項</title>
+  <style>
+    :root {
+      --ink: #1b2130;
+      --muted: #5f6777;
+      --line: #ead6dc;
+      --paper: #ffffff;
+      --rose: #d93672;
+      --orange: #c76a1d;
+      --blue: #2c6ddf;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.8;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 40px 28px 64px;
+      color: var(--ink);
+      background: linear-gradient(135deg, #fff2f6 0%, #fff8ee 50%, #f0f6ff 100%);
+    }
+    body::before {
+      content: "other concerns";
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      color: var(--rose);
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(217, 54, 114, 0.22);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.08;
+    }
+    h2 {
+      margin-top: 34px;
+      padding: 9px 12px;
+      border-radius: 8px;
+      color: #ffffff;
+      background: linear-gradient(90deg, var(--rose), var(--orange));
+      line-height: 1.3;
+    }
+    p, li { color: var(--muted); }
+    code {
+      background: #fff0f5;
+      color: #b32460;
+      padding: 0.15em 0.4em;
+      border-radius: 5px;
+      font-weight: 650;
+    }
+    ul {
+      margin: 16px 0;
+      padding: 16px 22px 16px 34px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 12px 28px rgba(147, 64, 84, 0.08);
+    }
+    li { margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <h1>その他気になる事項</h1>
+  <p>
+    調査レポートの主要分類には入れにくいが、統合作業で気にしたい点をまとめる。
+  </p>
+
+  <h2>運用・設定</h2>
+  <ul>
+    <li>
+      <code>THEME_EMA_ENABLED</code> がコード定数のため、本番・検証で切り替えるにはコード変更が必要。
+      環境変数化するか、MVP中は無効固定と明記するか決めたい。
+    </li>
+    <li>
+      <code>TERM_IDF_LOAD_MIN_VALUE</code> と <code>IDF_JSON_PATH</code> は <code>.env.example</code> にあるが、
+      <code>Backend/AGENTS.md</code> の「.envを読まない」と衝突している。
+    </li>
+    <li>
+      IDF辞書データが同梱されていないため、IDFバフの検証はテスト用JSONかDB投入データに依存する。
+    </li>
+  </ul>
+
+  <h2>API設計</h2>
+  <ul>
+    <li>
+      <code>/analysis/score/terms</code> は <code>term_vector</code> を必須入力にしている。
+      フロントがこのベクトルをどう得るのか、既存 <code>/analysis/vectorize</code> とどうつなぐのかを決める必要がある。
+    </li>
+    <li>
+      <code>TermScoreInput</code> は <code>term_vector</code> に <code>min_length</code> がない。
+      空配列でもバリデーションは通り、テーマ類似バフが付かないだけになる。
+    </li>
+    <li>
+      <code>occurrence_count</code> は省略可能。
+      フロント側で出現回数を計算するのか、バックエンドでテキストから計算するのかが未確定に見える。
+    </li>
+  </ul>
+
+  <h2>DB設計</h2>
+  <ul>
+    <li>
+      既存の <code>dictionary_terms.idf_wiki</code> は <code>Integer</code> だが、IDFは通常小数を使うため <code>Float</code> の <code>term_idf.idf_value</code> のほうが自然。
+    </li>
+    <li>
+      <code>TermIdf</code> は <code>app.models.dictionary.Base</code> にぶら下がっている。
+      create_all対象にはなるが、辞書DBモデルとの境界は曖昧。
+    </li>
+    <li>
+      <code>term_idf</code> 用のCRUDや投入スクリプトがない。
+      ドキュメントではバッチ投入想定だが、実装はまだ受け皿だけ。
+    </li>
+  </ul>
+
+  <h2>実装品質</h2>
+  <ul>
+    <li>
+      <code>score_building_blocks.py</code> は将来用の関数も含んでおり、今のMVPに対してはやや大きい。
+      残すなら「公開APIで使う範囲」と「実験・将来用」をコメントで分けたい。
+    </li>
+    <li>
+      <code>term_score.py</code> はセッション管理、形態素フィルタ、API応答組み立てを一箇所に持つ。
+      現状は許容範囲だが、テーマ永続化やDB連携が増えるなら分割候補。
+    </li>
+    <li>
+      <code>main.py</code> はAGENTS上はアプリ生成とrouter includeに寄せたいが、現在はdotenv、DB初期化、IDFロード方針も入っている。
+    </li>
+  </ul>
+
+  <h2>ドキュメント</h2>
+  <ul>
+    <li>
+      <code>Backend/docs/IDF_DATA_PIPELINE.md</code> は「Wikipedia由来IDFがある前提」に読めるが、実データは未同梱。
+      読み手に誤解が出やすい。
+    </li>
+    <li>
+      <code>Backend/docs/SCORE_ANALYSIS_API.md</code> と <code>Backend/README.md</code> は、新規APIを説明している。
+      実装側でIDFロードがコメントアウトされている状態と同期が必要。
+    </li>
+    <li>
+      ルートREADMEはハッカソン提出テンプレート維持のルールがあるため、スコア計算の詳細はBackend docs側に閉じたほうがよい。
+    </li>
+  </ul>
+
+  <h2>確認したい小さな違和感</h2>
+  <ul>
+    <li>
+      <code>Backend/main.py</code> の <code>init_idf_table</code> import は、呼び出しを止めるなら未使用になる。
+    </li>
+    <li>
+      <code>idf_runtime.py</code> はDB接続エラーを握って <code>None</code> にする方針だが、import不整合だけは握れない。
+    </li>
+    <li>
+      <code>get_theme()</code> は <code>THEME_EMA_ENABLED=False</code> のとき保存済みセッションを読まない。
+      テスト中に <code>set_theme()</code> しても無効化されるのは意図通りだが、初見では少し驚く。
+    </li>
+  </ul>
+</body>
+</html>

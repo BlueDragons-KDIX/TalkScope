@@ -10,17 +10,23 @@
 import os
 from dotenv import load_dotenv
 from sqlalchemy import text
+from config.config import get_database_url_env_key
 
 def reset_db() -> None:
     # .env を読み込む
     load_dotenv()
     
-    db_url = os.environ.get("DATABASE_URL")
+    database_url_env_key = get_database_url_env_key()
+    db_url = os.environ.get(database_url_env_key)
     if not db_url:
-        print("❌ DATABASE_URL が設定されていません。")
+        print(f"❌ {database_url_env_key} が設定されていません。")
         return
 
-    from app.core.database import db
+    from app.core.database import get_database
+    db = get_database()
+    if not db.is_available:
+        print(f"❌ データベースに接続できません。{database_url_env_key} を確認してください。")
+        return
     
     print("⚠️ 辞書データベース(dictionary)をリセットします...")
     

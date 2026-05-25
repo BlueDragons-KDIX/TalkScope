@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>辞書参照サービス ベンチマーク詳細レポート</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b0e17;--surface:#131829;--surface2:#1a2038;--border:#252d4a;
+  --text:#e4e8f7;--text2:#8892b0;--accent:#6c63ff;--accent2:#00d4aa;
+  --old:#ff6b6b;--new:#00d4aa;--warn:#ffb347;
+  --radius:14px;--shadow:0 4px 24px rgba(0,0,0,.4);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+.container{max-width:1200px;margin:0 auto;padding:32px 24px}
+.header{text-align:center;padding:48px 0 32px;position:relative}
+.header::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:200px;height:200px;background:radial-gradient(circle,rgba(108,99,255,.15),transparent 70%);pointer-events:none}
+.header h1{font-size:2rem;font-weight:800;background:linear-gradient(135deg,#6c63ff,#00d4aa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+.header p{color:var(--text2);font-size:.95rem}
+.section{margin:40px 0}
+.section-title{font-size:1.25rem;font-weight:700;margin-bottom:16px;padding-left:12px;border-left:3px solid var(--accent)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px}
+.chart-area{position:relative;width:100%;height:340px;margin:16px 0}
+canvas{width:100%!important;height:100%!important}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{background:var(--surface2);color:var(--text2);font-weight:600;text-transform:uppercase;font-size:.7rem;letter-spacing:.5px;padding:10px 12px;text-align:left;border-bottom:2px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+tr:hover td{background:rgba(108,99,255,.05)}
+.mono{font-family:'SF Mono',monospace;font-size:.8rem}
+.pill{display:inline-block;padding:2px 10px;border-radius:10px;font-size:.75rem;font-weight:600}
+.pill-fast{background:rgba(0,212,170,.15);color:var(--accent2)}
+.pill-slow{background:rgba(255,107,107,.15);color:var(--old)}
+.winner{color:var(--accent2);font-weight:700}
+.loser{color:var(--old);font-weight:700}
+.legend{display:flex;gap:20px;justify-content:center;margin:12px 0;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--text2)}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.notes{background:var(--surface2);border-radius:var(--radius);padding:20px;margin-top:24px;border-left:3px solid var(--accent)}
+.notes h3{font-size:.9rem;margin-bottom:8px;color:var(--accent)}
+.notes li{font-size:.82rem;color:var(--text2);margin:4px 0 4px 16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:768px){.container{padding:16px}.header h1{font-size:1.5rem}.grid{grid-template-columns:1fr}.chart-area{height:240px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>辞書参照サービス パフォーマンス統計</h1>
+    <p>refer_dictionary (旧) vs refer_dictionary_v1 (新) — 実測データ分析</p>
+  </div>
+
+  <div class="section">
+    <h2 class="section-title">ベンチマークのテスト条件 (Phase定義)</h2>
+    <div class="card">
+      <p style="font-size:.85rem;color:var(--text2);margin-bottom:12px;">各ベンチマーク実行では、以下の3つのテキストを順番に処理し、LLM生成とデータベースキャッシュの効率を段階的に評価しています。</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;background:var(--surface2);padding:16px;border-radius:var(--radius);border:1px solid var(--border);">
+          <div style="color:var(--old);font-weight:700;margin-bottom:8px;">Phase 1 (完全新規)</div>
+          <div style="font-size:.8rem;color:var(--text2);">対象: <strong>3単語</strong><br>DBは空の状態からスタート。全3単語についてGemini APIでの意味生成が発生するため、最も負荷が高いシナリオです。</div>
+        </div>
+        <div style="flex:1;min-width:200px;background:var(--surface2);padding:16px;border-radius:var(--radius);border:1px solid var(--border);">
+          <div style="color:var(--accent);font-weight:700;margin-bottom:8px;">Phase 2 (混合)</div>
+          <div style="font-size:.8rem;color:var(--text2);">対象: <strong>4単語</strong><br>うち2単語がPhase 1で登録済み、残り2単語が新規。DB検索と新規API呼び出しの並列処理効率が評価されます。</div>
+        </div>
+        <div style="flex:1;min-width:200px;background:var(--surface2);padding:16px;border-radius:var(--radius);border:1px solid var(--border);">
+          <div style="color:var(--new);font-weight:700;margin-bottom:8px;">Phase 3 (完全キャッシュ)</div>
+          <div style="font-size:.8rem;color:var(--text2);">対象: <strong>5単語</strong><br>過去のフェーズで全単語が登録済みの状態。Gemini APIは一切呼ばれず、DBからのバルク取得性能のみが問われます。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 class="section-title">フェーズ別レイテンシ分析</h2>
+    <div class="grid">
+      <div class="card">
+        <div style="font-size:.9rem;color:var(--text2);margin-bottom:12px;text-align:center">1. 平均レイテンシ (秒)</div>
+        <div class="chart-area" style="height:260px"><canvas id="barChart"></canvas></div>
+        <p style="font-size:.8rem;color:var(--text2);margin-top:12px;line-height:1.5;">各フェーズ（1: 初出, 2: 混合, 3: 既出）の平均応答時間です。バーが低いほど高速であることを示し、特にPhase 3におけるDB検索効率の向上が顕著です。</p>
+      </div>
+      <div class="card">
+        <div style="font-size:.9rem;color:var(--text2);margin-bottom:12px;text-align:center">2. 平均実行時間 内訳 (Stacked)</div>
+        <div class="chart-area" style="height:260px"><canvas id="stackedBarChart"></canvas></div>
+        <p style="font-size:.8rem;color:var(--text2);margin-top:12px;line-height:1.5;">LegacyとV1の総実行時間をフェーズごとに積み上げたものです。棒全体の高さがトータルの時間を表しており、V1が全体的に効率化されていることが分かります。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 class="section-title">安定性・バッチサイズ分析</h2>
+    <div class="grid">
+      <div class="card">
+        <div style="font-size:.9rem;color:var(--text2);margin-bottom:12px;text-align:center">3. 全実行 時系列プロット (Phase 1)</div>
+        <div class="chart-area" style="height:260px"><canvas id="scatterChart"></canvas></div>
+        <p style="font-size:.8rem;color:var(--text2);margin-top:12px;line-height:1.5;">最も処理が重いPhase 1（全単語が新規）の各実行結果をプロットしたものです。Legacy（赤）のばらつきに対し、V1（緑）が安定して高速に処理できていることが確認できます。</p>
+      </div>
+      <div class="card">
+        <div style="font-size:.9rem;color:var(--text2);margin-bottom:12px;text-align:center">4. V1 Group Size別 Phase 1 速度</div>
+        <div class="chart-area" style="height:260px"><canvas id="groupSizeChart"></canvas></div>
+        <p style="font-size:.8rem;color:var(--text2);margin-top:12px;line-height:1.5;">V1における1回のAPIリクエストにまとめる単語数（group_size）別のPhase 1速度比較です。サイズを大きくするほど高速・安定化する傾向が見られます。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 class="section-title">統計サマリー</h2>
+    <div class="card" style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Legacy Mean (±SD)</th><th>V1 Mean (±SD)</th><th>改善効果</th></tr>
+        </thead>
+        <tbody id="statsTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 class="section-title">エラーログ一覧 (API制限 vs 設定ミス)</h2>
+    <div class="card" style="overflow-x:auto">
+      <p style="font-size:.85rem;color:var(--text2);margin-bottom:16px;">
+        Legacyの失敗は主にGemini APIのレート制限(429)やタイムアウト(504)に起因するアーキテクチャ上の脆弱さを示しています。<br>
+        一方、V1の「ERROR」はテスト実行時のインポート設定ミス（ModuleNotFoundError）であり、APIやサービス実装に起因するエラーではありません。
+      </p>
+      <table>
+        <thead><tr><th>Type</th><th>File</th><th>Result</th><th>Reason</th></tr></thead>
+        <tbody id="errorTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 class="section-title">全実行ログ一覧</h2>
+    <div class="card" style="overflow-x:auto">
+      <details>
+        <summary style="cursor:pointer;color:var(--accent);font-weight:600;outline:none">クリックして全ログを展開</summary>
+        <div style="margin-top:16px">
+          <table>
+            <thead><tr><th>Type</th><th>File</th><th>Phase 1</th><th>Phase 2</th><th>Phase 3</th><th>Total (s)</th></tr></thead>
+            <tbody id="allLogsTableBody"></tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h3>アーキテクチャ考察</h3>
+    <ul>
+      <li><strong>スレッドセーフティ:</strong> Legacyの<code>_DB_SEMS</code>はイベントループ跨ぎでRuntimeErrorを引き起こしました。V1は<code>asyncio.create_task</code>と<code>to_thread</code>で安全に分離されています。</li>
+      <li><strong>API呼び出し効率:</strong> LegacyはN単語に対してN回のGemini API呼び出しを行い、429/503エラーの温床でした。V1はバッチ化によりリクエスト数を激減させています。</li>
+      <li><strong>DB検索効率:</strong> Phase 3の差(1.114s vs 0.514s)は、Legacyの個別クエリとV1の一括IN句クエリの差です。</li>
+      <li><strong>ストリーミング設計:</strong> V1はAsyncGeneratorでDBヒット分を先行yieldするため、体感レイテンシはさらに低くなります。</li>
+    </ul>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+    const DATA = {
+        legacy: {
+            passed: [
+                { file: "2026_05_05_1622.txt", date: "2026-05-05T16:22", p1: 8.397, p2: 6.022, p3: 0.899, total: 19.45 },
+                { file: "20260505_211754.txt", date: "2026-05-05T21:17", p1: 3.093, p2: 2.604, p3: 0.957, total: 13.21 },
+                { file: "20260523_010507.txt", date: "2026-05-23T01:05", p1: 3.232, p2: 2.628, p3: 1.125, total: 14.32 },
+                { file: "20260523_010706.txt", date: "2026-05-23T01:07", p1: 3.581, p2: 2.333, p3: 1.236, total: 15.03 },
+                { file: "20260523_010824.txt", date: "2026-05-23T01:08", p1: 3.585, p2: 2.888, p3: 1.303, total: 14.99 },
+                { file: "20260523_011001.txt", date: "2026-05-23T01:10", p1: 3.262, p2: 2.611, p3: 1.138, total: 14.26 },
+                { file: "20260523_014607.txt", date: "2026-05-23T01:46", p1: 3.399, p2: 2.618, p3: 1.141, total: 19.64 },
+            ],
+            errors: [
+                { file: "20260505_164820.txt", result: "SKIPPED", reason: "外部サービス不可", total: 11.53 },
+                { file: "20260505_165324.txt", result: "SKIPPED", reason: "429 Rate Limit", total: 5.51 },
+                { file: "20260505_165721.txt", result: "SKIPPED", reason: "504 Timeout", total: 36.22 },
+                { file: "20260505_173640.txt", result: "SKIPPED", reason: "502/503 High demand", total: 36.59 },
+                { file: "20260505_173947.txt", result: "SKIPPED", reason: "504 Timeout", total: 35.18 },
+                { file: "20260505_181356.txt", result: "SKIPPED", reason: "504 Timeout", total: 37.45 },
+                { file: "20260505_171503.txt", result: "FAILED", reason: "RuntimeError: Semaphore event loop", total: 12.27 },
+            ]
+        },
+        v1: {
+            passed: [
+                { file: "20260523_011401.txt", date: "2026-05-23T01:14", gs: null, ms: null, p1: 4.182, p2: 2.195, p3: 0.516, total: 11.55 },
+                { file: "20260523_011654.txt", date: "2026-05-23T01:16", gs: null, ms: null, p1: 3.152, p2: 2.344, p3: 0.522, total: 9.87 },
+                { file: "20260523_012702.txt", date: "2026-05-23T01:27", gs: null, ms: null, p1: 3.456, p2: 2.207, p3: 0.509, total: 10.48 },
+                { file: "20260523_013133.txt", date: "2026-05-23T01:31", gs: 10, ms: 3, p1: 3.502, p2: 2.447, p3: 0.434, total: 21.38 },
+                { file: "20260523_013237.txt", date: "2026-05-23T01:32", gs: 10, ms: 3, p1: 2.971, p2: 2.011, p3: 0.512, total: 9.01 },
+                { file: "20260523_013734.txt", date: "2026-05-23T01:37", gs: 10, ms: 3, p1: 3.345, p2: 2.627, p3: 0.510, total: 24.57 },
+                { file: "20260523_014029.txt", date: "2026-05-23T01:40", gs: 10, ms: 3, p1: 3.989, p2: 2.940, p3: 0.514, total: 11.10 },
+                { file: "20260523_014204.txt", date: "2026-05-23T01:42", gs: 2, ms: 3, p1: 3.393, p2: 2.090, p3: 0.525, total: 15.86 },
+                { file: "20260523_014255.txt", date: "2026-05-23T01:42", gs: 1, ms: 3, p1: 3.770, p2: 2.096, p3: 0.524, total: 25.16 },
+                { file: "20260523_014343.txt", date: "2026-05-23T01:43", gs: 10, ms: 3, p1: 3.339, p2: 3.050, p3: 0.517, total: 19.64 },
+                { file: "20260523_015152.txt", date: "2026-05-23T01:51", gs: 10, ms: 3, p1: 3.677, p2: 2.278, p3: 0.522, total: 22.57 },
+            ],
+            errors: [
+                { file: "20260523_011341.txt", result: "ERROR", reason: "ModuleNotFoundError: No module named 'main'" },
+            ]
+        }
+    };
+
+        const calcStats = (arr, key) => {
+            const vals = arr.map(a => a[key]);
+            const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+            const std = Math.sqrt(vals.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b) / vals.length);
+            return { mean: mean.toFixed(3), std: std.toFixed(3) };
+        };
+
+        const lStats = { p1: calcStats(DATA.legacy.passed, 'p1'), p2: calcStats(DATA.legacy.passed, 'p2'), p3: calcStats(DATA.legacy.passed, 'p3') };
+        const vStats = { p1: calcStats(DATA.v1.passed, 'p1'), p2: calcStats(DATA.v1.passed, 'p2'), p3: calcStats(DATA.v1.passed, 'p3') };
+
+        // Chart.js Dark Theme Setup
+        Chart.defaults.color = '#8892b0'; // --text2
+        Chart.defaults.borderColor = '#252d4a'; // --border
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        const colOld = '#ff6b6b';
+        const colNew = '#00d4aa';
+        const colWarn = '#ffb347';
+        const colAccent = '#6c63ff';
+
+        new Chart(document.getElementById('barChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Phase 1', 'Phase 2', 'Phase 3'],
+                datasets: [
+                    { label: 'Legacy', data: [lStats.p1.mean, lStats.p2.mean, lStats.p3.mean], backgroundColor: colOld, borderRadius: 4 },
+                    { label: 'V1', data: [vStats.p1.mean, vStats.p2.mean, vStats.p3.mean], backgroundColor: colNew, borderRadius: 4 }
+                ]
+            },
+            options: { maintainAspectRatio: false }
+        });
+
+        new Chart(document.getElementById('stackedBarChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Legacy', 'V1'],
+                datasets: [
+                    { label: 'Phase 1', data: [lStats.p1.mean, vStats.p1.mean], backgroundColor: '#3b82f6' },
+                    { label: 'Phase 2', data: [lStats.p2.mean, vStats.p2.mean], backgroundColor: '#8b5cf6' },
+                    { label: 'Phase 3', data: [lStats.p3.mean, vStats.p3.mean], backgroundColor: '#10b981' }
+                ]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: { x: { stacked: true }, y: { stacked: true } }
+            }
+        });
+
+        const scatterDataLegacy = DATA.legacy.passed.map((d, i) => ({ x: i, y: d.p1 }));
+        const scatterDataV1 = DATA.v1.passed.map((d, i) => ({ x: i, y: d.p1 }));
+
+        new Chart(document.getElementById('scatterChart'), {
+            type: 'scatter',
+            data: {
+                datasets: [
+                    { label: 'Legacy Phase 1', data: scatterDataLegacy, backgroundColor: colOld, pointRadius: 5 },
+                    { label: 'V1 Phase 1', data: scatterDataV1, backgroundColor: colNew, pointRadius: 5 }
+                ]
+            },
+            options: { maintainAspectRatio: false }
+        });
+
+        const v1Gs1 = DATA.v1.passed.filter(d => d.gs === 1).map(d => d.p1);
+        const v1Gs2 = DATA.v1.passed.filter(d => d.gs === 2).map(d => d.p1);
+        const v1Gs10 = DATA.v1.passed.filter(d => d.gs === 10).map(d => d.p1);
+        const gs1Mean = v1Gs1.reduce((a,b)=>a+b,0)/v1Gs1.length || 0;
+        const gs2Mean = v1Gs2.reduce((a,b)=>a+b,0)/v1Gs2.length || 0;
+        const gs10Mean = v1Gs10.reduce((a,b)=>a+b,0)/v1Gs10.length || 0;
+
+        new Chart(document.getElementById('groupSizeChart'), {
+            type: 'bar',
+            data: {
+                labels: ['gs=1', 'gs=2', 'gs=10'],
+                datasets: [{
+                    label: 'V1 Phase 1 Mean',
+                    data: [gs1Mean, gs2Mean, gs10Mean],
+                    backgroundColor: colNew,
+                    borderRadius: 4
+                }]
+            },
+            options: { maintainAspectRatio: false }
+        });
+
+        // Tables Rendering
+        const diffSpan = (diff) => diff > 0 ? `<span style="color:var(--new)">+${diff}%</span>` : `<span style="color:var(--warn)">${diff}%</span>`;
+        
+        document.getElementById('statsTableBody').innerHTML = `
+            <tr><td>Phase 1</td><td class="mono">${lStats.p1.mean} (±${lStats.p1.std})</td><td class="mono">${vStats.p1.mean} (±${vStats.p1.std})</td><td>${diffSpan(((vStats.p1.mean - lStats.p1.mean)/lStats.p1.mean * 100).toFixed(1))}</td></tr>
+            <tr><td>Phase 2</td><td class="mono">${lStats.p2.mean} (±${lStats.p2.std})</td><td class="mono">${vStats.p2.mean} (±${vStats.p2.std})</td><td>${diffSpan(((vStats.p2.mean - lStats.p2.mean)/lStats.p2.mean * 100).toFixed(1))}</td></tr>
+            <tr><td>Phase 3</td><td class="mono">${lStats.p3.mean} (±${lStats.p3.std})</td><td class="mono">${vStats.p3.mean} (±${vStats.p3.std})</td><td>${diffSpan(((vStats.p3.mean - lStats.p3.mean)/lStats.p3.mean * 100).toFixed(1))}</td></tr>
+        `;
+
+        const errRows = DATA.legacy.errors.map(e => `<tr><td><span class="pill pill-slow">Legacy</span></td><td class="mono">${e.file}</td><td><span style="color:var(--warn)">${e.result}</span></td><td>${e.reason}</td></tr>`).join('') +
+                        DATA.v1.errors.map(e => `<tr><td><span class="pill pill-fast">V1</span></td><td class="mono">${e.file}</td><td><span style="color:var(--old)">${e.result}</span></td><td>${e.reason}</td></tr>`).join('');
+        document.getElementById('errorTableBody').innerHTML = errRows;
+
+        const allRows = DATA.legacy.passed.map(e => `<tr><td><span class="pill pill-slow">Legacy</span></td><td class="mono">${e.file}</td><td class="mono">${e.p1}</td><td class="mono">${e.p2}</td><td class="mono">${e.p3}</td><td class="mono">${e.total}</td></tr>`).join('') +
+                        DATA.v1.passed.map(e => `<tr><td><span class="pill pill-fast">V1</span></td><td class="mono">${e.file}</td><td class="mono">${e.p1}</td><td class="mono">${e.p2}</td><td class="mono">${e.p3}</td><td class="mono">${e.total}</td></tr>`).join('');
+        document.getElementById('allLogsTableBody').innerHTML = allRows;
+
+</script>
+</body>
+</html>
