@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSpeechRecognition } from './hooks/useSpeechRecognition';
-import { useDemoStream } from '../debug/hooks/useDemoStream';
+import { useDemoStream } from './hooks/useDemoStream';
 import { useVectorSend } from '@/app/hooks/useVectorSend';
 import { useReferDict, type DictTermResult } from '@/app/hooks/useReferDict';
 import type { VectorPayload } from '@/app/utils/vectorSendWithOverlap';
 import { fetchThemeVector, type ThemeVectorResult } from '@/app/utils/themeVectorApi';
-import { DEMO_TEXT_INSTANT } from '../debug/demo/demo';
+import { DEMO_TEXT_INSTANT } from './demo/demo';
 import { TranscriptionView } from './components/TranscriptionView';
 import { BubbleCloud } from './components/BubbleCloud';
 import { TermDetailPanel } from './components/TermDetailPanel';
@@ -13,7 +13,7 @@ import { HistoryPanel } from './components/HistoryPanel';
 import { DictionaryManagerModal } from './components/DictionaryManagerModal';
 import { Term } from './data/terms';
 import { getAllPinnedTerms, addPinnedTerm, removePinnedTerm } from './db';
-import { countTermFrequencies } from './utils/termDetection';
+import { extractTerms, countTermFrequencies } from './utils/termDetection';
 import { Book, LayoutGrid, LibraryBig, Settings, Target } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
 import { Toaster, toast } from 'sonner';
@@ -28,9 +28,6 @@ import {
   makeLeftRightLayout,
   removeLeaf,
 } from './layout/layoutUtils';
-import { AccentThemeProvider } from '../theme/AccentThemeContext';
-import { accentRgba, micStartButtonStyle } from '../theme/accentStyles';
-import { getAccentRgb } from '../theme/accentTokens';
 
 
 
@@ -264,8 +261,22 @@ const App: React.FC = () => {
   useEffect(() => { isPinnedRef.current = isPinned; }, [isPinned]);
   useEffect(() => { activeTermsRef.current = activeTerms; }, [activeTerms]);
 
-  // 用語はサーバーから受け取る（フロントエンド側での extractTerms は廃止）
-  // 将来: transcript をサーバーに送り、サーバーが用語を返したら setActiveTerms を呼ぶ
+  useEffect(() => {
+    if (!transcript) return;
+    const extracted = extractTerms(transcript, apiTerms);
+    const now = Date.now();
+    
+    // まだ一度も画面に出ていない完全に新規の用語だけをフィルタリング
+    const completelyNewTerms = extracted.filter(t => !historicalTermIdsRef.current.has(t.id));
+    if (completelyNewTerms.length === 0) return;
+
+    completelyNewTerms.forEach(t => {
+      historicalTermIdsRef.current.add(t.id);
+      termTimestamps.current[t.id] = now;
+    });
+
+    setActiveTerms(prev => [...prev, ...completelyNewTerms]);
+  }, [transcript, apiTerms]);
 
   // ── バブル削除アルゴリズム (1秒ごとに実行) ───────────────────
   useEffect(() => {
@@ -500,24 +511,15 @@ const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms]);
 
-  const shellRgb = getAccentRgb(settings.themeColor);
-
   return (
-    <AccentThemeProvider themeColor={settings.themeColor}>
     <div
       className={`h-full flex flex-col font-sans transition-colors duration-500 ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}
       style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}
     >
       {dk && (
         <div className="fixed inset-0 pointer-events-none z-0">
-          <div
-            className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl"
-            style={{ backgroundColor: accentRgba(shellRgb, 0.12) }}
-          />
-          <div
-            className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-3xl"
-            style={{ backgroundColor: accentRgba(shellRgb, 0.08) }}
-          />
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-600/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-violet-600/5 rounded-full blur-3xl" />
         </div>
       )}
 
@@ -528,19 +530,11 @@ const App: React.FC = () => {
         <div className="w-full min-w-0 px-4 h-14 flex items-center justify-between gap-4">
           {/* Logo */}
           <div className="flex items-center gap-3 shrink-0">
-            <div
-              className="p-1.5 rounded-xl text-white shadow-lg transition-[filter] hover:brightness-110"
-              style={micStartButtonStyle(shellRgb, dk)}
-            >
+            <div className="bg-indigo-600 p-1.5 rounded-xl text-white shadow-lg shadow-indigo-600/30">
               <Book size={18} />
             </div>
             <span className="text-lg font-black tracking-tight">TalkScope</span>
-            <span
-              className="text-[9px] font-bold uppercase tracking-[0.2em] hidden sm:inline"
-              style={{ color: accentRgba(shellRgb, dk ? 0.85 : 0.7) }}
-            >
-              Pro
-            </span>
+            <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-[0.2em] hidden sm:inline">Pro</span>
           </div>
 
           {/* Actions（右詰め）: 主題 → レイアウト → API確認 → 設定 */}
@@ -569,18 +563,7 @@ const App: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setIsLayoutMenuOpen(v => !v)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                  isLayoutMenuOpen ? '' : (dk ? 'text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 border-slate-700/50' : 'text-slate-500 hover:text-slate-700 bg-white border-slate-200 hover:bg-slate-50')
-                }`}
-                style={
-                  isLayoutMenuOpen
-                    ? {
-                        backgroundColor: accentRgba(shellRgb, dk ? 0.22 : 0.1),
-                        borderColor: accentRgba(shellRgb, dk ? 0.5 : 0.35),
-                        color: accentRgba(shellRgb, dk ? 0.95 : 0.88),
-                      }
-                    : undefined
-                }
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${isLayoutMenuOpen ? (dk ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-600') : (dk ? 'text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 border-slate-700/50' : 'text-slate-500 hover:text-slate-700 bg-white border-slate-200 hover:bg-slate-50')}`}
               >
                 <LayoutGrid size={13} />レイアウト
               </button>
@@ -592,13 +575,7 @@ const App: React.FC = () => {
                       <button
                         key={p.key}
                         onClick={() => { setLayout(p.make()); setIsLayoutMenuOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${dk ? 'text-slate-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = accentRgba(shellRgb, dk ? 0.18 : 0.1);
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
+                        className={`w-full text-left px-4 py-2.5 text-xs font-bold transition-colors ${dk ? 'hover:bg-indigo-600/20 text-slate-300 hover:text-white' : 'hover:bg-indigo-50 text-slate-600 hover:text-indigo-700'}`}
                       >
                         {p.label}
                       </button>
@@ -667,7 +644,6 @@ const App: React.FC = () => {
         darkMode={dk}
       />
     </div>
-    </AccentThemeProvider>
   );
 };
 

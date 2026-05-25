@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import { Term } from '../data/terms';
 import { History, Trash2, ChevronRight, Search } from 'lucide-react';
-import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
-import { scaledContentFontPx } from '../utils/contentFontScale';
-import { useAccentTheme } from '../../theme/AccentThemeContext';
-import { accentRgba } from '../../theme/accentStyles';
 
 const CATEGORY_DOT: Record<string, string> = {
   Frontend: '#60a5fa',
@@ -24,8 +20,6 @@ interface HistoryPanelProps {
 export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick, onClear, darkMode = true }) => {
   const [search, setSearch] = useState('');
   const dk = darkMode;
-  const contentFontScale = useContentFontScaleStore(s => s.scale);
-  const { rgb } = useAccentTheme();
 
   const filtered = history.filter(t =>
     t.word.toLowerCase().includes(search.toLowerCase()) ||
@@ -38,7 +32,7 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick
       <div className={`p-4 border-b flex-shrink-0 ${dk ? 'border-slate-800/60' : 'border-slate-100'}`}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <History size={14} style={{ color: accentRgba(rgb, dk ? 0.85 : 0.72) }} />
+            <History size={14} className="text-indigo-400" />
             <span className="text-sm font-black">検索履歴</span>
           </div>
           {history.length > 0 && (
@@ -74,34 +68,15 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick
               <button
                 key={`${t.id}-${i}`}
                 onClick={() => onTermClick(t)}
-                className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all border-l-2 ${
-                  dk ? 'hover:bg-slate-800/60' : 'hover:bg-slate-50'
-                }`}
-                style={{ borderLeftColor: 'transparent' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderLeftColor = accentRgba(rgb, dk ? 0.55 : 0.4);
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderLeftColor = 'transparent';
-                }}
+                className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-all border ${dk ? 'border-transparent hover:bg-slate-800/60 hover:border-indigo-500/20' : 'border-transparent hover:bg-slate-50 hover:border-indigo-200'}`}
               >
                 <span
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ background: CATEGORY_DOT[t.category] || '#94a3b8' }}
                 />
                 <div className="min-w-0 flex-1">
-                  <p
-                    className={`font-black truncate ${dk ? 'text-slate-200' : 'text-slate-700'}`}
-                    style={{ fontSize: scaledContentFontPx(12, contentFontScale) }}
-                  >
-                    {t.word}
-                  </p>
-                  <p
-                    className={`truncate ${dk ? 'text-slate-600' : 'text-slate-400'}`}
-                    style={{ fontSize: scaledContentFontPx(10, contentFontScale) }}
-                  >
-                    {t.shortDesc}
-                  </p>
+                  <p className={`text-xs font-black truncate ${dk ? 'text-slate-200' : 'text-slate-700'}`}>{t.word}</p>
+                  <p className={`text-[10px] truncate ${dk ? 'text-slate-600' : 'text-slate-400'}`}>{t.shortDesc}</p>
                 </div>
                 <ChevronRight size={12} className={dk ? 'text-slate-700 flex-shrink-0' : 'text-slate-300 flex-shrink-0'} />
               </button>

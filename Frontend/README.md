@@ -1,15 +1,13 @@
 # Frontend
 
-TalkScope（LexiFlow）のフロントエンドです。音声認識、文字起こし、用語のハイライト／バブル表示、履歴、レイアウト分割 UI を担当します。
-
-エントリポイントは `src/main.tsx` → **`src/presentation/App.tsx`**（クリーンアーキテクチャ構成）。レガシーな単一画面実装は `src/app/App.tsx` に残っていますが、通常の開発ではプレゼンレイヤを前提にしてください。
+LexiFlow のフロントエンドです。音声認識、文字起こし表示、単語バブル UI、履歴管理を担当します。
 
 ## 技術スタック
 
 - React 19 + TypeScript
 - Vite 6
 - Tailwind CSS v4
-- Bun（パッケージ管理・テスト）
+- Bun
 
 ## セットアップ
 
@@ -22,22 +20,9 @@ bun run dev
 - 開発サーバー: `http://localhost:5173`
 - 推奨ブラウザ: Chrome 系（Web Speech API 利用のため）
 
-### Transcript Focus Lab（解析試作）
-
-本番の Vite アプリとは別に、ブラウザだけで動く重要語スコアリングの試作があります。`transcript-focus-lab/index.html` を開いて利用します（手順は `transcript-focus-lab/README.md`）。
-
-## テスト
-
-```bash
-cd Frontend
-bun test
-```
-
-テスト仕様のまとめは `docs/tests/test-spec-001.md`（ベース）、`test-spec-002.md`（追補）、**`test-spec-003.md`（2026-05-14 マージ分・PR #26〜#29）** を参照。
-
 ## Docker で起動
 
-リポジトリルートで実行してください（Makefile のパスは環境に合わせて読み替え）。
+ルートディレクトリ（`/Users/honmayuudai/MyHobby/hackson/KC3Hack2026`）で実行してください。
 
 ```bash
 make up-frontend
@@ -58,50 +43,61 @@ make docker-clean
 - URL: `http://localhost:5173`
 - HTTPS 開発サーバーが必要な場合は `VITE_USE_HTTPS=true` を設定
 
-## 現在の主要機能（プレゼンレイヤ）
+## 現在の主要機能
 
-- **発表中／発表後フェーズ**とフェーズ別レイアウト（永続化は `LayoutRepository`）
-- **グローバルツールバー**（`PresentationAppHeader`）: 設定モーダル（ダークモード・アクセント）、全ウィンドウリセット、レイアウトプリセット（発表後は表示のみ・無効）、同一サイズのピル型で「発表終了」／「もどる」を切替。開発者向けテストポップアップは開発ビルド時のみ左側に表示（`import.meta.env.DEV`）
-- **アクセント色**: 発表中は設定色、発表後は補色に近いテーマへ自動切替（`getOppositeThemeColor`／詳細は `docs/ADRs/adr-008.md`）
-- **音声認識**（`ja-JP`）とリアルタイム文字起こし（`WebSpeechTranscriptionService` → `transcriptStore`）
-- **用語のハイライト・バブル**（`termStore`；将来はサーバー由来。検証用モックは `src/debug/demo/mockImportantTerms.ts`）
-- **検索履歴・詳細パネル**（ウィンドウ分割で表示）
-
-開発ルールとディレクトリの意味付けは **`AGENTS.md`** を参照。
+- 音声認識（`ja-JP`）とリアルタイム文字起こし
+- 文字起こしテキストからの用語抽出
+- 用語のバブル表示・詳細表示
+- 検索履歴管理（`localStorage`）
+- 単語管理モーダル（一覧/編集/削除/一括登録）
+- 複数レイアウトプリセット切り替え
 
 ## ディレクトリ概要
 
 ```txt
 Frontend/
-├── docs/
-│   ├── ADRs/           # 設計判断（例: adr-007 ツールバー、adr-008 ヘッダーとアクセント切替）
-│   ├── orders/         # 指示の要約
-│   └── tests/          # テスト仕様メモ
 ├── src/
-│   ├── domain/         # エンティティ・インターフェース（外部依存なし）
-│   ├── application/    # ユースケース
-│   ├── infrastructure/ # WebSpeech・ストレージ・重要度ストラテジ等
-│   ├── stores/         # Zustand
-│   ├── presentation/   # メイン UI（App, phases, windows, layout）
-│   ├── debug/demo/     # デモテキスト・モック重要語・useDemoStream
-│   ├── app/            # 共有コンポーネント・レガシー App 等
+│   ├── app/
+│   │   ├── App.tsx
+│   │   ├── hooks/useSpeechRecognition.ts
+│   │   ├── utils/termDetection.ts
+│   │   ├── components/
+│   │   └── layout/
 │   ├── styles/
 │   └── main.tsx
 ├── package.json
 └── vite.config.ts
 ```
 
-## 類似度の検証（レガシー／ユーティリティ）
+## 類似度の検証
 
-バブルサイズに使う類似度ロジックのスモーク確認:
+バブルサイズに使う「主題・会話との類似度」が正しく算出されているか確認する方法です。
+
+### 1. 検証スクリプトで確認（推奨）
 
 ```bash
 cd Frontend
 bun run verify:similarity
 ```
 
+- 用語ごとの主題・会話との類似度（-1〜1）とスコア（0〜1）を表示します。
+- 範囲外の値や同一用語で結果がぶれないかをチェックします。
+
+### 2. ブラウザの開発者ツールで確認
+
+1. `bun run dev` でアプリを起動し、文字起こしで用語を出した状態にします。
+2. F12 で開発者ツールを開き、**Console** タブを開きます。
+3. `[BubbleCloud] 類似度(モック) …` のログを確認します。
+   - **themeScore** … 主題との類似度を 0〜1 にした値（高いほど主題に近い）
+   - **convScore** … 会話との類似度を 0〜1 にした値（高いほど会話に近い）
+   - **radius** … 上記から計算したバブル半径（類似度が高いほど大きくなっているか確認）
+
+### 3. 本番 API を使う場合
+
+バックエンドのベクトル API（例: `POST /analysis/vectorize`）に切り替えたあとは、同じコンソールログで `themeScore` / `convScore` の値が主題・会話の内容に応じて変わるかを確認してください。モックと違って「意味的に近い用語ほどスコアが高く」なれば正しく動作しています。
+
 ## 開発メモ
 
-- 重要語の本番ソースは **サーバー連携後に transcript を送信して反映**する想定（フロント単体での辞書抽出はリファクタ方針により廃止）。
-- デモ重要語マーキングは **オプションの検証用**（`demoImportantMarkingStore` + `useDemoImportantTermsSync`）。
-- UI 検証の速度を優先するため、ログインなしで利用できる設計。
+- 用語抽出は現在フロント側のロジックで実施
+- 今後は Backend の解析 API と接続し、抽出精度・スコア計算を強化予定
+- UI 検証の速度を優先するため、ログインなしで利用できる設計
