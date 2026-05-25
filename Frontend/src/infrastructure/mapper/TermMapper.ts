@@ -14,9 +14,10 @@ const EMPTY_LEGACY = {
 } satisfies Pick<Term, 'kana' | 'category' | 'relatedTerms'>
 
 export function mapToTerm(row: TermRow): Term {
-  const id = String(row.id)
+  // const id = String(row.id)
   const word = row.term.trim()
   const desc = row.description.trim()
+  const id = word+"-"+desc.slice(0,5)
   return {
     id,
     word,
