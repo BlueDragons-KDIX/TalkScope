@@ -11,6 +11,7 @@ import { useDemoStream } from '../debug/hooks/useDemoStream'
 import { getTranscriptionService } from './hooks/useTranscription'
 import { SettingsModal } from '../app/components/SettingsModal'
 import { useDemoImportantTermsSync } from './hooks/useDemoImportantTermsSync'
+import { ReferDictScoreSseBridge } from '../infrastructure/sse'
 import { useTranscriptStore } from '../stores/transcriptStore'
 import { useTermStore } from '../stores/termStore'
 import { useBubbleStore } from '../stores/bubbleStore'
@@ -69,6 +70,7 @@ const App: React.FC = () => {
         }}
       >
         <DemoImportantTermsBridge />
+        <ReferDictScoreSseBridge />
         <AccentThemeProvider themeColor={phaseAccentColor}>
         <div
           className={`w-screen h-screen flex flex-col overflow-hidden ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}
