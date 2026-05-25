@@ -3,15 +3,30 @@ import { createPortal } from 'react-dom';
 import { highlightTerms } from '../utils/termDetection';
 import { Term } from '../data/terms';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, Square, Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle, Star } from 'lucide-react';
-import { UseDemoStreamReturn } from '../hooks/useDemoStream';
+import { Radio, Play, RotateCcw, FastForward, Pause, LoaderCircle, Star } from 'lucide-react';
+import { UseDemoStreamReturn } from '../../debug/hooks/useDemoStream';
+import type { MicrophoneDevice, TranscriptionMode } from '../../domain/interfaces/ITranscriptionService';
+import { RecordingToolbar } from '../../presentation/components/RecordingToolbar';
+import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
+import { useTranscriptionWindowSettingsStore } from '../../stores/transcriptionWindowSettingsStore';
+import { scaledContentFontPx } from '../utils/contentFontScale';
+import { useAccentTheme } from '../../theme/AccentThemeContext';
+import { accentRgba, accentRgbSolid, accentSliderStyle, termChipStyle } from '../../theme/accentStyles';
 
 const TOOLTIP = { W: 208, H: 100, PAD: 8, GAP_ABOVE: 12 } as const;
 
 interface TranscriptionViewProps {
   transcript: string;
   isListening: boolean;
-  onToggleListening: () => void;
+  onToggleListening?: () => void;
+  /** false のとき録音・モード・マイクは操作ウィンドウ側に集約 */
+  showRecordingCluster?: boolean;
+  mode?: TranscriptionMode;
+  onChangeMode?: (mode: TranscriptionMode) => void;
+  microphones?: MicrophoneDevice[];
+  selectedMicrophoneId?: string;
+  onSelectMicrophone?: (deviceId: string) => void;
+  onRefreshMicrophones?: () => void;
   onClearTranscript?: () => void;
   onTermClick: (term: Term) => void;
   onTermHover: (term: Term | null) => void;
@@ -20,6 +35,10 @@ interface TranscriptionViewProps {
   onLoadDemo?: () => void;
   /** 非同期ストリーミングデモの制御オブジェクト（コア機能とは独立） */
   demoStream?: UseDemoStreamReturn;
+  /** false のとき空状態・フッターのデモ操作 UI を隠す（ツールバーのポップアップ側に寄せる） */
+  showEmbeddedDemoControls?: boolean;
+  /** false のときフッターのリセットボタンを隠す（グローバルツールバー側に寄せる） */
+  showEmbeddedResetButton?: boolean;
   darkMode?: boolean;
   /** API で発見された動的用語（ハイライト対象に含める） */
   apiTerms?: Term[];
@@ -29,6 +48,13 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   transcript,
   isListening,
   onToggleListening,
+  showRecordingCluster = true,
+  mode = 'fast',
+  onChangeMode,
+  microphones = [],
+  selectedMicrophoneId = '',
+  onSelectMicrophone,
+  onRefreshMicrophones,
   onClearTranscript,
   onTermClick,
   onTermHover,
@@ -36,11 +62,18 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   onTogglePin,
   onLoadDemo,
   demoStream,
+  showEmbeddedDemoControls = true,
+  showEmbeddedResetButton = true,
   darkMode = true,
   apiTerms = [],
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const termButtonRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const contentFontScale = useContentFontScaleStore(s => s.scale);
+  const transcriptionMasterFontScale = useTranscriptionWindowSettingsStore(s => s.masterFontScale);
+  const plainTextFontSizePx = useTranscriptionWindowSettingsStore(s => s.plainTextFontSizePx);
+  const importantTermFontSizePx = useTranscriptionWindowSettingsStore(s => s.importantTermFontSizePx);
+  const { rgb } = useAccentTheme();
   const [hoveredPartIndex, setHoveredPartIndex] = useState<number | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; showBelow: boolean } | null>(null);
 
@@ -102,6 +135,7 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
   const isPaused = demoStream?.status === 'paused';
   const isDone = demoStream?.status === 'done';
   const progress = demoStream?.progress ?? 0;
+  const effectiveFontScale = contentFontScale * transcriptionMasterFontScale;
 
   return (
     <div className={`flex flex-col h-full transition-colors ${dk ? 'bg-[#0d0e1a]' : 'bg-white'}`}>
@@ -144,42 +178,67 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
       >
         {!transcript ? (
           <div className={`h-full flex flex-col items-center justify-center text-center gap-3 ${dk ? 'text-slate-600' : 'text-slate-300'}`}>
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${
-              isListening ? (dk ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-indigo-300 bg-indigo-50') : (dk ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50')
-            }`}>
-              <Radio size={28} className={isListening ? (dk ? 'text-indigo-400' : 'text-indigo-500') : (dk ? 'text-slate-600' : 'text-slate-300')} />
+            <div
+              className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${
+                isListening ? '' : (dk ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50')
+              }`}
+              style={
+                isListening
+                  ? {
+                      borderColor: accentRgba(rgb, dk ? 0.55 : 0.45),
+                      backgroundColor: accentRgba(rgb, dk ? 0.12 : 0.08),
+                    }
+                  : undefined
+              }
+            >
+              <Radio
+                size={28}
+                style={
+                  isListening
+                    ? { color: accentRgbSolid(rgb) }
+                    : undefined
+                }
+                className={isListening ? '' : (dk ? 'text-slate-600' : 'text-slate-300')}
+              />
             </div>
             <div>
               <p className={`text-sm font-bold ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
                 {isListening ? '聞いています...' : '音声入力待機中'}
               </p>
               <p className={`text-xs mt-1 ${dk ? 'text-slate-700' : 'text-slate-300'}`}>
-                マイクボタンを押して開始、またはデモを試してください
+                {showEmbeddedDemoControls
+                  ? 'マイクボタンを押して開始、またはデモを試してください'
+                  : 'マイクボタンを押して開始。デモは画面上部の「テスト」から実行できます'}
               </p>
             </div>
 
             {/* Demo buttons (in empty state) */}
-            <div className="flex flex-col gap-2 items-center w-full max-w-[200px]">
-              {onLoadDemo && (
-                <button
-                  onClick={onLoadDemo}
-                  className={`flex items-center gap-1.5 w-full justify-center px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${dk ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-700' : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'}`}
-                >
-                  <Play size={11} />即時デモ
-                </button>
-              )}
-              {demoStream && (
-                <button
-                  onClick={() => demoStream.startStream()}
-                  className={`flex items-center gap-1.5 w-full justify-center px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${dk ? 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border-purple-500/30' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200'}`}
-                >
-                  <FastForward size={11} />ライブデモ（長文）
-                </button>
-              )}
-            </div>
+            {showEmbeddedDemoControls && (
+              <div className="flex flex-col gap-2 items-center w-full max-w-[200px]">
+                {onLoadDemo && (
+                  <button
+                    onClick={onLoadDemo}
+                    className={`flex items-center gap-1.5 w-full justify-center px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${dk ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-700' : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'}`}
+                  >
+                    <Play size={11} />即時デモ
+                  </button>
+                )}
+                {demoStream && (
+                  <button
+                    onClick={() => demoStream.startStream()}
+                    className={`flex items-center gap-1.5 w-full justify-center px-4 py-2 rounded-xl text-xs font-bold border transition-colors ${dk ? 'bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 border-purple-500/30' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200'}`}
+                  >
+                    <FastForward size={11} />ライブデモ（長文）
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ) : (
-          <div className="whitespace-pre-wrap font-medium">
+          <div
+            className="whitespace-pre-wrap font-medium"
+            style={{ fontSize: scaledContentFontPx(plainTextFontSizePx, effectiveFontScale) }}
+          >
             {parts.map((part, index) => {
               if (part.type === 'term') {
                 const term = part.term as Term;
@@ -194,11 +253,11 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                       }}
                       onMouseEnter={() => { setHoveredPartIndex(index); onTermHover(term); }}
                       onMouseLeave={() => { setHoveredPartIndex(null); onTermHover(null); }}
-                      className={`px-1.5 py-0.5 rounded-md cursor-pointer transition-all font-bold ${
-                        dk
-                          ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/35 border border-indigo-500/30'
-                          : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                      }`}
+                      className="px-1.5 py-0.5 rounded-md cursor-pointer transition-[filter,transform] font-bold hover:brightness-110"
+                      style={{
+                        ...termChipStyle(dk, rgb),
+                        fontSize: scaledContentFontPx(importantTermFontSizePx, effectiveFontScale),
+                      }}
                     >
                       {part.content}
                     </button>
@@ -206,10 +265,20 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                   </span>
                 );
               }
-              return <span key={index}>{part.content}</span>;
+              return (
+                <span key={index} style={{ fontSize: scaledContentFontPx(plainTextFontSizePx, effectiveFontScale) }}>
+                  {part.content}
+                </span>
+              );
             })}
             {isListening && (
-              <span className={`inline-block w-0.5 h-4 ml-0.5 ${dk ? 'bg-indigo-400 shadow-lg shadow-indigo-400/50' : 'bg-indigo-500'} animate-pulse align-middle rounded-full`} />
+              <span
+                className="inline-block w-0.5 h-4 ml-0.5 animate-pulse align-middle rounded-full"
+                style={{
+                  backgroundColor: accentRgbSolid(rgb),
+                  boxShadow: dk ? `0 0 12px ${accentRgba(rgb, 0.55)}` : `0 0 8px ${accentRgba(rgb, 0.35)}`,
+                }}
+              />
             )}
             {isStreaming && (
               <span className={`inline-block w-0.5 h-4 ml-0.5 bg-purple-400 animate-pulse align-middle rounded-full`} />
@@ -236,12 +305,15 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                 <Star size={12} fill="currentColor" />
               </div>
             )}
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className={`text-[10px] font-bold ${dk ? 'text-indigo-400' : 'text-indigo-300'}`}>{hoveredTerm.category}</span>
-              <span className={`text-[10px] ${dk ? 'text-slate-500' : 'text-slate-400'}`}>Lv.{hoveredTerm.level}</span>
+            <div className="font-black mb-1" style={{ fontSize: scaledContentFontPx(14, contentFontScale) }}>
+              {hoveredTerm.word}
             </div>
-            <div className="text-sm font-black mb-1">{hoveredTerm.word}</div>
-            <p className={`text-[11px] leading-relaxed line-clamp-2 ${dk ? 'text-slate-400' : 'text-slate-300'}`}>{hoveredTerm.shortDesc}</p>
+            <p
+              className={`leading-relaxed line-clamp-2 ${dk ? 'text-slate-400' : 'text-slate-300'}`}
+              style={{ fontSize: scaledContentFontPx(11, contentFontScale) }}
+            >
+              {hoveredTerm.shortDesc}
+            </p>
             <div
               className={`absolute left-1/2 -translate-x-1/2 border-[6px] border-transparent ${
                 tooltipPos.showBelow
@@ -259,68 +331,43 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
         <div className="flex items-center justify-center gap-5">
 
           {/* リセットボタン */}
-          <div className="flex flex-col items-center gap-1.5">
-            <motion.button
-              onClick={onClearTranscript}
-              whileTap={{ scale: 0.92 }}
-              whileHover={{ scale: 1.06 }}
-              className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-colors shadow-lg ${
-                dk
-                  ? 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-red-500/10 hover:border-red-500/60 hover:text-red-400'
-                  : 'bg-white border-slate-300 text-slate-400 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
-              }`}
-              title="録音終了・リセット"
-            >
-              <RotateCcw size={20} />
-            </motion.button>
-            <span className={`text-[10px] font-bold ${dk ? 'text-slate-600' : 'text-slate-400'}`}>リセット</span>
-          </div>
+          {showEmbeddedResetButton && onClearTranscript && (
+            <div className="flex flex-col items-center gap-1.5">
+              <motion.button
+                onClick={onClearTranscript}
+                whileTap={{ scale: 0.92 }}
+                whileHover={{ scale: 1.06 }}
+                className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition-colors shadow-lg ${
+                  dk
+                    ? 'bg-slate-800 border-slate-600 text-slate-400 hover:bg-red-500/10 hover:border-red-500/60 hover:text-red-400'
+                    : 'bg-white border-slate-300 text-slate-400 hover:bg-red-50 hover:border-red-300 hover:text-red-500'
+                }`}
+                title="録音終了・リセット"
+              >
+                <RotateCcw size={20} />
+              </motion.button>
+              <span className={`text-[10px] font-bold ${dk ? 'text-slate-600' : 'text-slate-400'}`}>リセット</span>
+            </div>
+          )}
 
-          {/* 録音開始/中断ボタン（メイン） */}
-          <div className="flex flex-col items-center gap-1.5">
-            <AnimatePresence mode="wait">
-              {isListening ? (
-                <motion.button
-                  key="stop"
-                  onClick={onToggleListening}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-                  whileTap={{ scale: 0.92 }}
-                  className="w-20 h-20 rounded-full flex items-center justify-center relative shadow-2xl bg-red-500 hover:bg-red-400 text-white shadow-red-500/30"
-                  title="録音を中断"
-                >
-                  <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-25 pointer-events-none" />
-                  <Square size={26} fill="currentColor" />
-                </motion.button>
-              ) : (
-                <motion.button
-                  key="start"
-                  onClick={onToggleListening}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-                  whileTap={{ scale: 0.92 }}
-                  className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl ${
-                    dk
-                      ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/40'
-                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'
-                  }`}
-                  title="録音開始"
-                >
-                  <Mic size={32} />
-                </motion.button>
-              )}
-            </AnimatePresence>
-            <span className={`text-[10px] font-bold ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
-              {isListening ? '中断' : '録音開始'}
-            </span>
-          </div>
+          {/* 録音開始/中断・モード・マイク（操作ウィンドウに移したときは非表示） */}
+          {showRecordingCluster && onToggleListening && (
+            <RecordingToolbar
+              darkMode={darkMode}
+              isListening={isListening}
+              onToggleListening={onToggleListening}
+              mode={mode}
+              onChangeMode={onChangeMode ?? (() => {})}
+              microphones={microphones}
+              selectedMicrophoneId={selectedMicrophoneId}
+              onSelectMicrophone={onSelectMicrophone ?? (() => {})}
+              onRefreshMicrophones={onRefreshMicrophones ?? (() => {})}
+              variant={onChangeMode && onSelectMicrophone && onRefreshMicrophones ? 'full' : 'recordOnly'}
+            />
+          )}
 
           {/* ライブデモボタン＋速度スライダー（右側） */}
-          {demoStream && (
+          {demoStream && showEmbeddedDemoControls && (
             <div className="flex flex-col items-center gap-2">
               {/* 速度スライダー: pos 0(遅)〜100(速), pos30≒3518ms */}
               {(() => {
@@ -349,9 +396,12 @@ export const TranscriptionView: React.FC<TranscriptionViewProps> = ({
                       value={pos}
                       onChange={e => demoStream.setIntervalMs(posToMs(Number(e.target.value)))}
                       className={`w-full h-1.5 rounded-full appearance-none cursor-pointer ${
-                        isStreaming ? 'accent-purple-500' : (dk ? 'accent-slate-500' : 'accent-slate-400')
+                        isStreaming ? 'accent-purple-500' : ''
                       }`}
-                      style={{ background: dk ? '#1e293b' : '#e2e8f0' }}
+                      style={{
+                        background: dk ? '#1e293b' : '#e2e8f0',
+                        ...(isStreaming ? {} : accentSliderStyle(rgb)),
+                      }}
                       title={`速度: ${demoStream.intervalMs}ms (${pos}/100)`}
                     />
                     <div className={`flex justify-between text-[8px] font-bold ${dk ? 'text-slate-700' : 'text-slate-300'}`}>

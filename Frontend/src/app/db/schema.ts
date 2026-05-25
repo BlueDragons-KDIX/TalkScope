@@ -50,8 +50,9 @@ export interface PinnedTermRow {
   kana: string;
   shortDesc: string;
   longDesc: string;
-  category: 'Frontend' | 'Backend' | 'Infra' | 'AI/Data' | 'General';
-  level: number;
+  /** @deprecated 互換のため残す */
+  category: string;
+  score: number;
   relatedTerms: string[];
   externalUrl?: string;
 }
