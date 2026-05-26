@@ -8,6 +8,7 @@ import logging
 import os
 
 from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 from config.config import get_database_url_env_key
 from app.models import Base
@@ -27,7 +28,7 @@ class Database:
         db_url = os.environ.get(env_key)
         if not db_url:
             logger.warning(
-                "%s が未設定のため、DB 機能は無効です。", env_key
+                "環境変数が未設定のため、DB 機能は無効です。"
             )
             return
 
@@ -55,7 +56,14 @@ class Database:
 
     def init_db(self) -> None:
         """DB 初期化処理。現時点ではテーブル定義の作成を行う。"""
-        self.define_tables()
+        try:
+            self.define_tables()
+        except SQLAlchemyError as e:
+            logger.warning("DB 初期化に失敗したため、DB 機能を無効化します: %s", type(e).__name__)
+            if self.engine is not None:
+                self.engine.dispose()
+            self.engine = None
+            self.SessionLocal = None
 
 # =====================================================
 

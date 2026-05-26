@@ -160,7 +160,7 @@ def _parse_json_response(response_text: str) -> dict[str, list[str]]:
             status_code=502,
             detail="Gemini upstream returned invalid JSON",
         )
-    print(f"DEBUG: Parsed Gemini JSON: {parsed}")
+    # print(f"DEBUG: Parsed Gemini JSON: {parsed}")
 
     result: dict[str, list[str]] = {}
     for term, senses in parsed.items():

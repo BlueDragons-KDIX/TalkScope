@@ -25,7 +25,7 @@ async def lifespan(app: fastapi.FastAPI):
         db.init_db()
         logger.info("DB 初期化完了")
     else:
-        logger.warning("%s 未設定または接続失敗のため、DB 初期化をスキップ", db.env_key)
+        logger.warning("DB 接続設定が未設定または接続失敗のため、DB 初期化をスキップ")
     yield
     # 終了時: 必要に応じてクリーンアップ
 

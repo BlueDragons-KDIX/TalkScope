@@ -64,12 +64,13 @@ def _load_idf_lookup_from_database() -> IdfLookupTable | None:
         for lemma, raw in result:
             pairs[str(lemma)] = float(raw)
         if not pairs:
-            _logger.info(
-                "term_idf に該当行がありません（下限 IDF フィルタ後または空）。IDF は DB 経由では有効になりません"
-            )
+            # _logger.info(
+            #     "term_idf に該当行がありません（下限 IDF フィルタ後または空）。IDF は DB 経由では有効になりません"
+            # )
             return None
         if min_v is not None:
-            _logger.info("term_idf を idf_value >= %s で %d 語読み込みました", min_v, len(pairs))
+            pass
+            # _logger.info("term_idf を idf_value >= %s で %d 語読み込みました", min_v, len(pairs))
         return IdfLookupTable(pairs)
     except Exception:
         _logger.exception("term_idf から IDF を読み込めませんでした")
@@ -112,16 +113,16 @@ def init_idf_table() -> None:
     tbl = _load_idf_lookup_from_database()
     if tbl is not None:
         _table = tbl
-        _logger.info("IDF は DB の term_idf から読み込みました")
+        # _logger.info("IDF は DB の term_idf から読み込みました")
         return
 
     tbl_json = _load_idf_lookup_from_env_json_file()
     if tbl_json is not None:
         _table = tbl_json
-        _logger.info("IDF は IDF_JSON_PATH のファイルから読み込みました")
+        # _logger.info("IDF は IDF_JSON_PATH のファイルから読み込みました")
         return
 
-    _logger.info("IDF データなしのためスコアに IDF バフは使いません（term_idf 空・無効および IDF_JSON_PATH なし／失敗）")
+    # _logger.info("IDF データなしのためスコアに IDF バフは使いません（term_idf 空・無効および IDF_JSON_PATH なし／失敗）")
 
 
 def get_idf_table() -> IdfLookupTable | None:

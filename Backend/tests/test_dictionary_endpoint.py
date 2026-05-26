@@ -99,10 +99,10 @@ def test_dictionary_lookup_validates_term_and_terms_together() -> None:
 
 def test_dictionary_lookup_propagates_503(monkeypatch) -> None:
     def _raise_error(*_args, **_kwargs):
-        raise fastapi.HTTPException(status_code=503, detail="GEMINI_API_KEY is not configured")
+        raise fastapi.HTTPException(status_code=503, detail="Gemini API key is not configured")
 
     monkeypatch.setattr(dictionary_endpoint, "lookup_term_summary", _raise_error)
     res = client.post("/dictionary/lookup", json={"term": "RAG"})
 
     assert res.status_code == 503
-    assert res.json()["detail"] == "GEMINI_API_KEY is not configured"
+    assert res.json()["detail"] == "Gemini API key is not configured"

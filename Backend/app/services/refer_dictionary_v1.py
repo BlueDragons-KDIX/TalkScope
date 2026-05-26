@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import AsyncGenerator, Awaitable
+from typing import AsyncGenerator, Awaitable, AsyncIterator
 
 from fastapi.logger import logger
 
@@ -51,7 +51,7 @@ GenerateTermSensesProtocol = Callable[[str], Awaitable[dict[str, list[str]]]]
 
 # ================================= Service ======================================
 
-async def refer_dictionary(text: str) -> AsyncGenerator[tuple[list[TermInfo], list[float], str]]:
+async def refer_dictionary(text: str) -> AsyncIterator[tuple[list[TermInfo], list[float], str]]:
     """
     テキスト中の名詞を辞書検索し、結果を返す。
     処理フローメモ
