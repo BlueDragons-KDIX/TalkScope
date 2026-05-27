@@ -69,8 +69,13 @@ async def _call_gemini_async(prompt: str, client: httpx.AsyncClient) -> str:
             }
         ],
         "generationConfig": {
-            "temperature": 0.2,
-            "topP": 0.9,
+            # 再現性や品質に用いる
+            # "temperature": 0.2,
+            # "topP": 0.9,
+            # thinkingを最小限にして速く終わらせる
+            "thinkingConfig": {
+                "thinkingLevel": "minimal",
+            },
             "responseMimeType": "application/json",
         },
     }
