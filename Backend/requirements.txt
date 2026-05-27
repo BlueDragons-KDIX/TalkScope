@@ -12,3 +12,4 @@ sudachidict-core
 spacy
 ginza
 ja-ginza
+asyncio

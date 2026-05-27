@@ -54,7 +54,7 @@ def test_call_gemini_raises_503_when_api_key_missing(monkeypatch) -> None:
         dictionary_service._call_gemini("test prompt")
 
     assert exc_info.value.status_code == 503
-    assert exc_info.value.detail == "GEMINI_API_KEY is not configured"
+    assert exc_info.value.detail == "Gemini API key is not configured"
 
 
 def test_call_gemini_raises_504_on_timeout(monkeypatch) -> None:

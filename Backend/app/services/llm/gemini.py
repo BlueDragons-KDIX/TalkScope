@@ -69,8 +69,13 @@ async def _call_gemini_async(prompt: str, client: httpx.AsyncClient) -> str:
             }
         ],
         "generationConfig": {
-            "temperature": 0.2,
-            "topP": 0.9,
+            # 再現性や品質に用いる
+            # "temperature": 0.2,
+            # "topP": 0.9,
+            # thinkingを最小限にして速く終わらせる
+            "thinkingConfig": {
+                "thinkingLevel": "minimal",
+            },
             "responseMimeType": "application/json",
         },
     }
@@ -160,7 +165,7 @@ def _parse_json_response(response_text: str) -> dict[str, list[str]]:
             status_code=502,
             detail="Gemini upstream returned invalid JSON",
         )
-    print(f"DEBUG: Parsed Gemini JSON: {parsed}")
+    # print(f"DEBUG: Parsed Gemini JSON: {parsed}")
 
     result: dict[str, list[str]] = {}
     for term, senses in parsed.items():

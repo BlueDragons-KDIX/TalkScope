@@ -36,5 +36,25 @@ def get_database_url_env_key() -> str:
 
 
 ZERO_VECTOR_300: list[float] = [0.0] * 300  # 300次元のゼロベクトル
-REFER_DICTIONARY_V1_GROUP_SIZE: int = 10
-REFER_DICTIONARY_V1_GENERATE_MAX_SENSE: int = 3
+
+
+def _get_positive_int_env(name: str, default: int) -> int:
+    """正の整数環境変数を読み、未設定・不正値なら default を返す。"""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+REFER_DICTIONARY_V1_GROUP_SIZE: int = _get_positive_int_env(
+    "REFER_DICTIONARY_V1_GROUP_SIZE",
+    10,
+)
+REFER_DICTIONARY_V1_GENERATE_MAX_SENSE: int = _get_positive_int_env(
+    "REFER_DICTIONARY_V1_GENERATE_MAX_SENSE",
+    3,
+)
