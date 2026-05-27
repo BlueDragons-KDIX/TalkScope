@@ -13,6 +13,7 @@ from config.config import (
 import app.services.refer_dictionary as rd
 import app.crud.dictionary_v1 as crud_dict_v1
 import app.services.llm as llm
+from app.core.database import get_database
 from app.services.enbedding import spacy_enbedding as sp_emb
 from typing import Callable
 
@@ -104,19 +105,26 @@ async def refer_dictionary(text: str) -> AsyncIterator[tuple[list[TermInfo], lis
     # dedup（複数の形態素が同じ単語を指す場合があるため）
     unique_terms = list(set(search_targets))
     unique_joined_terms = ["".join(term_tuple) for term_tuple in unique_terms]
+    db = get_database()
 
-    # DB検索(バッチで検索)
-    fetch_term_info_task = asyncio.create_task(
-        asyncio.to_thread(
-            _fetch_term_infos_or_empty,
-            fetch_term_infos=crud_dict_v1.read_term_infos,
-            terms=unique_joined_terms
+    fetch_term_info_task: asyncio.Task[list[TermInfo]] | None = None
+    if db.is_available:
+        # DB検索(バッチで検索)
+        fetch_term_info_task = asyncio.create_task(
+            asyncio.to_thread(
+                _fetch_term_infos_or_empty,
+                fetch_term_infos=crud_dict_v1.read_term_infos,
+                terms=unique_joined_terms
+            )
         )
-    )
 
-    await asyncio.gather(input_text_embedding_task, fetch_term_info_task)
+    if fetch_term_info_task is None:
+        await input_text_embedding_task
+        results_term: list[TermInfo] = []
+    else:
+        await asyncio.gather(input_text_embedding_task, fetch_term_info_task)
+        results_term = fetch_term_info_task.result()
     text_vector = input_text_embedding_task.result()
-    results_term = fetch_term_info_task.result()
 
     miss_task: asyncio.Task | None = None
     # missがあれば、事前に並列実行
@@ -135,18 +143,21 @@ async def refer_dictionary(text: str) -> AsyncIterator[tuple[list[TermInfo], lis
     results_terms = await miss_task
     # TODO: DB保存をスレッドに分離して並列化し、書き込みの確認をせずにreturnすることも検討
     # DB保存
-    storetask = asyncio.create_task(
-        asyncio.to_thread(
-            store_term_infos,
-            insert_db_term_infos=crud_dict_v1.insert_term_infos,
-            term_infos=results_terms
+    storetask: asyncio.Task | None = None
+    if db.is_available:
+        storetask = asyncio.create_task(
+            asyncio.to_thread(
+                store_term_infos,
+                insert_db_term_infos=crud_dict_v1.insert_term_infos,
+                term_infos=results_terms
+            )
         )
-    )
     
     # missした用語を返す。
     if results_terms:
         yield (results_terms, text_vector, "llm")
-    await storetask
+    if storetask is not None:
+        await storetask
 
 
 # =========================== Domain ===================================
