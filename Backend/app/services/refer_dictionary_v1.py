@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 from typing import AsyncGenerator, Awaitable, AsyncIterator
 
 from fastapi.logger import logger
@@ -16,6 +17,8 @@ import app.services.llm as llm
 from app.core.database import get_database
 from app.services.enbedding import spacy_enbedding as sp_emb
 from typing import Callable
+
+GEMINI_TIMEOUT_SECONDS = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "5"))
 
 # ================================ endpoint_service ======================================
 async def service_analyze_text(text: str) -> AsyncGenerator[str, None]:
@@ -259,7 +262,15 @@ async def _generate_senses_for_terms(
     generate_senses_tasks = [
         asyncio.create_task(senses_generater(prompt)) for prompt in prompts
     ]
-    responses = await asyncio.gather(*generate_senses_tasks)
+    # responses = await asyncio.gather(*generate_senses_tasks)
+    done, pending = await asyncio.wait(
+        generate_senses_tasks,
+        timeout=GEMINI_TIMEOUT_SECONDS,
+        return_when=asyncio.ALL_COMPLETED,
+    )
+    for task in pending:
+        task.cancel()
+    responses = [task.result() for task in done if not task.cancelled() and task.exception() is None]
     # 並列がすべて完了したら、結果を1つにまとめる
     for response in responses:
         result_senses.update(response)
@@ -323,34 +334,25 @@ def _build_prompts(terms: list[str], group_size: int = 10, generate_max_sense: i
         terms_str = "\n".join(f"- {term}" for term in terms_group)
 
         prompts.append(f"""
-            あなたは辞書アシスタントです。
             以下の単語それぞれについて、日本語で使われる主要な意味を1~{generate_max_sense}つ出してください。
 
             条件:
             - 各単語は独立して処理してください
             - 入力文脈は使わず、一般的な意味を答えてください
-            - 専門用語の言い換えを優先し、簡潔に答えてください。
-            - 意味は短く具体的にしてください
+            - 一般義・専門義を問わず、主要な意味を優先してください
+            - 各意味は、その文だけで何を指すか分かる短い定義文にしてください
             - 同じような意味を重複させないでください
-            - 不明な単語は空配列にしてください
-            - 出力はJSONのみとし、説明文は出さないでください
-            - JSONのキーは入力された単語と完全に一致させてください
+            - 一般に知られた技術用語・製品名・略語は説明して構いません
+            - 意味を確信できない語、誤記、造語は推測せず空配列にしてください
+            - 入力された単語を完全一致のキーとするJSON objectのみを返してください
+            - 入力されたすべての単語をキーとして含め、入力されていない単語は追加しないでください
 
-            出力形式(JSON):
+            出力形式:
             {{
-            "単語1": [
-                "意味1",
-                "意味2",
-                "意味3"
-            ],
-            "単語2": [
-                "意味1",
-                "意味2",
-                "意味3"
-            ],
-                       ...
+                "単語1": ["意味1", "意味2"],
+                "単語2": ["意味1"]
             }}
-            
+
             単語:
             {terms_str}
         """)
