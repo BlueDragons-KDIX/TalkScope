@@ -56,7 +56,7 @@ default_origins = [
     "https://127.0.0.1:5173",
     "http://127.0.0.1:51080",
     "https://talkscope-kc3hack.vercel.app",
-    "https://talk-scope-kohl.vercel.app/",
+    "https://talk-scope-kohl.vercel.app",
 ]
 env_origins = [
     origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()
