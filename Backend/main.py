@@ -21,9 +21,12 @@ async def lifespan(app: fastapi.FastAPI):
     from app.core.database import get_database
 
     db = get_database()
-    if db.is_available:
+    db_init_enabled = os.environ.get("ENABLE_DB_INIT", "").lower() in {"1", "true", "yes"}
+    if db.is_available and db_init_enabled:
         db.init_db()
         logger.info("DB 初期化完了")
+    elif db.is_available:
+        logger.info("DB 接続設定はありますが、起動時DB初期化は無効です。")
     else:
         logger.warning("DB 接続設定が未設定または接続失敗のため、DB 初期化をスキップ")
     yield
