@@ -15,6 +15,7 @@ import { scaledContentFontPx } from '../../../app/utils/contentFontScale'
 import { useAccentTheme } from '../../../theme/AccentThemeContext'
 import { accentRgba, accentRgbSolid } from '../../../theme/accentStyles'
 import { useImportanceRankingWindowSettingsStore } from '../../../stores/importanceRankingWindowSettingsStore'
+import { useScoreUpdate } from '../../hooks/useScoreUpdate'
 
 const RANK_THROTTLE_MS = 160
 const BASE_ROW_HEIGHT = 66
@@ -33,6 +34,7 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   const addToHistory = useTermStore(s => s.addToHistory)
   const pinnedTermIds = useTermStore(s => s.pinnedTermIds)
   const togglePin = useTermStore(s => s.togglePin)
+  const { onClick: onScoreClick } = useScoreUpdate()
 
   const contentFontScale = useContentFontScaleStore(s => s.scale)
   const masterSizeScale = useImportanceRankingWindowSettingsStore(s => s.masterSizeScale)
@@ -82,6 +84,7 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   const onTermClick = (term: Term) => {
     selectTerm(term)
     addToHistory(term)
+    onScoreClick(term.id)
   }
 
   const onTermContextMenu = (event: React.MouseEvent, termId: string) => {
