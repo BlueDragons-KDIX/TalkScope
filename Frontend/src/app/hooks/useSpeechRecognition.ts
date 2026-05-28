@@ -55,9 +55,8 @@ export const useSpeechRecognition = (): UseSpeechRecognitionReturn => {
     };
 
     recognition.onend = () => {
-      if (listeningRef.current) {
-        try { recognition.start(); } catch (e) { }
-      }
+      listeningRef.current = false;
+      setIsListening(false);
     };
 
     recognitionRef.current = recognition;
