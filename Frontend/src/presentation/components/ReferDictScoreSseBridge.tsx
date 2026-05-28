@@ -54,7 +54,9 @@ export const ReferDictScoreSseBridge: React.FC<ReferDictScoreSseBridgeProps> = (
     },
     onTerms: (terms) => {
       const passed = filterByScore(terms, threshold)
-      usePipelineDebugStore.getState().setFilteredTerms(threshold, passed)
+      const passedIds = new Set(passed.map((term) => term.id))
+      const rejected = terms.filter((term) => !passedIds.has(term.id))
+      usePipelineDebugStore.getState().setFilteredTerms(threshold, passed, rejected)
       const adapted = adapterRef.current?.adapt(passed)
       if (!adapted) return
       const store = useTermStore.getState()

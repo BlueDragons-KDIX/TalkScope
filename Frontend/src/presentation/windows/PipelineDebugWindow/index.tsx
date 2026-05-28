@@ -16,7 +16,8 @@ export const PipelineDebugWindow: React.FC<WindowProps> = ({ darkMode = true }) 
   const sentInputs = usePipelineDebugStore((s) => s.sentInputs)
   const sseTerms = usePipelineDebugStore((s) => s.sseTerms)
   const filteredThreshold = usePipelineDebugStore((s) => s.filteredThreshold)
-  const filteredTerms = usePipelineDebugStore((s) => s.filteredTerms)
+  const filteredPassedTerms = usePipelineDebugStore((s) => s.filteredPassedTerms)
+  const filteredRejectedTerms = usePipelineDebugStore((s) => s.filteredRejectedTerms)
   const bubbleTerms = usePipelineDebugStore((s) => s.bubbleTerms)
   const visibleLayers = usePipelineDebugStore((s) => s.visibleLayers)
   const toggleLayer = usePipelineDebugStore((s) => s.toggleLayer)
@@ -56,14 +57,30 @@ export const PipelineDebugWindow: React.FC<WindowProps> = ({ darkMode = true }) 
       key: 'filtered',
       body: (
         <div className="space-y-1">
-          <div className="text-[11px] opacity-80">閾値: {filteredThreshold.toFixed(2)}</div>
-          <div className="flex flex-wrap gap-2">
-            {filteredTerms.length === 0 ? <span className="text-[11px] opacity-60">通過語なし</span> : null}
-            {filteredTerms.map((term) => (
-              <span key={term.id} className="rounded border px-2 py-1 text-[11px]">
-                {term.word} ({term.score.toFixed(2)})
-              </span>
-            ))}
+          <div className="text-[11px] opacity-80">閾値: {filteredThreshold.toFixed(4)}</div>
+          <div className="space-y-2">
+            <div>
+              <div className="mb-1 text-[11px] font-bold text-emerald-400">通過</div>
+              <div className="flex flex-wrap gap-2">
+                {filteredPassedTerms.length === 0 ? <span className="text-[11px] opacity-60">通過語なし</span> : null}
+                {filteredPassedTerms.map((term) => (
+                  <span key={`passed-${term.id}`} className="rounded border px-2 py-1 text-[11px]">
+                    {term.word} ({term.score.toFixed(4)})
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 text-[11px] font-bold text-rose-400">除外</div>
+              <div className="flex flex-wrap gap-2">
+                {filteredRejectedTerms.length === 0 ? <span className="text-[11px] opacity-60">除外語なし</span> : null}
+                {filteredRejectedTerms.map((term) => (
+                  <span key={`rejected-${term.id}`} className="rounded border px-2 py-1 text-[11px]">
+                    {term.word} ({term.score.toFixed(4)})
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       ),
