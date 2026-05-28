@@ -480,4 +480,5 @@ useEffect(() => {
 
 1. `feature/sse-foundation` ブランチで Step 1 を実装・確認（完了）
 2. `feature/score-threshold-filter` ブランチで Step 2 を実装・確認（完了）
-3. Step 5 完了後に `SCORE_SCALE_FACTOR` を調整
+3. `feature/frequency-adapter` ブランチで Step 3 を実装・確認（完了）
+4. Step 5 完了後に `SCORE_SCALE_FACTOR` を調整
