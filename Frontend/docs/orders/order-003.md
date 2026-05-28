@@ -418,6 +418,8 @@ incrementClickWeight: (termId: string) => void
 ## Step 6: バブル削除アルゴリズム
 **ブランチ: `feature/bubble-lifecycle`**
 
+✅ 完了（2026-05-28）
+
 ### 仕様（旧 `app/App.tsx` から移植）
 
 - `activeTerms` が 20件以下: 削除なし
@@ -466,9 +468,10 @@ useEffect(() => {
 
 ### 変更ファイル
 
-- `src/stores/termStore.ts`（`termTimestamps` / `removeTermById` は既存）
+- `src/stores/termStore.ts`（`termTimestamps` 追加、削除系 action と同期）
 - `src/presentation/hooks/useBubbleLifecycle.ts`（新規）
 - `src/presentation/App.tsx`（フック呼び出し追加）
+- `src/stores/__tests__/termStore.test.ts`（timestamp 管理のテスト追加）
 
 ---
 
@@ -486,4 +489,4 @@ useEffect(() => {
 3. `feature/frequency-adapter` ブランチで Step 3 を実装・確認（完了）
 4. `feature/click-score-service` ブランチで Step 4 を実装・確認（完了）
 5. `feature/score-based-rendering` ブランチで Step 5 を実装・確認（完了）
-6. Step 6（バブル削除アルゴリズム）へ進む
+6. `feature/bubble-lifecycle` ブランチで Step 6 を実装・確認（完了）
