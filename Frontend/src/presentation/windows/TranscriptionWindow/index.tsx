@@ -12,6 +12,7 @@ export const TranscriptionWindow: React.FC<WindowProps> = ({ darkMode = true }) 
   const { transcript, isListening } = useTranscription()
   const selectTerm = useTermStore(s => s.selectTerm)
   const addToHistory = useTermStore(s => s.addToHistory)
+  const incrementClickWeight = useTermStore(s => s.incrementClickWeight)
   const togglePin = useTermStore(s => s.togglePin)
   const isPinned = useTermStore(s => s.pinnedTermIds)
   const activeTerms = useTermStore(s => s.activeTerms)
@@ -26,6 +27,7 @@ export const TranscriptionWindow: React.FC<WindowProps> = ({ darkMode = true }) 
       onTermClick={(term: Term) => {
         selectTerm(term)
         addToHistory(term)
+        incrementClickWeight(term.id)
         onScoreClick(term.id)
       }}
       onTermHover={() => {}}

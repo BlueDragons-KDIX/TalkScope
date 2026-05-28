@@ -32,6 +32,7 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   const termClickWeights = useTermStore(s => s.termClickWeights)
   const selectTerm = useTermStore(s => s.selectTerm)
   const addToHistory = useTermStore(s => s.addToHistory)
+  const incrementClickWeight = useTermStore(s => s.incrementClickWeight)
   const pinnedTermIds = useTermStore(s => s.pinnedTermIds)
   const togglePin = useTermStore(s => s.togglePin)
   const { onClick: onScoreClick } = useScoreUpdate()
@@ -84,6 +85,7 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   const onTermClick = (term: Term) => {
     selectTerm(term)
     addToHistory(term)
+    incrementClickWeight(term.id)
     onScoreClick(term.id)
   }
 
