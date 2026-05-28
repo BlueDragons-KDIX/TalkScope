@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useTermStore } from '../../stores/termStore'
+import { useTermMapWindowSettingsStore } from '../../stores/termMapWindowSettingsStore'
 
-export const SOFT_LIMIT = 20
-export const HARD_LIMIT = 30
+export const LEGACY_SOFT_LIMIT = 20
 export const DEATH_ROW_MS = 5000
 
 export function useBubbleLifecycle() {
@@ -10,11 +10,14 @@ export function useBubbleLifecycle() {
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      const { activeTerms, termTimestamps, removeTermById } = useTermStore.getState()
+      const { activeTerms, termTimestamps, pinnedTermIds, removeTermById } = useTermStore.getState()
+      const maxVisibleTerms = useTermMapWindowSettingsStore.getState().maxVisibleTerms
+      const hardLimit = maxVisibleTerms
+      const softLimit = Math.min(LEGACY_SOFT_LIMIT, hardLimit)
       const deathRow = deathRowRef.current
       const now = Date.now()
 
-      if (activeTerms.length <= SOFT_LIMIT) {
+      if (activeTerms.length <= softLimit) {
         deathRowRef.current = {}
         return
       }
@@ -23,23 +26,32 @@ export function useBubbleLifecycle() {
         (a, b) => (termTimestamps[a.id] ?? 0) - (termTimestamps[b.id] ?? 0),
       )
 
-      if (sorted.length > HARD_LIMIT) {
-        const overflowCount = sorted.length - HARD_LIMIT
-        const overflowTerms = sorted.splice(0, overflowCount)
-        overflowTerms.forEach((term) => {
+      if (sorted.length > hardLimit) {
+        let overflowCount = sorted.length - hardLimit
+        for (const term of sorted) {
+          if (overflowCount <= 0) break
+          if (pinnedTermIds.has(term.id)) continue
           removeTermById(term.id)
           delete deathRow[term.id]
-        })
+          overflowCount -= 1
+        }
       }
 
-      if (sorted.length <= SOFT_LIMIT) {
+      const refreshedActiveTerms = useTermStore.getState().activeTerms
+      if (refreshedActiveTerms.length <= softLimit) {
         deathRowRef.current = {}
         return
       }
 
-      const candidateCount = sorted.length - SOFT_LIMIT
-      const deathCandidates = sorted.slice(0, candidateCount)
-      const survivors = sorted.slice(candidateCount)
+      const refreshedSorted = [...refreshedActiveTerms].sort(
+        (a, b) => (termTimestamps[a.id] ?? 0) - (termTimestamps[b.id] ?? 0),
+      )
+      const candidateCount = refreshedSorted.length - softLimit
+      const deathCandidates = refreshedSorted
+        .filter((term) => !pinnedTermIds.has(term.id))
+        .slice(0, candidateCount)
+      const candidateIds = new Set(deathCandidates.map((term) => term.id))
+      const survivors = refreshedSorted.filter((term) => !candidateIds.has(term.id))
 
       survivors.forEach((term) => {
         delete deathRow[term.id]

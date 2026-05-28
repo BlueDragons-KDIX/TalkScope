@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'bun:test'
 import { useTermStore } from '../termStore'
 import type { Term } from '../../domain/entities/Term'
+import { useTermMapWindowSettingsStore } from '../termMapWindowSettingsStore'
 
 const term1: Term = {
   id: '1', word: 'React', kana: 'リアクト',
@@ -12,9 +13,27 @@ const term2: Term = {
   shortDesc: 'コンテナ', longDesc: '詳細',
   category: 'Infra', score: 2, relatedTerms: [],
 }
+const makeTerm = (id: string): Term => ({
+  id,
+  word: `word-${id}`,
+  kana: `かな-${id}`,
+  shortDesc: 'desc',
+  longDesc: 'long',
+  category: 'General',
+  score: 1,
+  relatedTerms: [],
+})
 
 describe('termStore', () => {
   beforeEach(() => {
+    useTermMapWindowSettingsStore.setState({
+      masterSizeScale: 1,
+      bubbleSizeScale: 1,
+      textFontSizePx: 12,
+      autoSwitchEnabled: false,
+      autoSwitchIntervalSec: 4,
+      maxVisibleTerms: 30,
+    })
     useTermStore.setState({
       activeTerms: [],
       termTimestamps: {},
@@ -36,6 +55,35 @@ describe('termStore', () => {
     const state = useTermStore.getState()
     expect(state.activeTerms).toHaveLength(1)
     expect(Object.keys(state.termTimestamps)).toHaveLength(1)
+  })
+
+  it('maxVisibleTerms 上限を超える追加は抑制される', () => {
+    useTermMapWindowSettingsStore.getState().setMaxVisibleTerms(5)
+    useTermStore.getState().addTerms([
+      makeTerm('a'),
+      makeTerm('b'),
+      makeTerm('c'),
+      makeTerm('d'),
+      makeTerm('e'),
+      makeTerm('f'),
+    ])
+    expect(useTermStore.getState().activeTerms.map((term) => term.id)).toEqual(['a', 'b', 'c', 'd', 'e'])
+  })
+
+  it('表示枠がスターで埋まっている場合は新規追加しない', () => {
+    useTermMapWindowSettingsStore.getState().setMaxVisibleTerms(5)
+    useTermStore.getState().addTerms([
+      makeTerm('p1'),
+      makeTerm('p2'),
+      makeTerm('p3'),
+      makeTerm('p4'),
+      makeTerm('p5'),
+    ])
+    for (const id of ['p1', 'p2', 'p3', 'p4', 'p5']) {
+      useTermStore.getState().togglePin(id)
+    }
+    useTermStore.getState().addTerms([makeTerm('extra')])
+    expect(useTermStore.getState().activeTerms.map((term) => term.id)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5'])
   })
 
   it('updateTermScore で対象のスコアを更新できる', () => {

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Term } from '../domain/entities/Term'
 import { normalizeTermCategory } from '../domain/entities/Term'
 import { DEMO_IMPORTANT_TERM_ID_PREFIX } from '../debug/demo/mockImportantTerms'
+import { useTermMapWindowSettingsStore } from './termMapWindowSettingsStore'
 
 interface TermState {
   activeTerms: Term[]
@@ -33,10 +34,21 @@ export const useTermStore = create<TermState>((set) => ({
 
   addTerms: (terms) => set((state) => {
     const now = Date.now()
+    const maxVisibleTerms = useTermMapWindowSettingsStore.getState().maxVisibleTerms
+    const pinnedCount = state.activeTerms.filter((term) => state.pinnedTermIds.has(term.id)).length
+    if (state.activeTerms.length >= maxVisibleTerms && pinnedCount >= maxVisibleTerms) {
+      return state
+    }
+    const availableSlots = Math.max(0, maxVisibleTerms - state.activeTerms.length)
+    if (availableSlots <= 0) {
+      return state
+    }
+
     const existingIds = new Set(state.activeTerms.map(t => t.id))
     const newTerms: Term[] = []
     const nextTermTimestamps = { ...state.termTimestamps }
     for (const t of terms) {
+      if (newTerms.length >= availableSlots) break
       if (!existingIds.has(t.id)) {
         existingIds.add(t.id)
         nextTermTimestamps[t.id] = now

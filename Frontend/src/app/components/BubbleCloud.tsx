@@ -10,6 +10,8 @@ import { accentRgba, accentSliderStyle, micStartButtonStyle, termChipStyle } fro
 import {
   TERM_MAP_AUTO_SWITCH_INTERVAL_MAX,
   TERM_MAP_AUTO_SWITCH_INTERVAL_MIN,
+  TERM_MAP_MAX_VISIBLE_TERMS_MAX,
+  TERM_MAP_MAX_VISIBLE_TERMS_MIN,
   useTermMapWindowSettingsStore,
 } from '../../stores/termMapWindowSettingsStore';
 
@@ -61,8 +63,10 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const textFontSizePx = useTermMapWindowSettingsStore(s => s.textFontSizePx);
   const isAutoPlay = useTermMapWindowSettingsStore(s => s.autoSwitchEnabled);
   const intervalSec = useTermMapWindowSettingsStore(s => s.autoSwitchIntervalSec);
+  const maxVisibleTerms = useTermMapWindowSettingsStore(s => s.maxVisibleTerms);
   const setAutoSwitchEnabled = useTermMapWindowSettingsStore(s => s.setAutoSwitchEnabled);
   const setAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.setAutoSwitchIntervalSec);
+  const setMaxVisibleTerms = useTermMapWindowSettingsStore(s => s.setMaxVisibleTerms);
   const categories = ['ALL', 'ピン中', ...Object.keys(CATEGORY_COLORS)];
   const effectiveBubbleScale = masterSizeScale * bubbleSizeScale;
 
@@ -265,7 +269,9 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
           </select>
         )}
         <span className={`ml-auto text-[10px] font-mono border px-1.5 py-0.5 rounded shrink-0 ${dk ? 'bg-slate-800/50 border-slate-700/50 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
-          {categoryFilter === 'ピン中' ? `${activeTerms.length} ピン` : `${activeTerms.length} terms`}
+          {categoryFilter === 'ピン中'
+            ? `${activeTerms.length} ピン`
+            : `${activeTerms.length}/${maxVisibleTerms} terms`}
         </span>
       </div>
       {/* ピン中: IndexedDB のピン留め一覧を表で表示（文字起こしハイライト風） */}
@@ -473,6 +479,34 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                   >
                     <ChevronUp size={14} className="mx-auto" />
                   </button>
+                </div>
+
+                <div className={`h-px ${dk ? 'bg-slate-700/70' : 'bg-slate-200'}`} />
+
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black">最大表示数</span>
+                  <span className={`text-lg font-black tabular-nums ${dk ? 'text-slate-300' : 'text-slate-600'}`}>
+                    {maxVisibleTerms}<span className="text-xs font-bold ml-0.5">語</span>
+                  </span>
+                </div>
+                <div className="relative flex items-center">
+                  <input
+                    type="range"
+                    min={TERM_MAP_MAX_VISIBLE_TERMS_MIN}
+                    max={TERM_MAP_MAX_VISIBLE_TERMS_MAX}
+                    step={1}
+                    value={maxVisibleTerms}
+                    onChange={e => setMaxVisibleTerms(Number(e.target.value))}
+                    className="w-full h-2.5 rounded-full appearance-none cursor-pointer"
+                    style={{
+                      background: dk ? '#1e293b' : '#e2e8f0',
+                      ...accentSliderStyle(rgb),
+                    }}
+                  />
+                </div>
+                <div className={`flex justify-between text-[9px] font-bold -mt-1 ${dk ? 'text-slate-600' : 'text-slate-400'}`}>
+                  <span>少({TERM_MAP_MAX_VISIBLE_TERMS_MIN})</span>
+                  <span>多({TERM_MAP_MAX_VISIBLE_TERMS_MAX})</span>
                 </div>
               </motion.div>
             )}

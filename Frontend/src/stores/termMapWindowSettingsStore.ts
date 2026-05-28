@@ -10,6 +10,8 @@ export const TERM_MAP_TEXT_FONT_SIZE_MIN = 8
 export const TERM_MAP_TEXT_FONT_SIZE_MAX = 20
 export const TERM_MAP_AUTO_SWITCH_INTERVAL_MIN = 1
 export const TERM_MAP_AUTO_SWITCH_INTERVAL_MAX = 10
+export const TERM_MAP_MAX_VISIBLE_TERMS_MIN = 5
+export const TERM_MAP_MAX_VISIBLE_TERMS_MAX = 30
 
 export interface TermMapWindowSettings {
   masterSizeScale: number
@@ -17,6 +19,7 @@ export interface TermMapWindowSettings {
   textFontSizePx: number
   autoSwitchEnabled: boolean
   autoSwitchIntervalSec: number
+  maxVisibleTerms: number
 }
 
 interface TermMapWindowSettingsState extends TermMapWindowSettings {
@@ -25,6 +28,7 @@ interface TermMapWindowSettingsState extends TermMapWindowSettings {
   setTextFontSizePx: (value: number) => void
   setAutoSwitchEnabled: (value: boolean) => void
   setAutoSwitchIntervalSec: (value: number) => void
+  setMaxVisibleTerms: (value: number) => void
 }
 
 const DEFAULT_SETTINGS: TermMapWindowSettings = {
@@ -33,6 +37,7 @@ const DEFAULT_SETTINGS: TermMapWindowSettings = {
   textFontSizePx: 12,
   autoSwitchEnabled: false,
   autoSwitchIntervalSec: 4,
+  maxVisibleTerms: 30,
 }
 
 const clamp = (min: number, max: number, value: number): number =>
@@ -61,6 +66,11 @@ const normalizeSettings = (settings: Partial<TermMapWindowSettings>): TermMapWin
     TERM_MAP_AUTO_SWITCH_INTERVAL_MIN,
     TERM_MAP_AUTO_SWITCH_INTERVAL_MAX,
     settings.autoSwitchIntervalSec ?? DEFAULT_SETTINGS.autoSwitchIntervalSec,
+  )),
+  maxVisibleTerms: Math.round(clamp(
+    TERM_MAP_MAX_VISIBLE_TERMS_MIN,
+    TERM_MAP_MAX_VISIBLE_TERMS_MAX,
+    settings.maxVisibleTerms ?? DEFAULT_SETTINGS.maxVisibleTerms,
   )),
 })
 
@@ -110,6 +120,12 @@ export const useTermMapWindowSettingsStore = create<TermMapWindowSettingsState>(
 
   setAutoSwitchIntervalSec: (value) => {
     const next = normalizeSettings({ ...get(), autoSwitchIntervalSec: value })
+    saveSettings(next)
+    set(next)
+  },
+
+  setMaxVisibleTerms: (value) => {
+    const next = normalizeSettings({ ...get(), maxVisibleTerms: value })
     saveSettings(next)
     set(next)
   },
