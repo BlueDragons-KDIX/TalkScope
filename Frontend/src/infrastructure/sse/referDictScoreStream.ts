@@ -39,6 +39,7 @@ export function buildReferDictScoreStreamUrl(text: string, baseUrl?: string): st
 
 export interface StreamReferDictScoreOptions {
   baseUrl?: string
+  onOpen?: () => void
   /** パース済みの 1 chunk（`data` 1 行分） */
   onChunk: (rows: TermRow[]) => void
   onError?: (err: unknown) => void
@@ -62,6 +63,7 @@ export function streamReferDictScores(
   return new Promise((resolve, reject) => {
     const es = new EventSource(url)
     let settled = false
+    let opened = false
 
     // 正常終了・エラー・abort のいずれかで一度だけ後始末する
     const finish = (err?: unknown) => {
@@ -74,6 +76,12 @@ export function streamReferDictScores(
       } else {
         resolve()
       }
+    }
+
+    es.onopen = () => {
+      if (opened) return
+      opened = true
+      options.onOpen?.()
     }
 
     // DB ヒット分 → LLM 追加分の順で複数回届く

@@ -42,11 +42,12 @@ describe('pipelineDebugStore', () => {
 
   it('フィルタ結果とバブル表示語を更新できる', () => {
     usePipelineDebugStore.getState().setFilteredThreshold(0.35)
-    usePipelineDebugStore.getState().setFilteredTerms(0.4, [term])
+    usePipelineDebugStore.getState().setFilteredTerms(0.4, [term], [])
     usePipelineDebugStore.getState().setBubbleTerms([term])
     const state = usePipelineDebugStore.getState()
     expect(state.filteredThreshold).toBe(0.4)
-    expect(state.filteredTerms[0]?.word).toBe('React')
+    expect(state.filteredPassedTerms[0]?.word).toBe('React')
+    expect(state.filteredRejectedTerms).toHaveLength(0)
     expect(state.bubbleTerms[0]?.word).toBe('React')
   })
 })

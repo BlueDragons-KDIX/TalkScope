@@ -14,6 +14,7 @@ export interface DebugFilteredTerm {
   id: string
   word: string
   score: number
+  passed: boolean
 }
 
 type LayerKey = 'sent' | 'sse' | 'filtered' | 'bubble'
@@ -22,13 +23,14 @@ interface PipelineDebugState {
   sentInputs: string[]
   sseTerms: DebugSseTerm[]
   filteredThreshold: number
-  filteredTerms: DebugFilteredTerm[]
+  filteredPassedTerms: DebugFilteredTerm[]
+  filteredRejectedTerms: DebugFilteredTerm[]
   bubbleTerms: DebugFilteredTerm[]
   visibleLayers: Record<LayerKey, boolean>
   pushSentInput: (text: string) => void
   pushSseRows: (rows: TermRow[]) => void
   setFilteredThreshold: (threshold: number) => void
-  setFilteredTerms: (threshold: number, terms: Term[]) => void
+  setFilteredTerms: (threshold: number, passedTerms: Term[], rejectedTerms: Term[]) => void
   setBubbleTerms: (terms: Term[]) => void
   toggleLayer: (layer: LayerKey) => void
   clearAll: () => void
@@ -43,7 +45,8 @@ export const usePipelineDebugStore = create<PipelineDebugState>((set) => ({
   sentInputs: [],
   sseTerms: [],
   filteredThreshold: 0.1,
-  filteredTerms: [],
+  filteredPassedTerms: [],
+  filteredRejectedTerms: [],
   bubbleTerms: [],
   visibleLayers: {
     sent: true,
@@ -71,12 +74,19 @@ export const usePipelineDebugStore = create<PipelineDebugState>((set) => ({
     filteredThreshold: threshold,
   }),
 
-  setFilteredTerms: (threshold, terms) => set({
+  setFilteredTerms: (threshold, passedTerms, rejectedTerms) => set({
     filteredThreshold: threshold,
-    filteredTerms: keepRecent(terms.map((term) => ({
+    filteredPassedTerms: keepRecent(passedTerms.map((term) => ({
       id: term.id,
       word: term.word,
       score: term.score,
+      passed: true,
+    }))),
+    filteredRejectedTerms: keepRecent(rejectedTerms.map((term) => ({
+      id: term.id,
+      word: term.word,
+      score: term.score,
+      passed: false,
     }))),
   }),
 
@@ -85,6 +95,7 @@ export const usePipelineDebugStore = create<PipelineDebugState>((set) => ({
       id: term.id,
       word: term.word,
       score: term.score,
+      passed: true,
     }))),
   }),
 
@@ -98,7 +109,8 @@ export const usePipelineDebugStore = create<PipelineDebugState>((set) => ({
   clearAll: () => set({
     sentInputs: [],
     sseTerms: [],
-    filteredTerms: [],
+    filteredPassedTerms: [],
+    filteredRejectedTerms: [],
     bubbleTerms: [],
   }),
 }))

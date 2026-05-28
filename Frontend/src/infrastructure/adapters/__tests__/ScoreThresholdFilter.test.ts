@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import type { Term } from '../../../domain/entities/Term'
-import { filterByScore } from '../ScoreThresholdFilter'
+import { filterByScore, partitionByScore } from '../ScoreThresholdFilter'
 
 const makeTerm = (id: string, score: number): Term => ({
   id,
@@ -30,5 +30,15 @@ describe('ScoreThresholdFilter', () => {
       makeTerm('c', 0.8),
     ], 0.7)
     expect(result.map((term) => term.id)).toEqual(['c'])
+  })
+
+  it('閾値比較を通過/除外で分割できる', () => {
+    const { passed, rejected } = partitionByScore([
+      makeTerm('a', 0.5),
+      makeTerm('b', 0.49),
+      makeTerm('c', 0.7),
+    ], 0.5)
+    expect(passed.map((term) => term.id)).toEqual(['a', 'c'])
+    expect(rejected.map((term) => term.id)).toEqual(['b'])
   })
 })
