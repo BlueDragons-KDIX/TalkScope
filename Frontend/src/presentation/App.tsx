@@ -18,6 +18,7 @@ import { useBubbleStore } from '../stores/bubbleStore'
 import { getOppositeThemeColor } from './utils/oppositeThemeColor'
 import { AccentThemeProvider } from '../theme/AccentThemeContext'
 import { DEFAULT_SCORE_THRESHOLD } from '../infrastructure/adapters/ScoreThresholdFilter'
+import { usePipelineDebugStore } from '../stores/pipelineDebugStore'
 
 // ウィンドウを一度だけ登録
 let _registered = false
@@ -49,6 +50,10 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
   }, [darkMode])
+
+  useEffect(() => {
+    usePipelineDebugStore.getState().setFilteredThreshold(scoreThreshold)
+  }, [scoreThreshold])
 
   const resetAllWindows = useCallback(() => {
     demoStream.stopStream()
