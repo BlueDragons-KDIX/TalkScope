@@ -35,31 +35,52 @@ export const useTermStore = create<TermState>((set) => ({
   addTerms: (terms) => set((state) => {
     const now = Date.now()
     const maxVisibleTerms = useTermMapWindowSettingsStore.getState().maxVisibleTerms
-    const pinnedCount = state.activeTerms.filter((term) => state.pinnedTermIds.has(term.id)).length
-    if (state.activeTerms.length >= maxVisibleTerms && pinnedCount >= maxVisibleTerms) {
-      return state
-    }
-    const availableSlots = Math.max(0, maxVisibleTerms - state.activeTerms.length)
-    if (availableSlots <= 0) {
-      return state
+    const existingIds = new Set(state.activeTerms.map((term) => term.id))
+    const nextActiveTerms = [...state.activeTerms]
+    const nextTermTimestamps = { ...state.termTimestamps }
+
+    const findOldestRemovableId = (): string | null => {
+      let oldestId: string | null = null
+      let oldestTs = Number.POSITIVE_INFINITY
+      for (const term of nextActiveTerms) {
+        if (state.pinnedTermIds.has(term.id)) continue
+        const ts = nextTermTimestamps[term.id] ?? 0
+        if (ts < oldestTs) {
+          oldestTs = ts
+          oldestId = term.id
+        }
+      }
+      return oldestId
     }
 
-    const existingIds = new Set(state.activeTerms.map(t => t.id))
-    const newTerms: Term[] = []
-    const nextTermTimestamps = { ...state.termTimestamps }
     for (const t of terms) {
-      if (newTerms.length >= availableSlots) break
-      if (!existingIds.has(t.id)) {
-        existingIds.add(t.id)
-        nextTermTimestamps[t.id] = now
-        newTerms.push({
-          ...t,
-          category: normalizeTermCategory(t.category),
-        })
+      if (existingIds.has(t.id)) continue
+
+      while (nextActiveTerms.length >= maxVisibleTerms) {
+        const removableId = findOldestRemovableId()
+        if (!removableId) {
+          return {
+            activeTerms: nextActiveTerms,
+            termTimestamps: nextTermTimestamps,
+          }
+        }
+        const removeIdx = nextActiveTerms.findIndex((term) => term.id === removableId)
+        if (removeIdx >= 0) nextActiveTerms.splice(removeIdx, 1)
+        delete nextTermTimestamps[removableId]
+        existingIds.delete(removableId)
       }
+
+      const normalized: Term = {
+        ...t,
+        category: normalizeTermCategory(t.category),
+      }
+      nextActiveTerms.push(normalized)
+      nextTermTimestamps[normalized.id] = now
+      existingIds.add(normalized.id)
     }
+
     return {
-      activeTerms: [...state.activeTerms, ...newTerms],
+      activeTerms: nextActiveTerms,
       termTimestamps: nextTermTimestamps,
     }
   }),
