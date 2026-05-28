@@ -34,6 +34,14 @@ describe('termStore', () => {
     expect(useTermStore.getState().activeTerms).toHaveLength(1)
   })
 
+  it('updateTermScore で対象のスコアを更新できる', () => {
+    useTermStore.getState().addTerms([term1, term2])
+    useTermStore.getState().updateTermScore('1', 9.5)
+    const terms = useTermStore.getState().activeTerms
+    expect(terms.find((t) => t.id === '1')?.score).toBe(9.5)
+    expect(terms.find((t) => t.id === '2')?.score).toBe(2)
+  })
+
   it('用語を選択できる', () => {
     useTermStore.getState().addTerms([term1])
     useTermStore.getState().selectTerm(term1)

@@ -478,6 +478,6 @@ useEffect(() => {
 
 ## 次のアクション
 
-1. `feature/sse-foundation` ブランチを切って Step 1 に着手
+1. `feature/sse-foundation` ブランチで Step 1 を実装・確認（完了）
 2. 各 Step 完了時にブラウザで動作確認してからマージ
 3. Step 5 完了後に `SCORE_SCALE_FACTOR` を調整

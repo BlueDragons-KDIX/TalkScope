@@ -11,6 +11,7 @@ interface TermState {
   termClickWeights: Record<string, number>
 
   addTerms: (terms: Term[]) => void
+  updateTermScore: (id: string, score: number) => void
   removeTermById: (id: string) => void
   /** デモ重要語マーキングで注入した用語だけ除去（prefix は mockImportantTerms と一致させる） */
   stripDemoImportantTerms: () => void
@@ -45,6 +46,12 @@ export const useTermStore = create<TermState>((set) => ({
     }
     return { activeTerms: [...state.activeTerms, ...newTerms] }
   }),
+
+  updateTermScore: (id, score) => set((state) => ({
+    activeTerms: state.activeTerms.map((term) => (
+      term.id === id ? { ...term, score } : term
+    )),
+  })),
 
   removeTermById: (id) => set((state) => ({
     activeTerms: state.activeTerms.filter(t => t.id !== id),
