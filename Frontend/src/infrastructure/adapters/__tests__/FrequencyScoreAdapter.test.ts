@@ -27,7 +27,6 @@ describe('FrequencyScoreAdapter', () => {
       selectedTerm: null,
       searchHistory: [],
       pinnedTermIds: new Set(),
-      termClickWeights: {},
     })
   })
 
