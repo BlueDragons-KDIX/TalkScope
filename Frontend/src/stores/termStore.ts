@@ -8,7 +8,6 @@ interface TermState {
   selectedTerm: Term | null
   searchHistory: Term[]
   pinnedTermIds: Set<string>
-  termClickWeights: Record<string, number>
 
   addTerms: (terms: Term[]) => void
   updateTermScore: (id: string, score: number) => void
@@ -17,7 +16,6 @@ interface TermState {
   stripDemoImportantTerms: () => void
   selectTerm: (term: Term | null) => void
   togglePin: (termId: string) => void
-  incrementClickWeight: (termId: string) => void
   addToHistory: (term: Term) => void
   clearHistory: () => void
   clearActiveTerms: () => void
@@ -30,7 +28,6 @@ export const useTermStore = create<TermState>((set) => ({
   selectedTerm: null,
   searchHistory: [],
   pinnedTermIds: new Set(),
-  termClickWeights: {},
 
   addTerms: (terms) => set((state) => {
     const existingIds = new Set(state.activeTerms.map(t => t.id))
@@ -72,13 +69,6 @@ export const useTermStore = create<TermState>((set) => ({
     return { pinnedTermIds: next }
   }),
 
-  incrementClickWeight: (termId) => set((state) => ({
-    termClickWeights: {
-      ...state.termClickWeights,
-      [termId]: (state.termClickWeights[termId] ?? 0) + 1,
-    },
-  })),
-
   addToHistory: (term) => set((state) => {
     if (state.searchHistory.some(t => t.id === term.id)) return {}
     return { searchHistory: [...state.searchHistory, term] }
@@ -93,6 +83,5 @@ export const useTermStore = create<TermState>((set) => ({
     selectedTerm: null,
     searchHistory: [],
     pinnedTermIds: new Set(),
-    termClickWeights: {},
   }),
 }))

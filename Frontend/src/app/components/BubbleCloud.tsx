@@ -1,16 +1,8 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Term } from '../data/terms';
 import { TermBubble } from './TermBubble';
 import { Hexagon, Shuffle, Pause, ChevronUp, ChevronDown } from 'lucide-react';
-import {
-  getMockTermVector,
-  getMockThemeVector,
-  getMockConversationVector,
-  cosineSimilarity,
-  similarityToScore,
-  MOCK_DIM,
-} from '../utils/mockVectors';
 import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
 import { scaledContentFontPx } from '../utils/contentFontScale';
 import { useAccentTheme } from '../../theme/AccentThemeContext';
@@ -40,20 +32,11 @@ export interface ThemeVectorResult {
 
 interface BubbleCloudProps {
   activeTerms: Term[];
-  termWeights: Record<string, number>;
-  /** 文字起こしでの出現回数（バブルサイズの頻度に利用） */
-  termFrequencies?: Record<string, number>;
   onTermClick: (term: Term) => void;
   darkMode?: boolean;
   selectedTermId?: string;
   isPinned: Set<string>;
   onTogglePin: (termId: string) => void;
-  /** 主題ベクトル（あればバブルサイズの主題類似度に利用） */
-  themeVector?: ThemeVectorResult | null;
-  /** 主題テキスト（用語がこれと一致するとき主題との類似度を 1 とする） */
-  themeText?: string;
-  /** API から取得した用語の意味ベクトル（termId → vector）。あればモックの代わりに使用 */
-  termVectors?: Record<string, number[]>;
   /** カテゴリフィルター（'ALL' または category 名） */
   categoryFilter?: string;
   /** カテゴリフィルター変更 */
@@ -62,16 +45,11 @@ interface BubbleCloudProps {
 
 export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   activeTerms,
-  termWeights,
-  termFrequencies = {},
   onTermClick,
   darkMode = true,
   selectedTermId,
   isPinned,
   onTogglePin,
-  themeVector,
-  themeText = '',
-  termVectors = {},
   categoryFilter = 'ALL',
   onCategoryFilterChange,
 }) => {
@@ -87,13 +65,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const setAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.setAutoSwitchIntervalSec);
   const categories = ['ALL', 'ピン中', ...Object.keys(CATEGORY_COLORS)];
   const effectiveBubbleScale = masterSizeScale * bubbleSizeScale;
-
-  const dim = themeVector?.dim ?? MOCK_DIM;
-  const themeVec = useMemo(() => {
-    if (themeVector?.vector?.length) return themeVector.vector;
-    return getMockThemeVector(dim);
-  }, [themeVector?.vector, dim]);
-  const conversationVec = useMemo(() => getMockConversationVector(dim), [dim]);
 
   const [showSlider, setShowSlider] = useState(false);
   const activeTermsRef = useRef(activeTerms);
@@ -160,30 +131,12 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   for (const id of Array.from(engineNodes.keys())) {
     if (!activeIds.has(id)) engineNodes.delete(id);
   }
-  const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
-  const themeTextTrimmed = themeText.trim();
+  const SCORE_SCALE_FACTOR = 3.0;
   for (const term of activeTerms) {
-    const freq = termFrequencies[term.id] ?? 0;
-    // 優先順: 1) 主題と同じ単語→主題ベクトル  2) APIの実ベクトル  3) モックベクトル
-    const apiVec = termVectors[term.id];
-    const termVec = (themeTextTrimmed && term.word === themeTextTrimmed)
-      ? themeVec
-      : apiVec && apiVec.length > 0
-        ? apiVec
-        : getMockTermVector(term.id, dim);
-    const themeSim = cosineSimilarity(termVec, themeVec);
-    const convSim = cosineSimilarity(termVec, conversationVec);
-    const themeScore = similarityToScore(themeSim);   // 0〜1
-    const convScore = similarityToScore(convSim);    // 0〜1
-    const displayCount = Math.min(freq, 10);        // 表示回数は10回まで反映
     const isTermPinned = isPinned?.has(term.id);
-    const w = isTermPinned ? 0 : (termWeights[term.id] || 0);
-    // 重みで基本半径に差をつける（小: 18 〜 大: 38 程度）
-    const baseR = Math.min(Math.max(36, w * 12), 76) / 1.8;
-    // 主題・会話類似度と表示回数で差をつける
-    const similarityMult = (1 + 0.6 * themeScore) * (1 + convScore);
-    const freqMult = 1 + 0.12 * displayCount;
-    let r = baseR * scaleFactor * similarityMult * freqMult;
+    const baseR = 20;
+    const scoreMult = 1 + term.score * SCORE_SCALE_FACTOR;
+    let r = baseR * scaleFactor * scoreMult;
     r = Math.min(r, 95); // 極端に大きくなりすぎないよう上限
 
     // ピン留めされているバブルは、標準より一回り大きいサイズに統一
@@ -196,15 +149,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     // バブルの最小半径を20に統一
     r = Math.max(20, r);
 
-    if (isDev && activeTerms.indexOf(term) <= 4) {
-      console.log(`[BubbleCloud] 類似度(モック) ${term.word}`, {
-        themeScore: Math.round(themeScore * 1000) / 1000,
-        convScore: Math.round(convScore * 1000) / 1000,
-        freq,
-        radius: Math.round(r * 10) / 10,
-      });
-    }
-    
     if (!engineNodes.has(term.id)) {
       const cw = engineRef.current.width || 800;
       const ch = engineRef.current.height || 500;
@@ -431,7 +375,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                   >
                     <TermBubble
                       term={term}
-                      weight={isPinned.has(term.id) ? 0 : (termWeights[term.id] || 0)}
+                      weight={term.score}
                       onClick={onTermClick}
                       darkMode={dk}
                       isActive={selectedTermId === term.id}

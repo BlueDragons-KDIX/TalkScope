@@ -20,7 +20,6 @@ describe('termStore', () => {
       selectedTerm: null,
       searchHistory: [],
       pinnedTermIds: new Set(),
-      termClickWeights: {},
     })
   })
 
@@ -59,12 +58,6 @@ describe('termStore', () => {
     expect(useTermStore.getState().pinnedTermIds.has('1')).toBe(false)
   })
 
-  it('クリック数を記録できる', () => {
-    useTermStore.getState().incrementClickWeight('1')
-    useTermStore.getState().incrementClickWeight('1')
-    expect(useTermStore.getState().termClickWeights['1']).toBe(2)
-  })
-
   it('検索履歴に追加できる', () => {
     useTermStore.getState().addToHistory(term1)
     useTermStore.getState().addToHistory(term2)
@@ -77,19 +70,17 @@ describe('termStore', () => {
     expect(useTermStore.getState().searchHistory).toHaveLength(1)
   })
 
-  it('resetSession で用語・選択・履歴・ピン・重みを初期化できる', () => {
+  it('resetSession で用語・選択・履歴・ピンを初期化できる', () => {
     useTermStore.getState().addTerms([term1])
     useTermStore.getState().selectTerm(term1)
     useTermStore.getState().addToHistory(term2)
     useTermStore.getState().togglePin('1')
-    useTermStore.getState().incrementClickWeight('1')
     useTermStore.getState().resetSession()
     const s = useTermStore.getState()
     expect(s.activeTerms).toHaveLength(0)
     expect(s.selectedTerm).toBeNull()
     expect(s.searchHistory).toHaveLength(0)
     expect(s.pinnedTermIds.size).toBe(0)
-    expect(Object.keys(s.termClickWeights)).toHaveLength(0)
   })
 
   it('addTerms は category を常に空文字に正規化する', () => {
