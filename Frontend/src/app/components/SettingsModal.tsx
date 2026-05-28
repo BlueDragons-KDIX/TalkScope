@@ -27,6 +27,9 @@ interface SettingsModalProps {
   similarityReferenceWord?: string;
   /** APIから基準ベクトルを取得できたか */
   similarityReady?: boolean;
+  /** SSEスコア閾値（0.00〜1.00） */
+  scoreThreshold?: number;
+  onScoreThresholdChange?: (value: number) => void;
 }
 
 const THEME_COLORS = [
@@ -49,6 +52,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSimilarityFilterStrengthChange,
   similarityReferenceWord = 'it',
   similarityReady = false,
+  scoreThreshold = 0.1,
+  onScoreThresholdChange,
 }) => {
   const contentFontScale = useContentFontScaleStore(s => s.scale);
   const setContentFontScale = useContentFontScaleStore(s => s.setScale);
@@ -158,6 +163,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   各ウィンドウ内の重要語・説明文のみ拡大／縮小します。ウィンドウタイトルやこの設定画面の文字サイズは変わりません。
                 </p>
               </section>
+
+              {onScoreThresholdChange && (
+                <section>
+                  <div className={`flex items-center gap-1.5 mb-2.5 text-[10px] font-bold uppercase tracking-widest ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+                    <SlidersHorizontal size={12} /> IT単語フィルター
+                  </div>
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold">関連度しきい値</span>
+                    <span className={`text-[10px] font-mono font-bold ${dk ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {scoreThreshold.toFixed(2)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={scoreThreshold}
+                    onChange={(e) => onScoreThresholdChange(Number(e.target.value))}
+                    className={`mb-1.5 w-full cursor-pointer ${dk ? 'opacity-95' : ''}`}
+                    style={accentSliderStyle(rgb)}
+                    aria-valuemin={0}
+                    aria-valuemax={1}
+                    aria-valuenow={scoreThreshold}
+                    aria-label="IT単語フィルターのしきい値"
+                  />
+                  <div className={`flex justify-between mt-0.5 text-[9px] ${dk ? 'text-slate-600' : 'text-slate-400'}`}>
+                    <span>広く表示</span>
+                    <span>IT関連のみ</span>
+                  </div>
+                  <p className={`mt-1 text-[10px] leading-snug ${dk ? 'text-slate-500' : 'text-slate-400'}`}>
+                    値を上げるほど、ITトピックとの関連度が高い単語だけを表示します。
+                  </p>
+                </section>
+              )}
 
               {/* Similarity Filter Settings */}
               {onSimilarityFilterEnabledChange && (
