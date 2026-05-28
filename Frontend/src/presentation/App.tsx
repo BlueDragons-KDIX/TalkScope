@@ -17,6 +17,7 @@ import { useTermStore } from '../stores/termStore'
 import { useBubbleStore } from '../stores/bubbleStore'
 import { getOppositeThemeColor } from './utils/oppositeThemeColor'
 import { AccentThemeProvider } from '../theme/AccentThemeContext'
+import { DEFAULT_SCORE_THRESHOLD } from '../infrastructure/adapters/ScoreThresholdFilter'
 
 // ウィンドウを一度だけ登録
 let _registered = false
@@ -34,6 +35,7 @@ const App: React.FC = () => {
   const currentPhaseId = usePhaseStore(s => s.currentPhaseId)
   const [appearanceOpen, setAppearanceOpen] = useState(false)
   const [appearance, setAppearance] = useState({ darkMode: true, themeColor: 'indigo' })
+  const [scoreThreshold, setScoreThreshold] = useState(DEFAULT_SCORE_THRESHOLD)
 
   const demoStream = useDemoStream({
     onAppend: text => getTranscriptionService().setTranscriptExternal(text),
@@ -70,7 +72,7 @@ const App: React.FC = () => {
         }}
       >
         <DemoImportantTermsBridge />
-        <ReferDictScoreSseBridge />
+        <ReferDictScoreSseBridge scoreThreshold={scoreThreshold} />
         <AccentThemeProvider themeColor={phaseAccentColor}>
         <div
           className={`w-screen h-screen flex flex-col overflow-hidden ${dk ? 'bg-[#0a0b14] text-slate-100' : 'bg-slate-50 text-slate-900'}`}
@@ -94,6 +96,8 @@ const App: React.FC = () => {
             onClose={() => setAppearanceOpen(false)}
             settings={appearance}
             updateSettings={partial => setAppearance(prev => ({ ...prev, ...partial }))}
+            scoreThreshold={scoreThreshold}
+            onScoreThresholdChange={setScoreThreshold}
           />
 
           <Toaster position="bottom-right" theme={darkMode ? 'dark' : 'light'} />
