@@ -15,7 +15,6 @@ import { useTranscriptStore } from '../../stores/transcriptStore'
 
 /** 全文が句点等で終わっているか。`true` なら末尾文も「完了」として送れる */
 const SENTENCE_END_RE = /[。．.!?！？\n]\s*$/
-const MAX_CONSECUTIVE_ERRORS = 5
 /** 話し途中の末尾 1 文を送るまでの待ち（ms） */
 const DEFAULT_TRAILING_DEBOUNCE_MS = 1000
 
@@ -49,8 +48,6 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
   const lastSentIndexRef = useRef(0)
   /** `sendRange` の再入防止。並列で複数 EventSource を開かない */
   const sendingRef = useRef(false)
-  /** SSE 失敗が続いたらしばらく新規接続を開かない */
-  const consecutiveErrorsRef = useRef(0)
 
   // コールバックは effect / sendRange の依存に入れず、ref で常に最新を参照
   const onChunkRef = useRef(onChunk)
@@ -83,14 +80,6 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
     ) => {
       if (sendingRef.current) return
       if (from >= to) return
-      if (consecutiveErrorsRef.current >= MAX_CONSECUTIVE_ERRORS) {
-        if (import.meta.env.DEV) {
-          console.warn(
-            `[referDictScoreSse] ${MAX_CONSECUTIVE_ERRORS}回連続エラーのため送信停止中。`,
-          )
-        }
-        return
-      }
 
       sendingRef.current = true
       try {
@@ -112,7 +101,6 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
               onChunk: deliverChunk,
               onError: onErrorRef.current,
             })
-            consecutiveErrorsRef.current = 0
 
             // 完了文: 成功したら次回はこの次の文から
             // 未完了文（debounce 対象）: インデックスを進めず、追記後に再送できるようにする
@@ -123,7 +111,6 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
               console.log(`[referDictScoreSse] sent "${text.slice(0, 40)}"`)
             }
           } catch (err) {
-            consecutiveErrorsRef.current += 1
             onErrorRef.current?.(err)
             // 失敗した完了文はスキップして先へ。未完了文はインデックスを残す
             if (!isCurrentUncompleted) {
@@ -148,7 +135,6 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
   useEffect(() => {
     if (!transcript?.trim()) {
       lastSentIndexRef.current = 0
-      consecutiveErrorsRef.current = 0
       return
     }
 
