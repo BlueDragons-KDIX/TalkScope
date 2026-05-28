@@ -35,7 +35,13 @@ describe('pipelineDebugStore', () => {
     expect(usePipelineDebugStore.getState().visibleLayers.sse).toBe(false)
   })
 
+  it('フィルタ閾値だけを更新できる', () => {
+    usePipelineDebugStore.getState().setFilteredThreshold(0.55)
+    expect(usePipelineDebugStore.getState().filteredThreshold).toBe(0.55)
+  })
+
   it('フィルタ結果とバブル表示語を更新できる', () => {
+    usePipelineDebugStore.getState().setFilteredThreshold(0.35)
     usePipelineDebugStore.getState().setFilteredTerms(0.4, [term])
     usePipelineDebugStore.getState().setBubbleTerms([term])
     const state = usePipelineDebugStore.getState()

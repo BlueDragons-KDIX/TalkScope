@@ -88,18 +88,22 @@ export const PipelineDebugWindow: React.FC<WindowProps> = ({ darkMode = true }) 
       <div className={`mb-3 rounded border p-2 ${dk ? 'border-slate-700 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
         <div className="mb-2 flex flex-wrap items-center gap-2">
           {(Object.keys(layerLabels) as LayerKey[]).map((layer) => (
-            <button
+            <label
               key={layer}
-              type="button"
-              onClick={() => toggleLayer(layer)}
-              className={`rounded border px-2 py-1 text-[11px] ${
+              className={`inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px] ${
                 visibleLayers[layer]
                   ? (dk ? 'border-emerald-400 text-emerald-300' : 'border-emerald-600 text-emerald-700')
                   : (dk ? 'border-slate-600 text-slate-400' : 'border-slate-300 text-slate-500')
               }`}
             >
-              {visibleLayers[layer] ? '表示中' : '非表示'}: {layerLabels[layer]}
-            </button>
+              <input
+                type="checkbox"
+                checked={visibleLayers[layer]}
+                onChange={() => toggleLayer(layer)}
+                className="size-3.5"
+              />
+              <span>{layerLabels[layer]}</span>
+            </label>
           ))}
           <button
             type="button"

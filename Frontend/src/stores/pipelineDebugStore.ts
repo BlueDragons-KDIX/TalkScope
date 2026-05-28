@@ -27,6 +27,7 @@ interface PipelineDebugState {
   visibleLayers: Record<LayerKey, boolean>
   pushSentInput: (text: string) => void
   pushSseRows: (rows: TermRow[]) => void
+  setFilteredThreshold: (threshold: number) => void
   setFilteredTerms: (threshold: number, terms: Term[]) => void
   setBubbleTerms: (terms: Term[]) => void
   toggleLayer: (layer: LayerKey) => void
@@ -65,6 +66,10 @@ export const usePipelineDebugStore = create<PipelineDebugState>((set) => ({
       })),
     ]),
   })),
+
+  setFilteredThreshold: (threshold) => set({
+    filteredThreshold: threshold,
+  }),
 
   setFilteredTerms: (threshold, terms) => set({
     filteredThreshold: threshold,
