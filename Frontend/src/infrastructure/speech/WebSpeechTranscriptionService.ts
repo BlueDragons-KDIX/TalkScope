@@ -76,11 +76,7 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
         }
       }
 
-      // 不正確でも文字を残したい要件のため、途中文字列が短くなる更新では縮めない
-      const nextInterimTrimmed = nextInterim.trim()
-      if (nextInterimTrimmed.length >= this.interimTranscript.trim().length) {
-        this.interimTranscript = nextInterim
-      }
+      this.interimTranscript = nextInterim
       this.transcript = `${this.finalTranscript}${this.interimTranscript}`
       this.notify()
     }
@@ -92,9 +88,11 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     }
 
     recognition.onend = () => {
-      if (this.isRunning) {
-        try { recognition.start() } catch { /* ignore */ }
+      this.isRunning = false
+      if (this.status === 'listening') {
+        this.status = 'idle'
       }
+      this.notify()
     }
 
     this.recognition = recognition
@@ -236,20 +234,8 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     try {
       this.recognition.start()
     } catch {
-      // ブラウザ状態で start() が失敗するケースがあるため、1回だけ再初期化して再試行する。
-      this.initRecognition()
-      if (!this.recognition) {
-        this.status = 'error'
-        this.isRunning = false
-        this.notify()
-        return
-      }
-      try {
-        this.recognition.start()
-      } catch {
-        this.status = 'error'
-        this.isRunning = false
-      }
+      this.status = 'error'
+      this.isRunning = false
     }
     this.notify()
   }
