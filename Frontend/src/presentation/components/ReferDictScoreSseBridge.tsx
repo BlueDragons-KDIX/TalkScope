@@ -2,9 +2,13 @@ import type React from 'react'
 import { useEffect, useRef } from 'react'
 import { useReferDictScoreSse } from '../hooks/useReferDictScoreSse'
 import { useTermStore } from '../../stores/termStore'
-import { filterByScore } from '../../infrastructure/adapters/ScoreThresholdFilter'
+import {
+  DEFAULT_SCORE_THRESHOLD,
+  filterByScore,
+} from '../../infrastructure/adapters/ScoreThresholdFilter'
 import { defaultScoreUpdateStrategy } from '../../infrastructure/adapters/DefaultScoreUpdateStrategy'
 import { FrequencyScoreAdapter } from '../../infrastructure/adapters/FrequencyScoreAdapter'
+import { usePipelineDebugStore } from '../../stores/pipelineDebugStore'
 
 interface ReferDictScoreSseBridgeProps {
   scoreThreshold?: number
@@ -17,10 +21,18 @@ interface ReferDictScoreSseBridgeProps {
 export const ReferDictScoreSseBridge: React.FC<ReferDictScoreSseBridgeProps> = ({
   scoreThreshold,
 }) => {
+  const threshold = scoreThreshold ?? DEFAULT_SCORE_THRESHOLD
   const adapterRef = useRef<FrequencyScoreAdapter | null>(null)
   if (!adapterRef.current) {
     adapterRef.current = new FrequencyScoreAdapter(defaultScoreUpdateStrategy)
   }
+
+  useEffect(() => {
+    const unsub = useTermStore.subscribe((state) => {
+      usePipelineDebugStore.getState().setBubbleTerms(state.activeTerms)
+    })
+    return unsub
+  }, [])
 
   useEffect(() => {
     const unsub = useTermStore.subscribe((state, prev) => {
@@ -34,8 +46,15 @@ export const ReferDictScoreSseBridge: React.FC<ReferDictScoreSseBridgeProps> = (
   }, [])
 
   useReferDictScoreSse({
+    onBeforeSend: (text) => {
+      usePipelineDebugStore.getState().pushSentInput(text)
+    },
+    onChunk: (rows) => {
+      usePipelineDebugStore.getState().pushSseRows(rows)
+    },
     onTerms: (terms) => {
-      const filtered = filterByScore(terms, scoreThreshold)
+      const filtered = filterByScore(terms, threshold)
+      usePipelineDebugStore.getState().setFilteredTerms(threshold, filtered)
       const adapted = adapterRef.current?.adapt(filtered)
       if (!adapted) return
       const store = useTermStore.getState()

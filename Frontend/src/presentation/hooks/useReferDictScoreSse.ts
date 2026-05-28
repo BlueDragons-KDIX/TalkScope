@@ -21,6 +21,7 @@ const DEFAULT_TRAILING_DEBOUNCE_MS = 1000
 export interface UseReferDictScoreSseOptions {
   baseUrl?: string
   trailingDebounceMs?: number
+  onBeforeSend?: (text: string) => void
   onChunk?: (rows: TermRow[]) => void
   onTerms?: (terms: Term[]) => void
   onError?: (err: unknown) => void
@@ -35,6 +36,7 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
   const {
     baseUrl: baseUrlOption,
     trailingDebounceMs = DEFAULT_TRAILING_DEBOUNCE_MS,
+    onBeforeSend,
     onChunk,
     onTerms,
     onError,
@@ -53,9 +55,11 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
   const onChunkRef = useRef(onChunk)
   const onTermsRef = useRef(onTerms)
   const onErrorRef = useRef(onError)
+  const onBeforeSendRef = useRef(onBeforeSend)
   onChunkRef.current = onChunk
   onTermsRef.current = onTerms
   onErrorRef.current = onError
+  onBeforeSendRef.current = onBeforeSend
 
   /** 1 chunk ごと: API 行配列 →（任意）`mapToTerms` → 呼び出し側 */
   const deliverChunk = useCallback((rows: TermRow[]) => {
@@ -95,6 +99,7 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
           const isCurrentUncompleted = treatLastAsUncompleted && i === to - 1
 
           try {
+            onBeforeSendRef.current?.(text)
             // 1 文 = 1 本の EventSource。chunk は `deliverChunk` 経由で上に上がる
             await streamReferDictScores(text, {
               baseUrl,
