@@ -46,16 +46,16 @@ export const ReferDictScoreSseBridge: React.FC<ReferDictScoreSseBridgeProps> = (
   }, [])
 
   useReferDictScoreSse({
-    onBeforeSend: (text) => {
+    onRequestOpened: (text) => {
       usePipelineDebugStore.getState().pushSentInput(text)
     },
     onChunk: (rows) => {
       usePipelineDebugStore.getState().pushSseRows(rows)
     },
     onTerms: (terms) => {
-      const filtered = filterByScore(terms, threshold)
-      usePipelineDebugStore.getState().setFilteredTerms(threshold, filtered)
-      const adapted = adapterRef.current?.adapt(filtered)
+      const passed = filterByScore(terms, threshold)
+      usePipelineDebugStore.getState().setFilteredTerms(threshold, passed)
+      const adapted = adapterRef.current?.adapt(passed)
       if (!adapted) return
       const store = useTermStore.getState()
       store.addTerms(adapted.toAdd)
