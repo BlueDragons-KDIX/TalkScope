@@ -18,6 +18,7 @@
 - クリック時に `updateTermScore` が呼ばれること
 - ピン留め単語は `useScoreUpdate` 内でスコア更新をスキップすること
 - Step4時点では `termClickWeights` を残したまま共存できること
+- 文字起こし/重要度ウィンドウでクリックした場合も `incrementClickWeight` が反映されること
 
 ## テスト項目
 
@@ -25,8 +26,9 @@
 |---|---|---|---|
 | 1 | `useScoreUpdate` の導入 | 実装確認 | 3ウィンドウが共通フック経由でスコア更新する |
 | 2 | BubbleCloudWindow クリック挙動 | 実装確認 | 既存の `incrementClickWeight` と `onScoreClick` が両方動く |
-| 3 | ImportanceRankingWindow / TranscriptionWindow | 実装確認 | 選択・履歴追加に加えて `onScoreClick` が呼ばれる |
-| 4 | 回帰テスト | 単体 | termStore / adapters / transcription mode の既存テスト成功 |
+| 3 | ImportanceRankingWindow / TranscriptionWindow | 実装確認 | `onScoreClick` と `incrementClickWeight` の両方が呼ばれる |
+| 4 | バブルとの双方向同期 | 実装確認 | どのウィンドウでクリックしてもバブルサイズとランキングが更新される |
+| 5 | 回帰テスト | 単体 | termStore / adapters / transcription mode の既存テスト成功 |
 
 ## 実行結果
 
