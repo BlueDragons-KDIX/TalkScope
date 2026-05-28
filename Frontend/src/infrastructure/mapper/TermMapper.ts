@@ -17,7 +17,7 @@ export function mapToTerm(row: TermRow): Term {
   // const id = String(row.id)
   const word = row.term.trim()
   const desc = row.description.trim()
-  const id = word+"-"+desc.slice(0,5)
+  const id = word //+"-"+desc.slice(0,5)
   return {
     id,
     word,
