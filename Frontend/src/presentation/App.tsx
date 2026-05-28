@@ -19,6 +19,7 @@ import { getOppositeThemeColor } from './utils/oppositeThemeColor'
 import { AccentThemeProvider } from '../theme/AccentThemeContext'
 import { DEFAULT_SCORE_THRESHOLD } from '../infrastructure/adapters/ScoreThresholdFilter'
 import { usePipelineDebugStore } from '../stores/pipelineDebugStore'
+import { useBubbleLifecycle } from './hooks/useBubbleLifecycle'
 
 // ウィンドウを一度だけ登録
 let _registered = false
@@ -37,6 +38,7 @@ const App: React.FC = () => {
   const [appearanceOpen, setAppearanceOpen] = useState(false)
   const [appearance, setAppearance] = useState({ darkMode: true, themeColor: 'indigo' })
   const [scoreThreshold, setScoreThreshold] = useState(DEFAULT_SCORE_THRESHOLD)
+  useBubbleLifecycle()
 
   const demoStream = useDemoStream({
     onAppend: text => getTranscriptionService().setTranscriptExternal(text),

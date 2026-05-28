@@ -418,12 +418,16 @@ incrementClickWeight: (termId: string) => void
 ## Step 6: バブル削除アルゴリズム
 **ブランチ: `feature/bubble-lifecycle`**
 
+✅ 完了（2026-05-28）
+
 ### 仕様（旧 `app/App.tsx` から移植）
 
-- `activeTerms` が 20件以下: 削除なし
-- 21〜30件: 古い順に「削除待機」入り。5秒経過したら削除
-- 31件以上: 最古のものを即時削除して 30件に収める
+- バブルウィンドウ設定 `maxVisibleTerms`（5〜30）を上限として利用
+- `activeTerms` が `softLimit`（`min(20, maxVisibleTerms)`）以下: 削除なし
+- `softLimit + 1`〜`maxVisibleTerms`: 古い順に「削除待機」入り。5秒経過したら削除
+- `maxVisibleTerms` 超過: 非スター語を最古から即時削除して上限に収める
 - 並び順の基準: `termTimestamps`（追加時刻）の昇順（古い = 先頭）
+- 表示枠がスター語で埋まっている場合は、SSE到着時も新規バブルを追加しない
 
 ### 実装場所
 
@@ -432,8 +436,9 @@ incrementClickWeight: (termId: string) => void
 // src/presentation/hooks/useBubbleLifecycle.ts（フック化推奨）
 ```
 
-`termTimestamps: Record<string, number>` を termStore に追加し、  
-`addTerms` 時に `Date.now()` を記録する。
+`termTimestamps: Record<string, number>` を termStore で管理し、  
+`addTerms` 時に `Date.now()` を記録する。  
+同時に `maxVisibleTerms` を参照し、新規追加数を上限に合わせて制御する。
 
 削除ループは `useBubbleLifecycle` フックで `setInterval(1000)` を回し、  
 `removeTermById` を呼ぶ形にする（1秒ごとに判定）。
@@ -466,9 +471,13 @@ useEffect(() => {
 
 ### 変更ファイル
 
-- `src/stores/termStore.ts`（`termTimestamps` / `removeTermById` は既存）
+- `src/stores/termStore.ts`（`termTimestamps` 追加、削除系 action と同期）
 - `src/presentation/hooks/useBubbleLifecycle.ts`（新規）
 - `src/presentation/App.tsx`（フック呼び出し追加）
+- `src/stores/__tests__/termStore.test.ts`（timestamp 管理のテスト追加）
+- `src/stores/termMapWindowSettingsStore.ts`（`maxVisibleTerms` 追加）
+- `src/app/components/BubbleCloud.tsx`（最大表示数スライダー追加）
+- `src/stores/__tests__/termMapWindowSettingsStore.test.ts`
 
 ---
 
@@ -486,4 +495,4 @@ useEffect(() => {
 3. `feature/frequency-adapter` ブランチで Step 3 を実装・確認（完了）
 4. `feature/click-score-service` ブランチで Step 4 を実装・確認（完了）
 5. `feature/score-based-rendering` ブランチで Step 5 を実装・確認（完了）
-6. Step 6（バブル削除アルゴリズム）へ進む
+6. `feature/bubble-lifecycle` ブランチで Step 6 を実装・確認（完了）
