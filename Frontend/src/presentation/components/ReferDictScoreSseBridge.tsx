@@ -1,6 +1,7 @@
 import type React from 'react'
 import { useReferDictScoreSse } from '../hooks/useReferDictScoreSse'
 import { useTermStore } from '../../stores/termStore'
+import { filterByScore } from '../../infrastructure/adapters/ScoreThresholdFilter'
 
 /**
  * App ルートに置く配線用（UI なし）。
@@ -8,7 +9,10 @@ import { useTermStore } from '../../stores/termStore'
  */
 export const ReferDictScoreSseBridge: React.FC = () => {
   useReferDictScoreSse({
-    onTerms: (terms) => useTermStore.getState().addTerms(terms),
+    onTerms: (terms) => {
+      const filtered = filterByScore(terms)
+      useTermStore.getState().addTerms(filtered)
+    },
   })
   return null
 }
