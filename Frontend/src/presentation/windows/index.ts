@@ -6,6 +6,7 @@ import { HistoryWindow } from './HistoryWindow'
 import { MinutesWindow } from './MinutesWindow'
 import { ImportanceRankingWindow } from './ImportanceRankingWindow'
 import { SystemControlWindow } from './SystemControlWindow'
+import { PipelineDebugWindow } from './PipelineDebugWindow'
 import { SYSTEM_CONTROL_WINDOW_ID } from '../constants/systemControlWindow'
 
 export function registerAllWindows(): void {
@@ -21,6 +22,7 @@ export function registerAllWindows(): void {
   registerWindow({ id: 'history',       label: '履歴',        component: HistoryWindow })
   registerWindow({ id: 'importanceRanking', label: '重要度',  component: ImportanceRankingWindow })
   registerWindow({ id: 'minutes',       label: '議事録',      component: MinutesWindow })
+  registerWindow({ id: 'pipelineDebug', label: 'SSE可視化',   component: PipelineDebugWindow })
 }
 
 export * from './registry'
