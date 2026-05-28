@@ -5,6 +5,7 @@ import { useTranscriptStore } from '../../../stores/transcriptStore'
 import { countTermFrequencies } from '../../../app/utils/termDetection'
 import type { WindowProps } from '../IWindowDefinition'
 import type { Term } from '../../../domain/entities/Term'
+import { useScoreUpdate } from '../../hooks/useScoreUpdate'
 
 export const BubbleCloudWindow: React.FC<WindowProps> = ({ darkMode = true }) => {
   const transcript = useTranscriptStore(s => s.transcript)
@@ -19,11 +20,13 @@ export const BubbleCloudWindow: React.FC<WindowProps> = ({ darkMode = true }) =>
   const addToHistory = useTermStore(s => s.addToHistory)
   const incrementClickWeight = useTermStore(s => s.incrementClickWeight)
   const togglePin = useTermStore(s => s.togglePin)
+  const { onClick: onScoreClick } = useScoreUpdate()
 
   const handleTermClick = (term: Term) => {
     selectTerm(term)
     addToHistory(term)
     incrementClickWeight(term.id)
+    onScoreClick(term.id)
   }
 
   return (
