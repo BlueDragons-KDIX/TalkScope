@@ -28,6 +28,8 @@ import {
   TERM_MAP_AUTO_SWITCH_INTERVAL_MIN,
   TERM_MAP_BUBBLE_SIZE_SCALE_MAX,
   TERM_MAP_BUBBLE_SIZE_SCALE_MIN,
+  TERM_MAP_MAX_VISIBLE_TERMS_MAX,
+  TERM_MAP_MAX_VISIBLE_TERMS_MIN,
   TERM_MAP_MASTER_SIZE_SCALE_MAX,
   TERM_MAP_MASTER_SIZE_SCALE_MIN,
   TERM_MAP_TEXT_FONT_SIZE_MAX,
@@ -208,11 +210,13 @@ const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
   const termMapTextFontSizePx = useTermMapWindowSettingsStore(s => s.textFontSizePx)
   const termMapAutoSwitchEnabled = useTermMapWindowSettingsStore(s => s.autoSwitchEnabled)
   const termMapAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.autoSwitchIntervalSec)
+  const termMapMaxVisibleTerms = useTermMapWindowSettingsStore(s => s.maxVisibleTerms)
   const setTermMapMasterSizeScale = useTermMapWindowSettingsStore(s => s.setMasterSizeScale)
   const setTermMapBubbleSizeScale = useTermMapWindowSettingsStore(s => s.setBubbleSizeScale)
   const setTermMapTextFontSizePx = useTermMapWindowSettingsStore(s => s.setTextFontSizePx)
   const setTermMapAutoSwitchEnabled = useTermMapWindowSettingsStore(s => s.setAutoSwitchEnabled)
   const setTermMapAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.setAutoSwitchIntervalSec)
+  const setTermMapMaxVisibleTerms = useTermMapWindowSettingsStore(s => s.setMaxVisibleTerms)
   const importanceRankingMasterSizeScale = useImportanceRankingWindowSettingsStore(s => s.masterSizeScale)
   const importanceRankingFontSizePx = useImportanceRankingWindowSettingsStore(s => s.fontSizePx)
   const importanceRankingVisibleCount = useImportanceRankingWindowSettingsStore(s => s.visibleCount)
@@ -400,6 +404,17 @@ const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
                 darkMode={dk}
                 accentRgb={accentRgb}
                 onChange={setTermMapTextFontSizePx}
+              />
+              <SettingsSlider
+                label="最大表示数"
+                valueLabel={`${termMapMaxVisibleTerms}語`}
+                value={termMapMaxVisibleTerms}
+                min={TERM_MAP_MAX_VISIBLE_TERMS_MIN}
+                max={TERM_MAP_MAX_VISIBLE_TERMS_MAX}
+                step={1}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setTermMapMaxVisibleTerms}
               />
             </div>
           </section>
