@@ -4,7 +4,7 @@ import { useReferDictScoreSse } from '../hooks/useReferDictScoreSse'
 import { useTermStore } from '../../stores/termStore'
 import {
   DEFAULT_SCORE_THRESHOLD,
-  filterByScore,
+  partitionByScore,
 } from '../../infrastructure/adapters/ScoreThresholdFilter'
 import { defaultScoreUpdateStrategy } from '../../infrastructure/adapters/DefaultScoreUpdateStrategy'
 import { FrequencyScoreAdapter } from '../../infrastructure/adapters/FrequencyScoreAdapter'
@@ -53,9 +53,7 @@ export const ReferDictScoreSseBridge: React.FC<ReferDictScoreSseBridgeProps> = (
       usePipelineDebugStore.getState().pushSseRows(rows)
     },
     onTerms: (terms) => {
-      const passed = filterByScore(terms, threshold)
-      const passedIds = new Set(passed.map((term) => term.id))
-      const rejected = terms.filter((term) => !passedIds.has(term.id))
+      const { passed, rejected } = partitionByScore(terms, threshold)
       usePipelineDebugStore.getState().setFilteredTerms(threshold, passed, rejected)
       const adapted = adapterRef.current?.adapt(passed)
       if (!adapted) return
