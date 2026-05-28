@@ -340,6 +340,8 @@ const handleTermClick = (term: Term) => {
 ## Step 5: 描画を `term.score` に切り替え
 **ブランチ: `feature/score-based-rendering`**
 
+✅ 完了（2026-05-28）
+
 ### BubbleCloud のサイズ計算変更
 
 **削除するもの:**
@@ -407,6 +409,7 @@ incrementClickWeight: (termId: string) => void
 - `src/app/components/BubbleCloud.tsx`
 - `src/presentation/windows/BubbleCloudWindow/index.tsx`
 - `src/presentation/windows/ImportanceRankingWindow/index.tsx`
+- `src/presentation/windows/TranscriptionWindow/index.tsx`
 - `src/presentation/utils/importanceRanking.ts`
 - `src/stores/termStore.ts`
 
@@ -482,4 +485,5 @@ useEffect(() => {
 2. `feature/score-threshold-filter` ブランチで Step 2 を実装・確認（完了）
 3. `feature/frequency-adapter` ブランチで Step 3 を実装・確認（完了）
 4. `feature/click-score-service` ブランチで Step 4 を実装・確認（完了）
-5. Step 5 完了後に `SCORE_SCALE_FACTOR` を調整
+5. `feature/score-based-rendering` ブランチで Step 5 を実装・確認（完了）
+6. Step 6（バブル削除アルゴリズム）へ進む
