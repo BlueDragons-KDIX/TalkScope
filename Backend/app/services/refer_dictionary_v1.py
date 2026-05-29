@@ -18,8 +18,6 @@ from app.core.database import get_database
 from app.services.enbedding import spacy_enbedding as sp_emb
 from typing import Callable
 
-GEMINI_TIMEOUT_SECONDS = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "5"))
-
 # ================================ endpoint_service ======================================
 async def service_analyze_text(text: str) -> AsyncGenerator[str, None]:
     async for term_infos, text_vector, source in refer_dictionary(text):
@@ -107,7 +105,8 @@ async def refer_dictionary(text: str) -> AsyncIterator[tuple[list[TermInfo], lis
     
     # dedup（複数の形態素が同じ単語を指す場合があるため）
     unique_terms = list(set(search_targets))
-    unique_joined_terms = ["".join(term_tuple) for term_tuple in unique_terms]
+    # 複合語を連結かつて1文字の単語は除外して検索する（DB検索の精度向上のため。例: "AI"は複合語として"AI"で検索し、"A"や"I"は単独では検索しない）
+    unique_joined_terms = ["".join(term_tuple) for term_tuple in unique_terms if not (len(term_tuple) == 1 and len(term_tuple[0]) == 1)]
     db = get_database()
 
     fetch_term_info_task: asyncio.Task[list[TermInfo]] | None = None
