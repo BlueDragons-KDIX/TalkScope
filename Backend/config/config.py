@@ -50,6 +50,14 @@ def _get_positive_int_env(name: str, default: int) -> int:
     return value if value > 0 else default
 
 
+def _get_csv_env(name: str) -> list[str]:
+    """カンマ区切り環境変数を読み、空要素を除いたリストを返す。"""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return []
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
 REFER_DICTIONARY_V1_GROUP_SIZE: int = _get_positive_int_env(
     "REFER_DICTIONARY_V1_GROUP_SIZE",
     10,
@@ -57,4 +65,15 @@ REFER_DICTIONARY_V1_GROUP_SIZE: int = _get_positive_int_env(
 REFER_DICTIONARY_V1_GENERATE_MAX_SENSE: int = _get_positive_int_env(
     "REFER_DICTIONARY_V1_GENERATE_MAX_SENSE",
     3,
+)
+REFER_DICTIONARY_V1_EMBEDDING_BIAS_TEXT: str = os.environ.get(
+    "REFER_DICTIONARY_V1_EMBEDDING_BIAS_TEXT",
+    "",
+).strip()
+REFER_DICTIONARY_V1_EMBEDDING_BIAS_REPEAT: int = _get_positive_int_env(
+    "REFER_DICTIONARY_V1_EMBEDDING_BIAS_REPEAT",
+    1,
+)
+REFER_DICTIONARY_V1_TERM_BLACKLIST: list[str] = _get_csv_env(
+    "REFER_DICTIONARY_V1_TERM_BLACKLIST"
 )

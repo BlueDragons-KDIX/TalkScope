@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 from typing import AsyncGenerator, Awaitable, AsyncIterator
 
 from fastapi.logger import logger
@@ -8,8 +7,11 @@ from fastapi.logger import logger
 import app.services.term_score as term_score
 from app.schemas.dictionary import ResponseTermScore, TermInfo
 from config.config import (
+    REFER_DICTIONARY_V1_EMBEDDING_BIAS_REPEAT,
+    REFER_DICTIONARY_V1_EMBEDDING_BIAS_TEXT,
     REFER_DICTIONARY_V1_GENERATE_MAX_SENSE,
     REFER_DICTIONARY_V1_GROUP_SIZE,
+    REFER_DICTIONARY_V1_TERM_BLACKLIST,
 )
 import app.services.refer_dictionary as rd
 import app.crud.dictionary_v1 as crud_dict_v1
@@ -53,113 +55,113 @@ GenerateTermSensesProtocol = Callable[[str], Awaitable[dict[str, list[str]]]]
 
 # ================================= Service ======================================
 
-async def refer_dictionary(text: str) -> AsyncIterator[tuple[list[TermInfo], list[float], str]]:
-    """
-    テキスト中の名詞を辞書検索し、結果を返す。
-    処理フローメモ
+# async def refer_dictionary(text: str) -> AsyncIterator[tuple[list[TermInfo], list[float], str]]:
+#     """
+#     テキスト中の名詞を辞書検索し、結果を返す。
+#     処理フローメモ
 
-        0. 文embedding
-        1. 名詞抽出
-        2. dedup
-        3. DB一括取得
-            hitはbest sense選択して返す
+#         0. 文embedding
+#         1. 名詞抽出
+#         2. dedup
+#         3. DB一括取得
+#             hitはbest sense選択して返す
 
-        4. missのみ対象
-        5. 各単語ごとにLLM（ただしバッチ化はする）
+#         4. missのみ対象
+#         5. 各単語ごとにLLM（ただしバッチ化はする）
 
-        6. sense生成（max 3）
-        7. embedding（事前計算）
-        8. DB保存
+#         6. sense生成（max 3）
+#         7. embedding（事前計算）
+#         8. DB保存
 
-        10. 各termでbest sense選択
+#         10. 各termでbest sense選択
 
-    注意事項：LLMで1単語に付き複数の意味の生成は、MVPでは実装しない。将来的に必要になったら実装する。
-    """
-    # DBミスしたときの処理を宣言的に関数化しておく（後で並列化するため）
-    async def _miss_terms_handler(terms_db_miss: list[str]) -> list[TermInfo]:
-        # missした用語の意味候補をLLMで生成
-        result_senses = await _generate_senses_for_terms_gather(
-            senses_generater=llm.generate_term_senses,
-            terms=terms_db_miss,
-            group_size=REFER_DICTIONARY_V1_GROUP_SIZE,
-            generate_max_sense=REFER_DICTIONARY_V1_GENERATE_MAX_SENSE,
-        )
-        # ベクトル化
-        results_terms = _embed_terms(call_embedding_api=sp_emb.call_embedding_api, terms=result_senses)
-        return results_terms
+#     注意事項：LLMで1単語に付き複数の意味の生成は、MVPでは実装しない。将来的に必要になったら実装する。
+#     """
+#     # DBミスしたときの処理を宣言的に関数化しておく（後で並列化するため）
+#     async def _miss_terms_handler(terms_db_miss: list[str]) -> list[TermInfo]:
+#         # missした用語の意味候補をLLMで生成
+#         result_senses = await _generate_senses_for_terms_gather(
+#             senses_generater=llm.generate_term_senses,
+#             terms=terms_db_miss,
+#             group_size=REFER_DICTIONARY_V1_GROUP_SIZE,
+#             generate_max_sense=REFER_DICTIONARY_V1_GENERATE_MAX_SENSE,
+#         )
+#         # ベクトル化
+#         results_terms = _embed_terms(call_embedding_api=sp_emb.call_embedding_api, terms=result_senses)
+#         return results_terms
     
-    # TODO: エンベディングと形態素・DB検索の並列化の検討 (しばらくは実装に着手しない)
-    # 入力テキストのembeddingを先に計算しておく（意味的な近さの計算に使うため）
-    input_text_embedding_task = asyncio.create_task(
-        asyncio.to_thread(
-            _compute_text_embedding,
-            call_embedding_api=sp_emb.call_embedding_api,
-            text=text,
-        )
-    )
+#     # TODO: エンベディングと形態素・DB検索の並列化の検討 (しばらくは実装に着手しない)
+#     # 入力テキストのembeddingを先に計算しておく（意味的な近さの計算に使うため）
+#     input_text_embedding_task = asyncio.create_task(
+#         asyncio.to_thread(
+#             _compute_text_embedding,
+#             call_embedding_api=sp_emb.call_embedding_api,
+#             text=text,
+#         )
+#     )
 
-    # 形態素解析で検索対象の抽出
-    search_targets = rd._extract_search_targets(text)
-    if not search_targets:
-        return
+#     # 形態素解析で検索対象の抽出
+#     search_targets = rd._extract_search_targets(text)
+#     if not search_targets:
+#         return
     
-    # dedup（複数の形態素が同じ単語を指す場合があるため）
-    unique_terms = list(set(search_targets))
-    # 複合語を連結かつて1文字の単語は除外して検索する（DB検索の精度向上のため。例: "AI"は複合語として"AI"で検索し、"A"や"I"は単独では検索しない）
-    unique_joined_terms = ["".join(term_tuple) for term_tuple in unique_terms if not (len(term_tuple) == 1 and len(term_tuple[0]) == 1)]
-    db = get_database()
+#     # dedup（複数の形態素が同じ単語を指す場合があるため）
+#     unique_terms = list(set(search_targets))
+#     # 複合語を連結かつて1文字の単語は除外して検索する（DB検索の精度向上のため。例: "AI"は複合語として"AI"で検索し、"A"や"I"は単独では検索しない）
+#     unique_joined_terms = ["".join(term_tuple) for term_tuple in unique_terms if not (len(term_tuple) == 1 and len(term_tuple[0]) == 1)]
+#     db = get_database()
 
-    fetch_term_info_task: asyncio.Task[list[TermInfo]] | None = None
-    if db.is_available:
-        # DB検索(バッチで検索)
-        fetch_term_info_task = asyncio.create_task(
-            asyncio.to_thread(
-                _fetch_term_infos_or_empty,
-                fetch_term_infos=crud_dict_v1.read_term_infos,
-                terms=unique_joined_terms
-            )
-        )
+#     fetch_term_info_task: asyncio.Task[list[TermInfo]] | None = None
+#     if db.is_available:
+#         # DB検索(バッチで検索)
+#         fetch_term_info_task = asyncio.create_task(
+#             asyncio.to_thread(
+#                 _fetch_term_infos_or_empty,
+#                 fetch_term_infos=crud_dict_v1.read_term_infos,
+#                 terms=unique_joined_terms
+#             )
+#         )
 
-    if fetch_term_info_task is None:
-        await input_text_embedding_task
-        results_term: list[TermInfo] = []
-    else:
-        await asyncio.gather(input_text_embedding_task, fetch_term_info_task)
-        results_term = fetch_term_info_task.result()
-    text_vector = input_text_embedding_task.result()
+#     if fetch_term_info_task is None:
+#         await input_text_embedding_task
+#         results_term: list[TermInfo] = []
+#     else:
+#         await asyncio.gather(input_text_embedding_task, fetch_term_info_task)
+#         results_term = fetch_term_info_task.result()
+#     text_vector = input_text_embedding_task.result()
 
-    miss_task: asyncio.Task | None = None
-    # missがあれば、事前に並列実行
-    if results_term.__len__() != unique_joined_terms.__len__():
-        terms_db_miss = [term for term in unique_joined_terms if term not in {r.term for r in results_term}] 
-        miss_task = asyncio.create_task(_miss_terms_handler(terms_db_miss))
+#     miss_task: asyncio.Task | None = None
+#     # missがあれば、事前に並列実行
+#     if results_term.__len__() != unique_joined_terms.__len__():
+#         terms_db_miss = [term for term in unique_joined_terms if term not in {r.term for r in results_term}] 
+#         miss_task = asyncio.create_task(_miss_terms_handler(terms_db_miss))
 
-    # hitした用語だけ先に返す。
-    if results_term:
-        yield (results_term, text_vector, "db")
-    if miss_task is None:
-        # missがない場合はここで終わり
-        return
+#     # hitした用語だけ先に返す。
+#     if results_term:
+#         yield (results_term, text_vector, "db")
+#     if miss_task is None:
+#         # missがない場合はここで終わり
+#         return
     
-    # missの処理（1.意味生成、2. embedding、3. DB保存）
-    results_terms = await miss_task
-    # TODO: DB保存をスレッドに分離して並列化し、書き込みの確認をせずにreturnすることも検討
-    # DB保存
-    storetask: asyncio.Task | None = None
-    if db.is_available and results_terms:
-        storetask = asyncio.create_task(
-            asyncio.to_thread(
-                store_term_infos,
-                insert_db_term_infos=crud_dict_v1.insert_term_infos,
-                term_infos=results_terms
-            )
-        )
+#     # missの処理（1.意味生成、2. embedding、3. DB保存）
+#     results_terms = await miss_task
+#     # TODO: DB保存をスレッドに分離して並列化し、書き込みの確認をせずにreturnすることも検討
+#     # DB保存
+#     storetask: asyncio.Task | None = None
+#     if db.is_available and results_terms:
+#         storetask = asyncio.create_task(
+#             asyncio.to_thread(
+#                 store_term_infos,
+#                 insert_db_term_infos=crud_dict_v1.insert_term_infos,
+#                 term_infos=results_terms
+#             )
+#         )
     
-    # missした用語を返す。
-    if results_terms:
-        yield (results_terms, text_vector, "llm")
-    if storetask is not None:
-        await storetask
+#     # missした用語を返す。
+#     if results_terms:
+#         yield (results_terms, text_vector, "llm")
+#     if storetask is not None:
+#         await storetask
 
 
 async def refer_dictionary_stream(text: str) -> AsyncIterator[tuple[list[TermInfo], list[float], str]]:
@@ -183,13 +185,17 @@ async def refer_dictionary_stream(text: str) -> AsyncIterator[tuple[list[TermInf
             if results_terms:
                 yield results_terms
 
-    # TODO: エンベディングと形態素・DB検索の並列化の検討 (しばらくは実装に着手しない)
     # 入力テキストのembeddingを先に計算しておく（意味的な近さの計算に使うため）
+    embedding_text = _build_embedding_text(
+        text=text,
+        bias_text=REFER_DICTIONARY_V1_EMBEDDING_BIAS_TEXT,
+        bias_repeat=REFER_DICTIONARY_V1_EMBEDDING_BIAS_REPEAT,
+    )
     input_text_embedding_task = asyncio.create_task(
         asyncio.to_thread(
             _compute_text_embedding,
             call_embedding_api=sp_emb.call_embedding_api,
-            text=text,
+            text=embedding_text,
         )
     )
 
@@ -198,14 +204,14 @@ async def refer_dictionary_stream(text: str) -> AsyncIterator[tuple[list[TermInf
     if not search_targets:
         return
 
-    # dedup（複数の形態素が同じ単語を指す場合があるため）
-    unique_terms = list(set(search_targets))
-    # 複合語を連結かつて1文字の単語は除外して検索する（DB検索の精度向上のため。例: "AI"は複合語として"AI"で検索し、"A"や"I"は単独では検索しない）
-    unique_joined_terms = [
-        "".join(term_tuple)
-        for term_tuple in unique_terms
-        if not (len(term_tuple) == 1 and len(term_tuple[0]) == 1)
-    ]
+    # dedupとフィルタリング
+    unique_joined_terms = _normalize_search_terms(
+        search_targets=search_targets,
+        blacklist_terms=REFER_DICTIONARY_V1_TERM_BLACKLIST,
+    )
+    if not unique_joined_terms:
+        return
+
     db = get_database()
 
     fetch_term_info_task: asyncio.Task[list[TermInfo]] | None = None
@@ -254,6 +260,36 @@ async def refer_dictionary_stream(text: str) -> AsyncIterator[tuple[list[TermInf
 
 
 # =========================== Domain ===================================
+
+def _build_embedding_text(*, text: str, bias_text: str, bias_repeat: int) -> str:
+    """
+    スコア計算用embeddingにだけドメインバイアスを混ぜる。
+    元の入力textは形態素解析・辞書検索に使うため変更しない。
+    """
+    bias_text = bias_text.strip()
+    if not bias_text:
+        return text
+    repeat = max(bias_repeat, 1)
+    repeated_bias = "\n".join([bias_text] * repeat)
+    logger.debug("Embedding用テキストにバイアスを追加します。bias_text=%s, bias_repeat=%d", bias_text, repeat)
+    return f"{text}\n\n関連ドメイン語:\n{repeated_bias}"
+
+def _normalize_search_terms(
+    *,
+    search_targets: list[tuple[str, ...]],
+    blacklist_terms: list[str],
+) -> list[str]:
+    """
+    形態素解析結果を辞書検索用termに整形する。
+    複合語を結合した後、1文字termとブラックリストtermを除外する。
+    """
+    blacklist = set(blacklist_terms)
+    unique_terms = set(search_targets)
+    return [
+        term
+        for term in ("".join(term_tuple) for term_tuple in unique_terms)
+        if len(term) > 1 and term not in blacklist
+    ]
 
 def _compute_text_embedding(*, call_embedding_api: CallableEmbeddingAPIProtocol, text: str) -> list[float]:
     """
