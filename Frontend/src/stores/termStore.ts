@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import type { Term } from '../domain/entities/Term'
 import { normalizeTermCategory } from '../domain/entities/Term'
 import { DEMO_IMPORTANT_TERM_ID_PREFIX } from '../debug/demo/mockImportantTerms'
-import { useTermMapWindowSettingsStore } from './termMapWindowSettingsStore'
 
 interface TermState {
   activeTerms: Term[]
@@ -34,41 +33,12 @@ export const useTermStore = create<TermState>((set) => ({
 
   addTerms: (terms) => set((state) => {
     const now = Date.now()
-    const maxVisibleTerms = useTermMapWindowSettingsStore.getState().maxVisibleTerms
     const existingIds = new Set(state.activeTerms.map((term) => term.id))
     const nextActiveTerms = [...state.activeTerms]
     const nextTermTimestamps = { ...state.termTimestamps }
 
-    const findOldestRemovableId = (): string | null => {
-      let oldestId: string | null = null
-      let oldestTs = Number.POSITIVE_INFINITY
-      for (const term of nextActiveTerms) {
-        if (state.pinnedTermIds.has(term.id)) continue
-        const ts = nextTermTimestamps[term.id] ?? 0
-        if (ts < oldestTs) {
-          oldestTs = ts
-          oldestId = term.id
-        }
-      }
-      return oldestId
-    }
-
     for (const t of terms) {
       if (existingIds.has(t.id)) continue
-
-      while (nextActiveTerms.length >= maxVisibleTerms) {
-        const removableId = findOldestRemovableId()
-        if (!removableId) {
-          return {
-            activeTerms: nextActiveTerms,
-            termTimestamps: nextTermTimestamps,
-          }
-        }
-        const removeIdx = nextActiveTerms.findIndex((term) => term.id === removableId)
-        if (removeIdx >= 0) nextActiveTerms.splice(removeIdx, 1)
-        delete nextTermTimestamps[removableId]
-        existingIds.delete(removableId)
-      }
 
       const normalized: Term = {
         ...t,
