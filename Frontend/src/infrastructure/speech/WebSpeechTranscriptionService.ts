@@ -218,12 +218,27 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     this.selectedMicStream = null
   }
 
+  /**
+   * recognition が stop 後に start し直すと result index は 0 から振り直される。
+   * 前セッションの index を捨てないと確定文が追加されなくなる。
+   */
+  private resetRecognitionResultIndices(): void {
+    const pending = this.interimTranscript.trim()
+    if (pending) {
+      this.finalTranscript += `${pending}。\n`
+    }
+    this.finalizedResultIndices.clear()
+    this.interimTranscript = ''
+    this.transcript = this.finalTranscript
+  }
+
   /** ブラウザが recognition を切ったときだけ再開（ユーザー stop / pause では呼ばない） */
   private restartRecognitionAfterBrowserEnd(): void {
     if (!this.recognition || this.suppressAutoRestart || this.status !== 'listening') {
       this.notify()
       return
     }
+    this.resetRecognitionResultIndices()
     try {
       this.recognition.start()
     } catch {
@@ -262,11 +277,8 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
       return
     }
 
-    // 再開後は result index が 0 から振り直されるため、前セッションの index を捨てる
     if (resumingFromPause) {
-      this.finalizedResultIndices.clear()
-      this.interimTranscript = ''
-      this.transcript = this.finalTranscript
+      this.resetRecognitionResultIndices()
     }
 
     this.suppressAutoRestart = false
@@ -297,12 +309,7 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
   pauseListening(): void {
     if (!this.recognition) return
     if (this.status !== 'listening' && this.status !== 'paused') return
-    const pending = this.interimTranscript.trim()
-    if (pending) {
-      this.finalTranscript += `${pending}。\n`
-      this.interimTranscript = ''
-      this.transcript = this.finalTranscript
-    }
+    this.resetRecognitionResultIndices()
     this.suppressAutoRestart = true
     this.isRunning = false
     this.status = 'paused'
