@@ -25,9 +25,10 @@ export interface ScriptableLayoutTemplate {
 export class ScriptableLayoutTemplates {
   templates(): ScriptableLayoutTemplate[] {
     const bubbleFocused = this.bubbleFocusedPresentationSnapshot()
+    const rankingFocused = this.rankingFocusedPresentationSnapshot()
     return [
       this.template('バブル重視', bubbleFocused.layout, bubbleFocused),
-      this.template('ランキング重視', this.createImportanceListFocusedLayout()),
+      this.template('ランキング重視', rankingFocused.layout, rankingFocused),
       this.template('フルカスタム', this.createFullCustomLayout()),
     ]
   }
@@ -147,34 +148,65 @@ export class ScriptableLayoutTemplates {
     return this.bubbleFocusedPresentationSnapshot().layout
   }
 
-  createImportanceListFocusedLayout(): LayoutNode {
+  rankingFocusedPresentationSnapshot(): PresentationSnapshot {
     return {
-      type: 'split',
-      id: 'n8',
-      direction: 'h',
-      ratio: 0.6873806275579809,
-      a: {
+      version: PRESENTATION_SNAPSHOT_VERSION,
+      phaseId: 'during',
+      layout: {
         type: 'split',
-        id: 'n24',
+        id: 'n8',
         direction: 'h',
-        ratio: 0.43989426965781536,
+        ratio: 0.6873806275579809,
         a: {
-          type: 'leaf',
-          id: 'n6',
-          windowId: 'transcription',
+          type: 'split',
+          id: 'n24',
+          direction: 'h',
+          ratio: 0.45579180507407774,
+          a: { type: 'leaf', id: 'n6', windowId: 'transcription' },
+          b: { type: 'leaf', id: 'n23', windowId: 'importanceRanking' },
         },
         b: {
-          type: 'leaf',
-          id: 'n23',
-          windowId: 'importanceRanking',
+          type: 'split',
+          id: 'n14',
+          direction: 'v',
+          ratio: 0.46088657105606257,
+          a: { type: 'leaf', id: 'n17', windowId: 'detail' },
+          b: { type: 'leaf', id: 'n13', windowId: 'history' },
         },
       },
-      b: {
-        type: 'leaf',
-        id: 'n17',
-        windowId: 'detail',
+      appearance: { darkMode: true, themeColor: 'indigo' },
+      contentFontScale: 1.1,
+      floatingControlDock: {
+        position: { x: 634.95703125, y: 685.3671875 },
+        scale: 1.44482421875,
+      },
+      windowSettings: {
+        bubbleCloud: {
+          masterSizeScale: 0.8,
+          bubbleSizeScale: 0.8,
+          textFontSizePx: 15,
+          autoSwitchEnabled: false,
+          autoSwitchIntervalSec: 6,
+          maxVisibleTerms: 30,
+        },
+        transcription: {
+          masterFontScale: 1,
+          plainTextFontSizePx: 14,
+          importantTermFontSizePx: 16,
+        },
+        detail: { fontSizePx: 10 },
+        importanceRanking: {
+          masterSizeScale: 1,
+          fontSizePx: 16,
+          visibleCount: 10,
+        },
+        history: { fontSizePx: 10 },
       },
     }
+  }
+
+  createImportanceListFocusedLayout(): LayoutNode {
+    return this.rankingFocusedPresentationSnapshot().layout
   }
 
   createFullCustomLayout(): LayoutNode {
