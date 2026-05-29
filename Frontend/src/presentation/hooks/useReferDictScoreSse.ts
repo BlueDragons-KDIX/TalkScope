@@ -51,7 +51,7 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
   /** `splitIntoSentences` の何番目まで送ったか（exclusive）。同じ文は二重送信しない */
   const lastSentIndexRef = useRef(0)
   /** `sendRange` の再入防止。並列で複数 EventSource を開かない */
-  const sendingRef = useRef(false)
+  // const sendingRef = useRef(false)
 
   // コールバックは effect / sendRange の依存に入れず、ref で常に最新を参照
   const onChunkRef = useRef(onChunk)
@@ -86,10 +86,10 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
       to: number,
       treatLastAsUncompleted = false,
     ) => {
-      if (sendingRef.current) return
+      // if (sendingRef.current) return
       if (from >= to) return
 
-      sendingRef.current = true
+      // sendingRef.current = true
       try {
         for (let i = from; i < to; i++) {
           const text = sentences[i]?.trim()
@@ -105,12 +105,12 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
           try {
             onBeforeSendRef.current?.(text)
             // 1 文 = 1 本の EventSource。chunk は `deliverChunk` 経由で上に上がる
-            await streamReferDictScores(text, {
+            void streamReferDictScores(text, {
               baseUrl,
               onOpen: () => onRequestOpenedRef.current?.(text),
               onChunk: deliverChunk,
               onError: onErrorRef.current,
-            })
+            }).then(() => {
 
             // 完了文: 成功したら次回はこの次の文から
             // 未完了文（debounce 対象）: インデックスを進めず、追記後に再送できるようにする
@@ -120,17 +120,25 @@ export function useReferDictScoreSse(options: UseReferDictScoreSseOptions = {}):
             if (import.meta.env.DEV) {
               console.log(`[referDictScoreSse] sent "${text.slice(0, 40)}"`)
             }
+          // 非同期のエラー処理
+          }).catch((err) => {
+            onErrorRef.current?.(err)
+            // 失敗した完了文はスキップして先へ。未完了文はインデックスを残す
+            if (!isCurrentUncompleted) {
+              lastSentIndexRef.current = i + 1
+            }
+          })
           } catch (err) {
             onErrorRef.current?.(err)
             // 失敗した完了文はスキップして先へ。未完了文はインデックスを残す
             if (!isCurrentUncompleted) {
               lastSentIndexRef.current = i + 1
             }
-            break
+            // break
           }
         }
       } finally {
-        sendingRef.current = false
+        // sendingRef.current = false
       }
     },
     [baseUrl, deliverChunk],
