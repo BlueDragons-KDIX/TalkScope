@@ -466,7 +466,7 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
   return (
     <div
       data-window-settings-panel="true"
-      className={`absolute right-2 top-11 z-[70] flex w-[min(92vw,320px)] max-h-[min(72vh,440px)] flex-col overflow-hidden rounded-2xl border shadow-2xl ${dk
+      className={`absolute top-11 right-2 bottom-2 z-[70] flex min-h-0 w-[min(calc(100%-1rem),20rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl ${dk
         ? 'border-slate-700/90 bg-[#0f1118] text-slate-100'
         : 'border-slate-200 bg-white text-slate-900'}`}
       style={{
