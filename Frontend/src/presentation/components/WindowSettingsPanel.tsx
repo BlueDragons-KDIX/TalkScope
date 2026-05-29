@@ -1,0 +1,530 @@
+import React from 'react'
+import { RefreshCw, Settings, SlidersHorizontal, X } from 'lucide-react'
+import { SYSTEM_CONTROL_WINDOW_ID } from '../constants/systemControlWindow'
+import { useTranscription } from '../hooks/useTranscription'
+import { accentRgba } from '../../theme/accentStyles'
+import type { TranscriptionMode } from '../../domain/interfaces/ITranscriptionService'
+import {
+  TRANSCRIPTION_IMPORTANT_FONT_SIZE_MAX,
+  TRANSCRIPTION_IMPORTANT_FONT_SIZE_MIN,
+  TRANSCRIPTION_MASTER_FONT_SCALE_MAX,
+  TRANSCRIPTION_MASTER_FONT_SCALE_MIN,
+  TRANSCRIPTION_PLAIN_FONT_SIZE_MAX,
+  TRANSCRIPTION_PLAIN_FONT_SIZE_MIN,
+  useTranscriptionWindowSettingsStore,
+} from '../../stores/transcriptionWindowSettingsStore'
+import {
+  TERM_MAP_AUTO_SWITCH_INTERVAL_MAX,
+  TERM_MAP_AUTO_SWITCH_INTERVAL_MIN,
+  TERM_MAP_BUBBLE_SIZE_SCALE_MAX,
+  TERM_MAP_BUBBLE_SIZE_SCALE_MIN,
+  TERM_MAP_MAX_VISIBLE_TERMS_MAX,
+  TERM_MAP_MAX_VISIBLE_TERMS_MIN,
+  TERM_MAP_MASTER_SIZE_SCALE_MAX,
+  TERM_MAP_MASTER_SIZE_SCALE_MIN,
+  TERM_MAP_TEXT_FONT_SIZE_MAX,
+  TERM_MAP_TEXT_FONT_SIZE_MIN,
+  useTermMapWindowSettingsStore,
+} from '../../stores/termMapWindowSettingsStore'
+import {
+  IMPORTANCE_RANKING_FONT_SIZE_MAX,
+  IMPORTANCE_RANKING_FONT_SIZE_MIN,
+  IMPORTANCE_RANKING_MASTER_SIZE_SCALE_MAX,
+  IMPORTANCE_RANKING_MASTER_SIZE_SCALE_MIN,
+  IMPORTANCE_RANKING_VISIBLE_COUNT_MAX,
+  IMPORTANCE_RANKING_VISIBLE_COUNT_MIN,
+  useImportanceRankingWindowSettingsStore,
+} from '../../stores/importanceRankingWindowSettingsStore'
+import {
+  DETAIL_WINDOW_FONT_SIZE_MAX,
+  DETAIL_WINDOW_FONT_SIZE_MIN,
+  useDetailWindowSettingsStore,
+} from '../../stores/detailWindowSettingsStore'
+
+const PANEL_CLOSE_BTN =
+  'flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-[filter,background-color] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent-rgb)/0.45)] focus-visible:ring-offset-1'
+
+interface SettingsSliderProps {
+  label: string
+  valueLabel: string
+  value: number
+  min: number
+  max: number
+  step: number
+  darkMode: boolean
+  accentRgb: string
+  onChange: (value: number) => void
+}
+
+const SettingsSlider: React.FC<SettingsSliderProps> = ({
+  label,
+  valueLabel,
+  value,
+  min,
+  max,
+  step,
+  darkMode,
+  accentRgb,
+  onChange,
+}) => {
+  const dk = darkMode
+  return (
+    <div
+      className={`rounded-lg border px-3 py-2.5 ${dk
+        ? 'border-slate-700/80 bg-slate-900/40'
+        : 'border-slate-200 bg-slate-50/90'}`}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-xs font-bold leading-tight">{label}</span>
+        <span
+          className="shrink-0 rounded-md px-2 py-0.5 text-[11px] font-mono font-bold tabular-nums"
+          style={{
+            backgroundColor: accentRgba(accentRgb, dk ? 0.22 : 0.12),
+            color: accentRgba(accentRgb, dk ? 0.98 : 0.88),
+          }}
+        >
+          {valueLabel}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className={`h-2 w-full cursor-pointer appearance-none rounded-full ${dk ? 'bg-slate-700' : 'bg-slate-200'}`}
+        style={{ accentColor: `rgb(${accentRgb})` }}
+        aria-label={label}
+      />
+    </div>
+  )
+}
+
+interface SettingsSectionProps {
+  title: string
+  icon: React.ReactNode
+  darkMode: boolean
+  children: React.ReactNode
+}
+
+const SettingsSection: React.FC<SettingsSectionProps> = ({ title, icon, darkMode, children }) => {
+  const dk = darkMode
+  return (
+    <section
+      className={`rounded-xl border p-3 ${dk
+        ? 'border-slate-700/70 bg-slate-900/30'
+        : 'border-slate-200 bg-white/80'}`}
+    >
+      <div className={`mb-3 flex items-center gap-2 text-xs font-bold ${dk ? 'text-slate-300' : 'text-slate-700'}`}>
+        <span
+          className="flex h-6 w-6 items-center justify-center rounded-md"
+          style={{
+            backgroundColor: dk ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.15)',
+            color: dk ? 'rgb(203,213,225)' : 'rgb(71,85,105)',
+          }}
+        >
+          {icon}
+        </span>
+        {title}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+export interface WindowSettingsPanelProps {
+  windowId: string
+  label: string
+  darkMode: boolean
+  accentRgb: string
+  onClose: () => void
+}
+
+export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
+  windowId,
+  label,
+  darkMode,
+  accentRgb,
+  onClose,
+}) => {
+  const {
+    mode,
+    setMode,
+    microphones,
+    selectedMicrophoneId,
+    selectMicrophone,
+    refreshMicrophones,
+  } = useTranscription()
+  const masterFontScale = useTranscriptionWindowSettingsStore(s => s.masterFontScale)
+  const plainTextFontSizePx = useTranscriptionWindowSettingsStore(s => s.plainTextFontSizePx)
+  const importantTermFontSizePx = useTranscriptionWindowSettingsStore(s => s.importantTermFontSizePx)
+  const setMasterFontScale = useTranscriptionWindowSettingsStore(s => s.setMasterFontScale)
+  const setPlainTextFontSizePx = useTranscriptionWindowSettingsStore(s => s.setPlainTextFontSizePx)
+  const setImportantTermFontSizePx = useTranscriptionWindowSettingsStore(s => s.setImportantTermFontSizePx)
+  const termMapMasterSizeScale = useTermMapWindowSettingsStore(s => s.masterSizeScale)
+  const termMapBubbleSizeScale = useTermMapWindowSettingsStore(s => s.bubbleSizeScale)
+  const termMapTextFontSizePx = useTermMapWindowSettingsStore(s => s.textFontSizePx)
+  const termMapAutoSwitchEnabled = useTermMapWindowSettingsStore(s => s.autoSwitchEnabled)
+  const termMapAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.autoSwitchIntervalSec)
+  const termMapMaxVisibleTerms = useTermMapWindowSettingsStore(s => s.maxVisibleTerms)
+  const setTermMapMasterSizeScale = useTermMapWindowSettingsStore(s => s.setMasterSizeScale)
+  const setTermMapBubbleSizeScale = useTermMapWindowSettingsStore(s => s.setBubbleSizeScale)
+  const setTermMapTextFontSizePx = useTermMapWindowSettingsStore(s => s.setTextFontSizePx)
+  const setTermMapAutoSwitchEnabled = useTermMapWindowSettingsStore(s => s.setAutoSwitchEnabled)
+  const setTermMapAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.setAutoSwitchIntervalSec)
+  const setTermMapMaxVisibleTerms = useTermMapWindowSettingsStore(s => s.setMaxVisibleTerms)
+  const importanceRankingMasterSizeScale = useImportanceRankingWindowSettingsStore(s => s.masterSizeScale)
+  const importanceRankingFontSizePx = useImportanceRankingWindowSettingsStore(s => s.fontSizePx)
+  const importanceRankingVisibleCount = useImportanceRankingWindowSettingsStore(s => s.visibleCount)
+  const setImportanceRankingMasterSizeScale = useImportanceRankingWindowSettingsStore(s => s.setMasterSizeScale)
+  const setImportanceRankingFontSizePx = useImportanceRankingWindowSettingsStore(s => s.setFontSizePx)
+  const setImportanceRankingVisibleCount = useImportanceRankingWindowSettingsStore(s => s.setVisibleCount)
+  const detailFontSizePx = useDetailWindowSettingsStore(s => s.fontSizePx)
+  const setDetailFontSizePx = useDetailWindowSettingsStore(s => s.setFontSizePx)
+  const dk = darkMode
+
+  const modeButton = (value: TranscriptionMode, text: string) => {
+    const active = mode === value
+    return (
+      <button
+        type="button"
+        onClick={() => setMode(value)}
+        className={`flex-1 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${active
+          ? ''
+          : dk
+            ? 'border-slate-600 bg-slate-800/60 text-slate-400 hover:bg-slate-800'
+            : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`}
+        style={active
+          ? {
+              borderColor: accentRgba(accentRgb, 0.62),
+              backgroundColor: accentRgba(accentRgb, dk ? 0.24 : 0.12),
+              color: accentRgba(accentRgb, dk ? 0.98 : 0.9),
+              boxShadow: `0 0 12px ${accentRgba(accentRgb, dk ? 0.2 : 0.12)}`,
+            }
+          : undefined}
+      >
+        {text}
+      </button>
+    )
+  }
+
+  const panelBody = () => {
+    if (windowId === SYSTEM_CONTROL_WINDOW_ID) {
+      return (
+        <div className="space-y-3">
+          <SettingsSection title="文字起こしモード" icon={<SlidersHorizontal size={13} />} darkMode={dk}>
+            <div className="flex gap-2">
+              {modeButton('fast', '速度重視')}
+              {modeButton('accurate', '品質重視')}
+            </div>
+            <p className={`mt-2.5 text-[11px] leading-relaxed ${dk ? 'text-slate-400' : 'text-slate-500'}`}>
+              {mode === 'fast' ? 'リアルタイム性を優先します。' : '停止後の高精度化を優先します。'}
+            </p>
+          </SettingsSection>
+
+          <SettingsSection title="マイク" icon={<RefreshCw size={13} />} darkMode={dk}>
+            <div className="mb-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => refreshMicrophones()}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-colors ${dk
+                  ? 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`}
+                title="マイク一覧を再取得"
+              >
+                <RefreshCw size={12} />
+                一覧を更新
+              </button>
+            </div>
+            <select
+              value={selectedMicrophoneId}
+              onChange={e => selectMicrophone(e.target.value)}
+              className={`w-full rounded-lg border px-3 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent-rgb)/0.4)] ${dk
+                ? 'border-slate-600 bg-slate-800 text-slate-100'
+                : 'border-slate-300 bg-white text-slate-800'}`}
+            >
+              {microphones.length === 0 && <option value="">利用可能マイクなし</option>}
+              {microphones.map(mic => (
+                <option key={mic.deviceId} value={mic.deviceId}>{mic.label}</option>
+              ))}
+            </select>
+          </SettingsSection>
+        </div>
+      )
+    }
+
+    if (windowId === 'transcription') {
+      return (
+        <SettingsSection title="フォントサイズ" icon={<SlidersHorizontal size={13} />} darkMode={dk}>
+          <div className="space-y-2">
+            <SettingsSlider
+              label="マスター"
+              valueLabel={`${Math.round(masterFontScale * 100)}%`}
+              value={masterFontScale}
+              min={TRANSCRIPTION_MASTER_FONT_SCALE_MIN}
+              max={TRANSCRIPTION_MASTER_FONT_SCALE_MAX}
+              step={0.05}
+              darkMode={dk}
+              accentRgb={accentRgb}
+              onChange={setMasterFontScale}
+            />
+            <SettingsSlider
+              label="通常文字"
+              valueLabel={`${plainTextFontSizePx}px`}
+              value={plainTextFontSizePx}
+              min={TRANSCRIPTION_PLAIN_FONT_SIZE_MIN}
+              max={TRANSCRIPTION_PLAIN_FONT_SIZE_MAX}
+              step={1}
+              darkMode={dk}
+              accentRgb={accentRgb}
+              onChange={setPlainTextFontSizePx}
+            />
+            <SettingsSlider
+              label="重要単語"
+              valueLabel={`${importantTermFontSizePx}px`}
+              value={importantTermFontSizePx}
+              min={TRANSCRIPTION_IMPORTANT_FONT_SIZE_MIN}
+              max={TRANSCRIPTION_IMPORTANT_FONT_SIZE_MAX}
+              step={1}
+              darkMode={dk}
+              accentRgb={accentRgb}
+              onChange={setImportantTermFontSizePx}
+            />
+          </div>
+        </SettingsSection>
+      )
+    }
+
+    if (windowId === 'bubbleCloud') {
+      return (
+        <div className="space-y-3">
+          <SettingsSection title="サイズ" icon={<SlidersHorizontal size={13} />} darkMode={dk}>
+            <div className="space-y-2">
+              <SettingsSlider
+                label="マスター"
+                valueLabel={`${Math.round(termMapMasterSizeScale * 100)}%`}
+                value={termMapMasterSizeScale}
+                min={TERM_MAP_MASTER_SIZE_SCALE_MIN}
+                max={TERM_MAP_MASTER_SIZE_SCALE_MAX}
+                step={0.05}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setTermMapMasterSizeScale}
+              />
+              <SettingsSlider
+                label="バブル"
+                valueLabel={`${Math.round(termMapBubbleSizeScale * 100)}%`}
+                value={termMapBubbleSizeScale}
+                min={TERM_MAP_BUBBLE_SIZE_SCALE_MIN}
+                max={TERM_MAP_BUBBLE_SIZE_SCALE_MAX}
+                step={0.1}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setTermMapBubbleSizeScale}
+              />
+              <SettingsSlider
+                label="テキスト"
+                valueLabel={`${termMapTextFontSizePx}px`}
+                value={termMapTextFontSizePx}
+                min={TERM_MAP_TEXT_FONT_SIZE_MIN}
+                max={TERM_MAP_TEXT_FONT_SIZE_MAX}
+                step={1}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setTermMapTextFontSizePx}
+              />
+              <SettingsSlider
+                label="最大表示数"
+                valueLabel={`${termMapMaxVisibleTerms}語`}
+                value={termMapMaxVisibleTerms}
+                min={TERM_MAP_MAX_VISIBLE_TERMS_MIN}
+                max={TERM_MAP_MAX_VISIBLE_TERMS_MAX}
+                step={1}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setTermMapMaxVisibleTerms}
+              />
+            </div>
+          </SettingsSection>
+
+          <SettingsSection title="自動切り替え" icon={<RefreshCw size={13} />} darkMode={dk}>
+            <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
+              style={{
+                borderColor: accentRgba(accentRgb, dk ? 0.35 : 0.25),
+                backgroundColor: dk ? 'rgba(15,23,42,0.35)' : 'rgba(248,250,252,0.9)',
+              }}
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-bold">自動切り替え</p>
+                <p className={`mt-0.5 text-[10px] leading-snug ${dk ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {termMapAutoSwitchEnabled ? '説明と用語を交互に表示' : '手動表示のみ'}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={termMapAutoSwitchEnabled}
+                onClick={() => setTermMapAutoSwitchEnabled(!termMapAutoSwitchEnabled)}
+                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${termMapAutoSwitchEnabled ? '' : dk ? 'bg-slate-700' : 'bg-slate-300'}`}
+                style={termMapAutoSwitchEnabled ? { backgroundColor: accentRgba(accentRgb, dk ? 0.85 : 0.75) } : undefined}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${termMapAutoSwitchEnabled ? 'left-[22px]' : 'left-0.5'}`}
+                />
+              </button>
+            </div>
+            <div className="mt-2">
+              <SettingsSlider
+                label="切り替え間隔"
+                valueLabel={`${termMapAutoSwitchIntervalSec}秒`}
+                value={termMapAutoSwitchIntervalSec}
+                min={TERM_MAP_AUTO_SWITCH_INTERVAL_MIN}
+                max={TERM_MAP_AUTO_SWITCH_INTERVAL_MAX}
+                step={1}
+                darkMode={dk}
+                accentRgb={accentRgb}
+                onChange={setTermMapAutoSwitchIntervalSec}
+              />
+            </div>
+          </SettingsSection>
+        </div>
+      )
+    }
+
+    if (windowId === 'importanceRanking') {
+      return (
+        <SettingsSection title="表示" icon={<SlidersHorizontal size={13} />} darkMode={dk}>
+          <div className="space-y-2">
+            <SettingsSlider
+              label="要素サイズ"
+              valueLabel={`${Math.round(importanceRankingMasterSizeScale * 100)}%`}
+              value={importanceRankingMasterSizeScale}
+              min={IMPORTANCE_RANKING_MASTER_SIZE_SCALE_MIN}
+              max={IMPORTANCE_RANKING_MASTER_SIZE_SCALE_MAX}
+              step={0.05}
+              darkMode={dk}
+              accentRgb={accentRgb}
+              onChange={setImportanceRankingMasterSizeScale}
+            />
+            <SettingsSlider
+              label="フォント"
+              valueLabel={`${importanceRankingFontSizePx}px`}
+              value={importanceRankingFontSizePx}
+              min={IMPORTANCE_RANKING_FONT_SIZE_MIN}
+              max={IMPORTANCE_RANKING_FONT_SIZE_MAX}
+              step={1}
+              darkMode={dk}
+              accentRgb={accentRgb}
+              onChange={setImportanceRankingFontSizePx}
+            />
+            <SettingsSlider
+              label="表示単語数"
+              valueLabel={`${importanceRankingVisibleCount}個`}
+              value={importanceRankingVisibleCount}
+              min={IMPORTANCE_RANKING_VISIBLE_COUNT_MIN}
+              max={IMPORTANCE_RANKING_VISIBLE_COUNT_MAX}
+              step={1}
+              darkMode={dk}
+              accentRgb={accentRgb}
+              onChange={setImportanceRankingVisibleCount}
+            />
+          </div>
+        </SettingsSection>
+      )
+    }
+
+    if (windowId === 'detail') {
+      return (
+        <SettingsSection title="フォントサイズ" icon={<SlidersHorizontal size={13} />} darkMode={dk}>
+          <SettingsSlider
+            label="詳細テキスト"
+            valueLabel={`${detailFontSizePx}px`}
+            value={detailFontSizePx}
+            min={DETAIL_WINDOW_FONT_SIZE_MIN}
+            max={DETAIL_WINDOW_FONT_SIZE_MAX}
+            step={1}
+            darkMode={dk}
+            accentRgb={accentRgb}
+            onChange={setDetailFontSizePx}
+          />
+        </SettingsSection>
+      )
+    }
+
+    return (
+      <p
+        className={`rounded-xl border px-4 py-6 text-center text-xs leading-relaxed ${dk
+          ? 'border-slate-700/70 bg-slate-900/30 text-slate-400'
+          : 'border-slate-200 bg-slate-50 text-slate-500'}`}
+      >
+        このウィンドウ固有の設定は今後追加予定です。
+      </p>
+    )
+  }
+
+  return (
+    <div
+      data-window-settings-panel="true"
+      className={`absolute right-2 top-11 z-[70] flex w-[min(92vw,320px)] max-h-[min(72vh,440px)] flex-col overflow-hidden rounded-2xl border shadow-2xl ${dk
+        ? 'border-slate-700/90 bg-[#0f1118] text-slate-100'
+        : 'border-slate-200 bg-white text-slate-900'}`}
+      style={{
+        boxShadow: dk
+          ? `0 20px 50px rgba(0,0,0,0.45), 0 0 0 1px ${accentRgba(accentRgb, 0.2)}, 0 0 28px ${accentRgba(accentRgb, 0.12)}`
+          : `0 16px 40px rgba(15,23,42,0.14), 0 0 0 1px ${accentRgba(accentRgb, 0.15)}, 0 0 24px ${accentRgba(accentRgb, 0.08)}`,
+      }}
+      role="dialog"
+      aria-label={`${label} の設定`}
+      onClick={e => e.stopPropagation()}
+    >
+      <div
+        className="h-1 shrink-0"
+        style={{
+          background: `linear-gradient(90deg, ${accentRgba(accentRgb, 0.15)}, ${accentRgba(accentRgb, 0.85)}, ${accentRgba(accentRgb, 0.15)})`,
+        }}
+        aria-hidden
+      />
+
+      <div
+        className={`flex shrink-0 items-center justify-between gap-2 border-b px-3.5 py-3 ${dk ? 'border-slate-700/80' : 'border-slate-200'}`}
+        style={{ backgroundColor: accentRgba(accentRgb, dk ? 0.1 : 0.06) }}
+      >
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
+            style={{
+              borderColor: accentRgba(accentRgb, dk ? 0.45 : 0.35),
+              backgroundColor: accentRgba(accentRgb, dk ? 0.2 : 0.1),
+              color: accentRgba(accentRgb, dk ? 0.98 : 0.88),
+            }}
+          >
+            <Settings size={18} strokeWidth={2.25} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black leading-tight">{label}</p>
+            <p className={`text-[10px] font-medium ${dk ? 'text-slate-400' : 'text-slate-500'}`}>表示の調整</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className={`${PANEL_CLOSE_BTN} ${dk ? 'focus-visible:ring-offset-[#0f1118]' : 'focus-visible:ring-offset-white'}`}
+          style={{
+            borderColor: dk ? 'rgba(148,163,184,0.35)' : 'rgba(148,163,184,0.45)',
+            backgroundColor: dk ? 'rgba(30,41,59,0.5)' : 'rgba(248,250,252,0.9)',
+            color: dk ? 'rgb(203,213,225)' : 'rgb(100,116,139)',
+          }}
+          aria-label="設定を閉じる"
+          title="閉じる"
+        >
+          <X size={16} strokeWidth={2.25} />
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3.5 py-3.5">
+        {panelBody()}
+      </div>
+    </div>
+  )
+}
