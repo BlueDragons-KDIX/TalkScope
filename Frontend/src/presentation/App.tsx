@@ -64,7 +64,7 @@ const App: React.FC = () => {
     svc.clearTranscript()
     useTranscriptStore.getState().clear()
     useTermStore.getState().resetSession()
-    useBubbleStore.getState().clearBubbles()
+    useBubbleStore.getState().clearVisible()
     toast.info('すべてのウィンドウをリセットしました')
   }, [demoStream])
 
