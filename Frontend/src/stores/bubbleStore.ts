@@ -1,75 +1,79 @@
 import { create } from 'zustand'
-import type { Bubble } from '../domain/entities/Bubble'
+import { useTermMapWindowSettingsStore } from './termMapWindowSettingsStore'
+import { useTermStore } from './termStore'
 
-const MAX_BUBBLES = 30
-const SOFT_LIMIT = 20
-const SOFT_LIFESPAN_MS = 5000
+export const LEGACY_SOFT_LIMIT = 20
+export const SOFT_LIFESPAN_MS = 5000
 
-interface BubbleState {
-  bubbles: Bubble[]
-  bubbleTimestamps: Record<string, number>
-
-  upsertBubble: (bubble: Bubble) => void
-  removeBubbleByTermId: (termId: string) => void
-  pruneExpired: () => void
-  clearBubbles: () => void
+export function computeSoftLimit(hardLimit: number): number {
+  return Math.min(LEGACY_SOFT_LIMIT, hardLimit)
 }
 
-export const useBubbleStore = create<BubbleState>((set) => ({
-  bubbles: [],
+function findOldestRemovableVisibleId(
+  visibleTermIds: string[],
+  bubbleTimestamps: Record<string, number>,
+  pinnedTermIds: Set<string>,
+): string | null {
+  let oldestId: string | null = null
+  let oldestTs = Number.POSITIVE_INFINITY
+  for (const id of visibleTermIds) {
+    if (pinnedTermIds.has(id)) continue
+    const ts = bubbleTimestamps[id] ?? 0
+    if (ts < oldestTs) {
+      oldestTs = ts
+      oldestId = id
+    }
+  }
+  return oldestId
+}
+
+interface BubbleState {
+  visibleTermIds: string[]
+  bubbleTimestamps: Record<string, number>
+
+  /** 表示枠へ追加。スター枠満杯などで入れられない場合は false */
+  addVisibleTermId: (termId: string) => boolean
+  removeVisibleTermId: (termId: string) => void
+  clearVisible: () => void
+}
+
+export const useBubbleStore = create<BubbleState>((set, get) => ({
+  visibleTermIds: [],
   bubbleTimestamps: {},
 
-  upsertBubble: (bubble) => set((state) => {
-    const exists = state.bubbles.some(b => b.term.id === bubble.term.id)
-    const now = Date.now()
+  addVisibleTermId: (termId) => {
+    const hardLimit = useTermMapWindowSettingsStore.getState().maxVisibleTerms
+    const pinnedTermIds = useTermStore.getState().pinnedTermIds
+    const state = get()
+    if (state.visibleTermIds.includes(termId)) return true
 
-    let bubbles = exists
-      ? state.bubbles.map(b => b.term.id === bubble.term.id ? bubble : b)
-      : [...state.bubbles, bubble]
+    let visibleTermIds = [...state.visibleTermIds]
+    let bubbleTimestamps = { ...state.bubbleTimestamps }
 
-    const timestamps = exists
-      ? state.bubbleTimestamps
-      : { ...state.bubbleTimestamps, [bubble.term.id]: now }
-
-    // 上限超過時は最古のものを削除
-    if (bubbles.length > MAX_BUBBLES) {
-      const oldest = bubbles.reduce((a, b) =>
-        (timestamps[a.term.id] ?? 0) < (timestamps[b.term.id] ?? 0) ? a : b
-      )
-      bubbles = bubbles.filter(b => b.term.id !== oldest.term.id)
-      const { [oldest.term.id]: _, ...rest } = timestamps
-      return { bubbles, bubbleTimestamps: rest }
+    while (visibleTermIds.length >= hardLimit) {
+      const removableId = findOldestRemovableVisibleId(visibleTermIds, bubbleTimestamps, pinnedTermIds)
+      if (!removableId) return false
+      visibleTermIds = visibleTermIds.filter((id) => id !== removableId)
+      const { [removableId]: _, ...rest } = bubbleTimestamps
+      bubbleTimestamps = rest
     }
 
-    return { bubbles, bubbleTimestamps: timestamps }
-  }),
+    const now = Date.now()
+    set({
+      visibleTermIds: [...visibleTermIds, termId],
+      bubbleTimestamps: { ...bubbleTimestamps, [termId]: now },
+    })
+    return true
+  },
 
-  removeBubbleByTermId: (termId) => set((state) => {
+  removeVisibleTermId: (termId) => set((state) => {
+    if (!state.visibleTermIds.includes(termId)) return {}
     const { [termId]: _, ...rest } = state.bubbleTimestamps
     return {
-      bubbles: state.bubbles.filter(b => b.term.id !== termId),
+      visibleTermIds: state.visibleTermIds.filter((id) => id !== termId),
       bubbleTimestamps: rest,
     }
   }),
 
-  pruneExpired: () => set((state) => {
-    if (state.bubbles.length <= SOFT_LIMIT) return {}
-    const now = Date.now()
-    const toRemove = new Set<string>()
-    for (const bubble of state.bubbles) {
-      const addedAt = state.bubbleTimestamps[bubble.term.id] ?? now
-      if (now - addedAt > SOFT_LIFESPAN_MS) {
-        toRemove.add(bubble.term.id)
-      }
-    }
-    if (toRemove.size === 0) return {}
-    const timestamps = { ...state.bubbleTimestamps }
-    toRemove.forEach(id => delete timestamps[id])
-    return {
-      bubbles: state.bubbles.filter(b => !toRemove.has(b.term.id)),
-      bubbleTimestamps: timestamps,
-    }
-  }),
-
-  clearBubbles: () => set({ bubbles: [], bubbleTimestamps: {} }),
+  clearVisible: () => set({ visibleTermIds: [], bubbleTimestamps: {} }),
 }))

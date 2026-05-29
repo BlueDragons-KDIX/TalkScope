@@ -33,7 +33,7 @@ export class PhaseUseCase {
   }
 
   endPresentation(): void {
-    useBubbleStore.getState().clearBubbles()
+    useBubbleStore.getState().clearVisible()
     this.transitionTo('after')
   }
 }

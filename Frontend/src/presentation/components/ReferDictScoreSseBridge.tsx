@@ -2,6 +2,7 @@ import type React from 'react'
 import { useEffect, useRef } from 'react'
 import { useReferDictScoreSse } from '../hooks/useReferDictScoreSse'
 import { useTermStore } from '../../stores/termStore'
+import { useBubbleStore } from '../../stores/bubbleStore'
 import {
   DEFAULT_SCORE_THRESHOLD,
   partitionByScore,
@@ -28,22 +29,41 @@ export const ReferDictScoreSseBridge: React.FC<ReferDictScoreSseBridgeProps> = (
     adapterRef.current = new FrequencyScoreAdapter(defaultScoreUpdateStrategy)
   }
 
+  const syncBubbleDebugTerms = () => {
+    const visibleSet = new Set(useBubbleStore.getState().visibleTermIds)
+    const bubbleTerms = useTermStore.getState().activeTerms.filter((term) => visibleSet.has(term.id))
+    usePipelineDebugStore.getState().setBubbleTerms(bubbleTerms)
+    return bubbleTerms
+  }
+
   useEffect(() => {
-    const unsub = useTermStore.subscribe((state, prev) => {
-      usePipelineDebugStore.getState().setBubbleTerms(state.activeTerms)
-      const currentSignature = state.activeTerms.map((term) => `${term.id}:${term.score.toFixed(4)}`).join('|')
-      const prevSignature = prev.activeTerms.map((term) => `${term.id}:${term.score.toFixed(4)}`).join('|')
-      if (state.activeTerms.length === 0 || currentSignature === prevSignature) return
-      const labels = state.activeTerms.slice(0, 4).map((term) => term.word).join(' / ')
+    const pushBubbleLog = (bubbleTerms: ReturnType<typeof syncBubbleDebugTerms>) => {
+      if (bubbleTerms.length === 0) return
+      const labels = bubbleTerms.slice(0, 4).map((term) => term.word).join(' / ')
       useTriggerTimelineStore.getState().appendLog({
         type: 'bubbleCreated',
-        summary: `${state.activeTerms.length}件のバブルを表示`,
+        summary: `${bubbleTerms.length}件のバブルを表示`,
         detail: labels
-          ? `生成対象: ${labels}${state.activeTerms.length > 4 ? ' ...' : ''}`
+          ? `生成対象: ${labels}${bubbleTerms.length > 4 ? ' ...' : ''}`
           : 'バブル表示対象を更新しました。',
       })
-    })
-    return unsub
+    }
+
+    let prevBubbleSignature = ''
+    const onBubbleVisibilityChange = () => {
+      const bubbleTerms = syncBubbleDebugTerms()
+      const signature = bubbleTerms.map((term) => `${term.id}:${term.score.toFixed(4)}`).join('|')
+      if (signature === prevBubbleSignature) return
+      prevBubbleSignature = signature
+      if (bubbleTerms.length > 0) pushBubbleLog(bubbleTerms)
+    }
+
+    const unsubTerms = useTermStore.subscribe(onBubbleVisibilityChange)
+    const unsubBubble = useBubbleStore.subscribe(onBubbleVisibilityChange)
+    return () => {
+      unsubTerms()
+      unsubBubble()
+    }
   }, [])
 
   useEffect(() => {
@@ -95,6 +115,10 @@ export const ReferDictScoreSseBridge: React.FC<ReferDictScoreSseBridgeProps> = (
       const store = useTermStore.getState()
       store.addTerms(adapted.toAdd)
       adapted.toUpdate.forEach(({ id, score }) => store.updateTermScore(id, score))
+      const bubbleStore = useBubbleStore.getState()
+      adapted.toAdd.forEach((term) => {
+        bubbleStore.addVisibleTermId(term.id)
+      })
     },
   })
   return null

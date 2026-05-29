@@ -57,7 +57,7 @@ describe('termStore', () => {
     expect(Object.keys(state.termTimestamps)).toHaveLength(1)
   })
 
-  it('maxVisibleTerms 上限到達時は最古の非スター語を入れ替える', () => {
+  it('maxVisibleTerms 超過でも辞書からは追い出さない', () => {
     useTermMapWindowSettingsStore.getState().setMaxVisibleTerms(5)
     useTermStore.getState().addTerms([
       makeTerm('a'),
@@ -67,10 +67,12 @@ describe('termStore', () => {
       makeTerm('e'),
     ])
     useTermStore.getState().addTerms([makeTerm('f')])
-    expect(useTermStore.getState().activeTerms.map((term) => term.id)).toEqual(['b', 'c', 'd', 'e', 'f'])
+    expect(useTermStore.getState().activeTerms.map((term) => term.id)).toEqual([
+      'a', 'b', 'c', 'd', 'e', 'f',
+    ])
   })
 
-  it('表示枠がスターで埋まっている場合は新規追加しない', () => {
+  it('スター枠満杯でも辞書には新規語を追加する', () => {
     useTermMapWindowSettingsStore.getState().setMaxVisibleTerms(5)
     useTermStore.getState().addTerms([
       makeTerm('p1'),
@@ -83,21 +85,9 @@ describe('termStore', () => {
       useTermStore.getState().togglePin(id)
     }
     useTermStore.getState().addTerms([makeTerm('extra')])
-    expect(useTermStore.getState().activeTerms.map((term) => term.id)).toEqual(['p1', 'p2', 'p3', 'p4', 'p5'])
-  })
-
-  it('スター語は残して非スター語を優先的に置き換える', () => {
-    useTermMapWindowSettingsStore.getState().setMaxVisibleTerms(5)
-    useTermStore.getState().addTerms([
-      makeTerm('a'),
-      makeTerm('b'),
-      makeTerm('c'),
-      makeTerm('d'),
-      makeTerm('e'),
+    expect(useTermStore.getState().activeTerms.map((term) => term.id)).toEqual([
+      'p1', 'p2', 'p3', 'p4', 'p5', 'extra',
     ])
-    useTermStore.getState().togglePin('a')
-    useTermStore.getState().addTerms([makeTerm('f')])
-    expect(useTermStore.getState().activeTerms.map((term) => term.id)).toEqual(['a', 'c', 'd', 'e', 'f'])
   })
 
   it('updateTermScore で対象のスコアを更新できる', () => {
