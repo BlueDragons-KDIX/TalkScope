@@ -18,7 +18,7 @@
 - クリック時に `updateTermScore` が呼ばれること
 - ピン留め単語は `useScoreUpdate` 内でスコア更新をスキップすること
 - Step4時点では `termClickWeights` を残したまま共存できること
-- 文字起こし/重要度ウィンドウでクリックした場合も `incrementClickWeight` が反映されること
+- 文字起こし/ランキングウィンドウでクリックした場合も `incrementClickWeight` が反映されること
 
 ## テスト項目
 

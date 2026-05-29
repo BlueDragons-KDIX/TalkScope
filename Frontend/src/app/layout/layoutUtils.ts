@@ -5,11 +5,11 @@ const L = (panelId: PanelId): LeafNode => ({ type: 'leaf', id: newId(), panelId 
 const S = (direction: 'h' | 'v', ratio: number, a: LayoutNode, b: LayoutNode): SplitNode =>
     ({ type: 'split', id: newId(), direction, ratio, a, b });
 
-/** デフォルト: 文字起こし(40%) | 用語マップ(35%) | [詳細(上)/履歴(下)](25%) */
+/** デフォルト: 文字起こし(40%) | バブル(35%) | [説明(上)/クリック履歴(下)](25%) */
 export const makeDefaultLayout = (): LayoutNode =>
     S('h', 0.4, L('transcription'), S('h', 0.58, L('bubbleCloud'), S('v', 0.55, L('detail'), L('history'))));
 
-/** 左半分: 文字起こし / 右半分を上下: 用語マップ(上) + 詳細+履歴(下) */
+/** 左半分: 文字起こし / 右半分を上下: バブル(上) + 説明+クリック履歴(下) */
 export const makeLeftRightLayout = (): LayoutNode =>
     S('h', 0.5,
         L('transcription'),

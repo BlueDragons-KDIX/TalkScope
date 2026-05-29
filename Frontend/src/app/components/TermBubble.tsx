@@ -23,7 +23,7 @@ interface TermBubbleProps {
   intervalSec?: number;
   masterSizeScale?: number;
   textFontSizePx?: number;
-  /** 用語マップコンテナの参照（ツールチップを枠内に収めるため） */
+  /** バブルウィンドウコンテナの参照（ツールチップを枠内に収めるため） */
   mapContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
