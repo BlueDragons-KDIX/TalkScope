@@ -1,5 +1,8 @@
 import type { LayoutNode } from '../../domain/entities/Layout'
-import type { PresentationSnapshot } from './presentationSnapshot'
+import {
+  PRESENTATION_SNAPSHOT_VERSION,
+  type PresentationSnapshot,
+} from './presentationSnapshot'
 
 export interface ScriptableLayoutTemplate {
   id: string
@@ -21,10 +24,10 @@ export interface ScriptableLayoutTemplate {
  */
 export class ScriptableLayoutTemplates {
   templates(): ScriptableLayoutTemplate[] {
+    const bubbleFocused = this.bubbleFocusedPresentationSnapshot()
     return [
-      this.template('デフォルト', this.createDuringSampleLayout()),
-      this.template('バブル重視', this.createBubbleFocusedLayout()),
-      this.template('重要リスト重視', this.createImportanceListFocusedLayout()),
+      this.template('バブル重視', bubbleFocused.layout, bubbleFocused),
+      this.template('ランキング重視', this.createImportanceListFocusedLayout()),
       this.template('フルカスタム', this.createFullCustomLayout()),
     ]
   }
@@ -83,34 +86,65 @@ export class ScriptableLayoutTemplates {
     }
   }
 
-  createBubbleFocusedLayout(): LayoutNode {
+  bubbleFocusedPresentationSnapshot(): PresentationSnapshot {
     return {
-      type: 'split',
-      id: 'n8',
-      direction: 'h',
-      ratio: 0.3210777626193725,
-      a: {
-        type: 'leaf',
-        id: 'n6',
-        windowId: 'transcription',
-      },
-      b: {
+      version: PRESENTATION_SNAPSHOT_VERSION,
+      phaseId: 'during',
+      layout: {
         type: 'split',
-        id: 'n18',
+        id: 'n8',
         direction: 'h',
-        ratio: 0.5060604625837456,
-        a: {
-          type: 'leaf',
-          id: 'n7',
-          windowId: 'bubbleCloud',
-        },
+        ratio: 0.3210777626193725,
+        a: { type: 'leaf', id: 'n6', windowId: 'transcription' },
         b: {
-          type: 'leaf',
-          id: 'n17',
-          windowId: 'detail',
+          type: 'split',
+          id: 'n18',
+          direction: 'h',
+          ratio: 0.5060604625837456,
+          a: { type: 'leaf', id: 'n7', windowId: 'bubbleCloud' },
+          b: {
+            type: 'split',
+            id: 'n10',
+            direction: 'v',
+            ratio: 0.4061277705345502,
+            a: { type: 'leaf', id: 'n17', windowId: 'detail' },
+            b: { type: 'leaf', id: 'n9', windowId: 'history' },
+          },
         },
+      },
+      appearance: { darkMode: true, themeColor: 'indigo' },
+      contentFontScale: 1.1,
+      floatingControlDock: {
+        position: { x: 634.95703125, y: 685.3671875 },
+        scale: 1.44482421875,
+      },
+      windowSettings: {
+        bubbleCloud: {
+          masterSizeScale: 0.8,
+          bubbleSizeScale: 0.8,
+          textFontSizePx: 15,
+          autoSwitchEnabled: false,
+          autoSwitchIntervalSec: 6,
+          maxVisibleTerms: 30,
+        },
+        transcription: {
+          masterFontScale: 1,
+          plainTextFontSizePx: 14,
+          importantTermFontSizePx: 16,
+        },
+        detail: { fontSizePx: 10 },
+        importanceRanking: {
+          masterSizeScale: 1,
+          fontSizePx: 16,
+          visibleCount: 10,
+        },
+        history: { fontSizePx: 10 },
       },
     }
+  }
+
+  createBubbleFocusedLayout(): LayoutNode {
+    return this.bubbleFocusedPresentationSnapshot().layout
   }
 
   createImportanceListFocusedLayout(): LayoutNode {
