@@ -21,6 +21,7 @@ import { AccentThemeProvider } from '../theme/AccentThemeContext'
 import { DEFAULT_SCORE_THRESHOLD } from '../infrastructure/adapters/ScoreThresholdFilter'
 import { usePipelineDebugStore } from '../stores/pipelineDebugStore'
 import { useBubbleLifecycle } from './hooks/useBubbleLifecycle'
+import { useWindowSettingsUiStore } from '../stores/windowSettingsUiStore'
 
 // ウィンドウを一度だけ登録
 let _registered = false
@@ -70,6 +71,7 @@ const App: React.FC = () => {
   }, [demoStream])
 
   const dk = darkMode
+  const windowSettingsOpen = useWindowSettingsUiStore(s => s.openWindowId !== null)
 
   return (
     <DemoToolsProvider value={demoStream}>
@@ -92,7 +94,7 @@ const App: React.FC = () => {
           />
 
           {/* フェーズコンテンツ */}
-          <div className="flex-1 overflow-hidden">
+          <div className={`relative flex-1 overflow-hidden ${windowSettingsOpen ? 'z-[55]' : 'z-0'}`}>
             {currentPhaseId === 'during'
               ? <DuringPresentation darkMode={darkMode} themeColor={phaseAccentColor} />
               : <AfterPresentation darkMode={darkMode} themeColor={phaseAccentColor} />
