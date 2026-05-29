@@ -239,7 +239,7 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
       ref={dockRef}
       role="group"
       aria-label="録音操作"
-      className="fixed z-[40] select-none"
+      className="fixed z-[48] select-none"
       style={{
         left: pos?.x ?? -9999,
         top: pos?.y ?? -9999,
