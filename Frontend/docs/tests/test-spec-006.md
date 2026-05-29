@@ -7,6 +7,7 @@
 ## 対象ファイル
 
 - `Frontend/src/presentation/layout/LayoutEngine.tsx`
+- `Frontend/src/presentation/components/WindowSettingsPanel.tsx`
 - `Frontend/src/presentation/windows/ImportanceRankingWindow/index.tsx`
 - `Frontend/src/app/components/TermDetailPanel.tsx`
 - `Frontend/src/app/components/BubbleCloud.tsx`
