@@ -6,6 +6,7 @@ import { useTranscription } from '../hooks/useTranscription'
 import { usePresentationShell } from '../context/PresentationShellContext'
 import { useAccentTheme } from '../../theme/AccentThemeContext'
 import { accentRgba } from '../../theme/accentStyles'
+import { useFloatingControlDockUiStore } from '../../stores/floatingControlDockUiStore'
 
 interface Props {
   darkMode?: boolean
@@ -71,8 +72,10 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
     startScale: number
     corner: ResizeCorner
   } | null>(null)
-  const [pos, setPos] = useState<Position | null>(null)
-  const [scale, setScale] = useState(1)
+  const pos = useFloatingControlDockUiStore(s => s.position)
+  const scale = useFloatingControlDockUiStore(s => s.scale)
+  const setPos = useFloatingControlDockUiStore(s => s.setPosition)
+  const setScale = useFloatingControlDockUiStore(s => s.setScale)
   const [busy, setBusy] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
 
@@ -99,14 +102,18 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
   }, [pos])
 
   useEffect(() => {
-    setPos((p) => (p ? clampToViewport(p.x, p.y) : p))
-  }, [scale, clampToViewport])
+    const current = useFloatingControlDockUiStore.getState().position
+    if (current) setPos(clampToViewport(current.x, current.y))
+  }, [scale, clampToViewport, setPos])
 
   useEffect(() => {
-    const onResize = () => setPos((p) => (p ? clampToViewport(p.x, p.y) : p))
+    const onResize = () => {
+      const current = useFloatingControlDockUiStore.getState().position
+      if (current) setPos(clampToViewport(current.x, current.y))
+    }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
-  }, [clampToViewport])
+  }, [clampToViewport, setPos])
 
   const onDragPointerDown = (e: React.PointerEvent) => {
     if (isInteractiveTarget(e.target)) return
