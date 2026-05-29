@@ -251,14 +251,14 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
       }}
     >
       <div
-        className={`relative flex cursor-grab items-center gap-2 rounded-full border-2 px-3 py-2.5 backdrop-blur-md active:cursor-grabbing ${
-          dk ? 'bg-slate-900/80' : 'bg-white/85'
+        className={`relative flex cursor-grab items-center gap-2 rounded-full border px-3 py-2.5 backdrop-blur-[2px] active:cursor-grabbing ${
+          dk ? 'border-slate-500/25 bg-slate-950/8' : 'border-white/30 bg-white/10'
         }`}
         style={{
-          borderColor: accentRgba(rgb, dk ? 0.72 : 0.66),
+          borderColor: accentRgba(rgb, dk ? 0.22 : 0.18),
           boxShadow: dk
-            ? `0 12px 36px rgba(2,6,23,0.55), 0 0 22px ${accentRgba(rgb, 0.22)}`
-            : `0 12px 30px rgba(15,23,42,0.16), 0 0 18px ${accentRgba(rgb, 0.18)}`,
+            ? `0 10px 28px rgba(2,6,23,0.18), 0 0 16px ${accentRgba(rgb, 0.08)}`
+            : `0 10px 24px rgba(15,23,42,0.06), 0 0 12px ${accentRgba(rgb, 0.06)}`,
         }}
         onPointerDown={onDragPointerDown}
         onPointerMove={onDragPointerMove}
@@ -277,10 +277,10 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
               onPointerDown={stopPanelPointer}
               title="文字起こし・用語・履歴などをすべてクリアします"
               aria-label="すべてリセット"
-              className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors ${focusRing} focus-visible:ring-rose-400/60 ${ringOffset} ${
+              className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border backdrop-blur-[1px] transition-[filter,background-color,border-color] hover:brightness-110 ${focusRing} focus-visible:ring-rose-400/60 ${ringOffset} ${
                 dk
-                  ? 'border-slate-600/60 bg-slate-800/70 text-slate-400 hover:border-rose-500/55 hover:bg-rose-500/12 hover:text-rose-300'
-                  : 'border-slate-200 bg-white text-slate-500 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600'
+                  ? 'border-slate-500/30 bg-slate-900/12 text-slate-400 hover:border-rose-500/45 hover:bg-rose-500/12 hover:text-rose-300'
+                  : 'border-slate-200/40 bg-white/14 text-slate-500 hover:border-rose-300/55 hover:bg-rose-50/35 hover:text-rose-600'
               }`}
             >
               <RotateCcw size={20} strokeWidth={2.4} />
