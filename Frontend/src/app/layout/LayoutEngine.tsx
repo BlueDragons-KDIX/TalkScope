@@ -7,9 +7,9 @@ import { getAccentRgb } from '../../theme/accentTokens';
 // ── パネルラベル ────────────────────────────────────
 const PANEL_LABELS: Record<PanelId, string> = {
     transcription: '文字起こし',
-    bubbleCloud: '用語マップ',
-    detail: '詳細',
-    history: '履歴',
+    bubbleCloud: 'バブル',
+    detail: '説明',
+    history: 'クリック履歴',
 };
 
 // ── ドロップゾーンオーバーレイ ──────────────────────
