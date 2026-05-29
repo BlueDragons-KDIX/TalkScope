@@ -19,6 +19,8 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
   private status: TranscriptionStatus = 'idle'
   private recognition: any = null
   private isRunning = false
+  /** stop / pause 時に true。onend で自動再開しない */
+  private suppressAutoRestart = false
   private microphones: MicrophoneDevice[] = []
   private selectedMicrophoneId = ''
   private selectedMicStream: MediaStream | null = null
@@ -81,7 +83,11 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
       this.notify()
     }
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: any) => {
+      const code = event?.error as string | undefined
+      if (code === 'aborted' && this.suppressAutoRestart) return
+      if (code === 'no-speech') return
+      this.suppressAutoRestart = true
       this.status = 'error'
       this.isRunning = false
       this.notify()
@@ -89,8 +95,9 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
 
     recognition.onend = () => {
       this.isRunning = false
-      if (this.status === 'listening') {
-        this.status = 'idle'
+      if (!this.suppressAutoRestart && this.status === 'listening') {
+        this.restartRecognitionAfterBrowserEnd()
+        return
       }
       this.notify()
     }
@@ -211,6 +218,32 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     this.selectedMicStream = null
   }
 
+  /** ブラウザが recognition を切ったときだけ再開（ユーザー stop / pause では呼ばない） */
+  private restartRecognitionAfterBrowserEnd(): void {
+    if (!this.recognition || this.suppressAutoRestart || this.status !== 'listening') {
+      this.notify()
+      return
+    }
+    try {
+      this.recognition.start()
+    } catch {
+      window.setTimeout(() => {
+        if (!this.recognition || this.suppressAutoRestart || this.status !== 'listening') {
+          this.notify()
+          return
+        }
+        try {
+          this.recognition.start()
+        } catch {
+          this.suppressAutoRestart = true
+          this.status = 'error'
+          this.isRunning = false
+          this.notify()
+        }
+      }, 100)
+    }
+  }
+
   getStatus(): TranscriptionStatus {
     return this.status
   }
@@ -220,7 +253,8 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
   }
 
   startListening(): void {
-    if (this.isRunning) return
+    if (this.status === 'listening' && this.isRunning) return
+    const resumingFromPause = this.status === 'paused'
     if (!this.recognition) this.initRecognition()
     if (!this.recognition) {
       this.status = 'error'
@@ -228,6 +262,14 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
       return
     }
 
+    // 再開後は result index が 0 から振り直されるため、前セッションの index を捨てる
+    if (resumingFromPause) {
+      this.finalizedResultIndices.clear()
+      this.interimTranscript = ''
+      this.transcript = this.finalTranscript
+    }
+
+    this.suppressAutoRestart = false
     this.status = 'listening'
     this.isRunning = true
     void this.prepareSelectedMicrophone()
@@ -236,12 +278,14 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     } catch {
       this.status = 'error'
       this.isRunning = false
+      this.suppressAutoRestart = true
     }
     this.notify()
   }
 
   stopListening(): void {
-    if (!this.recognition || !this.isRunning) return
+    if (!this.recognition) return
+    this.suppressAutoRestart = true
     this.isRunning = false
     this.status = 'idle'
     try { this.recognition.stop() } catch { /* ignore */ }
@@ -251,7 +295,15 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
   }
 
   pauseListening(): void {
-    if (!this.recognition || !this.isRunning) return
+    if (!this.recognition) return
+    if (this.status !== 'listening' && this.status !== 'paused') return
+    const pending = this.interimTranscript.trim()
+    if (pending) {
+      this.finalTranscript += `${pending}。\n`
+      this.interimTranscript = ''
+      this.transcript = this.finalTranscript
+    }
+    this.suppressAutoRestart = true
     this.isRunning = false
     this.status = 'paused'
     try { this.recognition.stop() } catch { /* ignore */ }
