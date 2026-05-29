@@ -40,6 +40,11 @@ import {
   DETAIL_WINDOW_FONT_SIZE_MIN,
   useDetailWindowSettingsStore,
 } from '../../stores/detailWindowSettingsStore'
+import {
+  HISTORY_WINDOW_FONT_SIZE_MAX,
+  HISTORY_WINDOW_FONT_SIZE_MIN,
+  useHistoryWindowSettingsStore,
+} from '../../stores/historyWindowSettingsStore'
 
 const PANEL_CLOSE_BTN =
   'flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-[filter,background-color] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent-rgb)/0.45)] focus-visible:ring-offset-1'
@@ -180,6 +185,8 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
   const setImportanceRankingVisibleCount = useImportanceRankingWindowSettingsStore(s => s.setVisibleCount)
   const detailFontSizePx = useDetailWindowSettingsStore(s => s.fontSizePx)
   const setDetailFontSizePx = useDetailWindowSettingsStore(s => s.setFontSizePx)
+  const historyFontSizePx = useHistoryWindowSettingsStore(s => s.fontSizePx)
+  const setHistoryFontSizePx = useHistoryWindowSettingsStore(s => s.setFontSizePx)
   const dk = darkMode
 
   const modeButton = (value: TranscriptionMode, text: string) => {
@@ -418,6 +425,24 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
             darkMode={dk}
             accentRgb={accentRgb}
             onChange={setDetailFontSizePx}
+          />
+        </SettingsSection>
+      )
+    }
+
+    if (windowId === 'history') {
+      return (
+        <SettingsSection title="フォントサイズ" icon={<SlidersHorizontal size={13} />} darkMode={dk}>
+          <SettingsSlider
+            label="履歴テキスト"
+            valueLabel={`${historyFontSizePx}px`}
+            value={historyFontSizePx}
+            min={HISTORY_WINDOW_FONT_SIZE_MIN}
+            max={HISTORY_WINDOW_FONT_SIZE_MAX}
+            step={1}
+            darkMode={dk}
+            accentRgb={accentRgb}
+            onChange={setHistoryFontSizePx}
           />
         </SettingsSection>
       )

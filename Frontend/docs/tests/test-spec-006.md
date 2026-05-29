@@ -18,6 +18,7 @@
 - `Frontend/src/stores/termMapWindowSettingsStore.ts`
 - `Frontend/src/stores/importanceRankingWindowSettingsStore.ts`
 - `Frontend/src/stores/detailWindowSettingsStore.ts`
+- `Frontend/src/stores/historyWindowSettingsStore.ts`
 - `Frontend/src/stores/__tests__/transcriptionWindowSettingsStore.test.ts`
 - `Frontend/src/stores/__tests__/termMapWindowSettingsStore.test.ts`
 - `Frontend/src/stores/__tests__/importanceRankingWindowSettingsStore.test.ts`

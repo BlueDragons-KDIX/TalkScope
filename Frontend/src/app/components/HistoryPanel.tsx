@@ -19,9 +19,11 @@ interface HistoryPanelProps {
   onTermClick: (term: Term) => void;
   onClear: () => void;
   darkMode?: boolean;
+  /** 指定時はウィンドウ個別設定のフォントサイズを優先（未指定時はグローバル倍率） */
+  fontSizePx?: number;
 }
 
-export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick, onClear, darkMode = true }) => {
+export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick, onClear, darkMode = true, fontSizePx }) => {
   const [search, setSearch] = useState('');
   const dk = darkMode;
   const contentFontScale = useContentFontScaleStore(s => s.scale);
@@ -31,6 +33,11 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick
     t.word.toLowerCase().includes(search.toLowerCase()) ||
     t.shortDesc.includes(search)
   );
+
+  const wordFontSizePx = fontSizePx ?? scaledContentFontPx(12, contentFontScale);
+  const descFontSizePx = fontSizePx != null
+    ? Math.max(8, fontSizePx - 2)
+    : scaledContentFontPx(10, contentFontScale);
 
   return (
     <div className={`h-full flex flex-col ${dk ? 'bg-[#0d0e1a]' : 'bg-white'}`}>
@@ -92,13 +99,13 @@ export const HistoryPanel: React.FC<HistoryPanelProps> = ({ history, onTermClick
                 <div className="min-w-0 flex-1">
                   <p
                     className={`font-black truncate ${dk ? 'text-slate-200' : 'text-slate-700'}`}
-                    style={{ fontSize: scaledContentFontPx(12, contentFontScale) }}
+                    style={{ fontSize: wordFontSizePx }}
                   >
                     {t.word}
                   </p>
                   <p
                     className={`truncate ${dk ? 'text-slate-600' : 'text-slate-400'}`}
-                    style={{ fontSize: scaledContentFontPx(10, contentFontScale) }}
+                    style={{ fontSize: descFontSizePx }}
                   >
                     {t.shortDesc}
                   </p>
