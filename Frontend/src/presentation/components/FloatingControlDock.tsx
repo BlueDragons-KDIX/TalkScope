@@ -251,7 +251,7 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
       }}
     >
       <div
-        className={`relative flex cursor-grab items-center gap-2 rounded-full border px-3 py-2.5 backdrop-blur-2xl active:cursor-grabbing ${
+        className={`relative flex cursor-grab items-center gap-2 rounded-full border px-3 py-2.5 backdrop-blur-[2px] active:cursor-grabbing ${
           dk ? 'border-slate-500/25 bg-slate-950/8' : 'border-white/30 bg-white/10'
         }`}
         style={{
@@ -277,7 +277,7 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
               onPointerDown={stopPanelPointer}
               title="文字起こし・用語・履歴などをすべてクリアします"
               aria-label="すべてリセット"
-              className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border backdrop-blur-lg transition-[filter,background-color,border-color] hover:brightness-110 ${focusRing} focus-visible:ring-rose-400/60 ${ringOffset} ${
+              className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border backdrop-blur-[1px] transition-[filter,background-color,border-color] hover:brightness-110 ${focusRing} focus-visible:ring-rose-400/60 ${ringOffset} ${
                 dk
                   ? 'border-slate-500/30 bg-slate-900/12 text-slate-400 hover:border-rose-500/45 hover:bg-rose-500/12 hover:text-rose-300'
                   : 'border-slate-200/40 bg-white/14 text-slate-500 hover:border-rose-300/55 hover:bg-rose-50/35 hover:text-rose-600'
