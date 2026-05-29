@@ -1,70 +1,72 @@
 import { useEffect, useRef } from 'react'
-import { useTermStore } from '../../stores/termStore'
+import { useBubbleStore, computeSoftLimit, SOFT_LIFESPAN_MS } from '../../stores/bubbleStore'
 import { useTermMapWindowSettingsStore } from '../../stores/termMapWindowSettingsStore'
+import { useTermStore } from '../../stores/termStore'
 
 export const LEGACY_SOFT_LIMIT = 20
-export const DEATH_ROW_MS = 5000
+export const DEATH_ROW_MS = SOFT_LIFESPAN_MS
 
 export function useBubbleLifecycle() {
   const deathRowRef = useRef<Record<string, number>>({})
 
   useEffect(() => {
     const intervalId = setInterval(() => {
-      const { activeTerms, termTimestamps, pinnedTermIds, removeTermById } = useTermStore.getState()
-      const maxVisibleTerms = useTermMapWindowSettingsStore.getState().maxVisibleTerms
-      const hardLimit = maxVisibleTerms
-      const softLimit = Math.min(LEGACY_SOFT_LIMIT, hardLimit)
+      const hardLimit = useTermMapWindowSettingsStore.getState().maxVisibleTerms
+      const softLimit = computeSoftLimit(hardLimit)
+      const pinnedTermIds = useTermStore.getState().pinnedTermIds
+      const { visibleTermIds, bubbleTimestamps, removeVisibleTermId } = useBubbleStore.getState()
       const deathRow = deathRowRef.current
       const now = Date.now()
 
-      if (activeTerms.length <= softLimit) {
+      if (visibleTermIds.length <= softLimit) {
         deathRowRef.current = {}
         return
       }
 
-      const sorted = [...activeTerms].sort(
-        (a, b) => (termTimestamps[a.id] ?? 0) - (termTimestamps[b.id] ?? 0),
+      const sorted = [...visibleTermIds].sort(
+        (a, b) => (bubbleTimestamps[a] ?? 0) - (bubbleTimestamps[b] ?? 0),
       )
 
       if (sorted.length > hardLimit) {
         let overflowCount = sorted.length - hardLimit
-        for (const term of sorted) {
+        for (const termId of sorted) {
           if (overflowCount <= 0) break
-          if (pinnedTermIds.has(term.id)) continue
-          removeTermById(term.id)
-          delete deathRow[term.id]
+          if (pinnedTermIds.has(termId)) continue
+          removeVisibleTermId(termId)
+          delete deathRow[termId]
           overflowCount -= 1
         }
       }
 
-      const refreshedActiveTerms = useTermStore.getState().activeTerms
-      if (refreshedActiveTerms.length <= softLimit) {
+      const refreshedVisible = useBubbleStore.getState().visibleTermIds
+      const refreshedTimestamps = useBubbleStore.getState().bubbleTimestamps
+      if (refreshedVisible.length <= softLimit) {
         deathRowRef.current = {}
         return
       }
 
-      const refreshedSorted = [...refreshedActiveTerms].sort(
-        (a, b) => (termTimestamps[a.id] ?? 0) - (termTimestamps[b.id] ?? 0),
+      const refreshedSorted = [...refreshedVisible].sort(
+        (a, b) => (refreshedTimestamps[a] ?? 0) - (refreshedTimestamps[b] ?? 0),
       )
       const candidateCount = refreshedSorted.length - softLimit
       const deathCandidates = refreshedSorted
-        .filter((term) => !pinnedTermIds.has(term.id))
+        .filter((termId) => !pinnedTermIds.has(termId))
         .slice(0, candidateCount)
-      const candidateIds = new Set(deathCandidates.map((term) => term.id))
-      const survivors = refreshedSorted.filter((term) => !candidateIds.has(term.id))
+      const candidateIds = new Set(deathCandidates)
+      const survivors = refreshedSorted.filter((termId) => !candidateIds.has(termId))
 
-      survivors.forEach((term) => {
-        delete deathRow[term.id]
+      survivors.forEach((termId) => {
+        delete deathRow[termId]
       })
 
-      deathCandidates.forEach((term) => {
-        if (deathRow[term.id] == null) {
-          deathRow[term.id] = now
+      deathCandidates.forEach((termId) => {
+        if (deathRow[termId] == null) {
+          deathRow[termId] = now
           return
         }
-        if (now - deathRow[term.id] >= DEATH_ROW_MS) {
-          removeTermById(term.id)
-          delete deathRow[term.id]
+        if (now - deathRow[termId] >= DEATH_ROW_MS) {
+          removeVisibleTermId(termId)
+          delete deathRow[termId]
         }
       })
     }, 1000)
