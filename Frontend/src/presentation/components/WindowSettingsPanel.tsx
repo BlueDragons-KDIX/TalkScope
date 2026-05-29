@@ -75,9 +75,9 @@ const SettingsSlider: React.FC<SettingsSliderProps> = ({
   const dk = darkMode
   return (
     <div
-      className={`rounded-lg border px-3 py-2.5 ${dk
-        ? 'border-slate-700/80 bg-slate-900/40'
-        : 'border-slate-200 bg-slate-50/90'}`}
+      className={`rounded-lg border px-3 py-2.5 backdrop-blur-[2px] ${dk
+        ? 'border-slate-600/50 bg-slate-900/25'
+        : 'border-slate-200/70 bg-white/35'}`}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-xs font-bold leading-tight">{label}</span>
@@ -117,9 +117,9 @@ const SettingsSection: React.FC<SettingsSectionProps> = ({ title, icon, darkMode
   const dk = darkMode
   return (
     <section
-      className={`rounded-xl border p-3 ${dk
-        ? 'border-slate-700/70 bg-slate-900/30'
-        : 'border-slate-200 bg-white/80'}`}
+      className={`rounded-xl border p-3 backdrop-blur-[2px] ${dk
+        ? 'border-slate-600/45 bg-slate-900/20'
+        : 'border-slate-200/60 bg-white/30'}`}
     >
       <div className={`mb-3 flex items-center gap-2 text-xs font-bold ${dk ? 'text-slate-300' : 'text-slate-700'}`}>
         <span
@@ -450,9 +450,9 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
 
     return (
       <p
-        className={`rounded-xl border px-4 py-6 text-center text-xs leading-relaxed ${dk
-          ? 'border-slate-700/70 bg-slate-900/30 text-slate-400'
-          : 'border-slate-200 bg-slate-50 text-slate-500'}`}
+        className={`rounded-xl border px-4 py-6 text-center text-xs leading-relaxed backdrop-blur-[2px] ${dk
+          ? 'border-slate-600/45 bg-slate-900/20 text-slate-400'
+          : 'border-slate-200/60 bg-white/30 text-slate-500'}`}
       >
         このウィンドウ固有の設定は今後追加予定です。
       </p>
@@ -462,13 +462,13 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
   return (
     <div
       data-window-settings-panel="true"
-      className={`absolute top-11 right-2 bottom-2 z-[70] flex min-h-0 w-[min(calc(100%-1rem),20rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl ${dk
-        ? 'border-slate-700/90 bg-[#0f1118] text-slate-100'
-        : 'border-slate-200 bg-white text-slate-900'}`}
+      className={`absolute top-11 right-2 bottom-2 z-[70] flex min-h-0 w-[min(calc(100%-1rem),20rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ${dk
+        ? 'border-slate-600/50 bg-slate-950/55 text-slate-100'
+        : 'border-white/55 bg-white/60 text-slate-900'}`}
       style={{
         boxShadow: dk
-          ? `0 20px 50px rgba(0,0,0,0.45), 0 0 0 1px ${accentRgba(accentRgb, 0.2)}, 0 0 28px ${accentRgba(accentRgb, 0.12)}`
-          : `0 16px 40px rgba(15,23,42,0.14), 0 0 0 1px ${accentRgba(accentRgb, 0.15)}, 0 0 24px ${accentRgba(accentRgb, 0.08)}`,
+          ? `0 20px 50px rgba(0,0,0,0.35), 0 0 0 1px ${accentRgba(accentRgb, 0.18)}, 0 0 28px ${accentRgba(accentRgb, 0.1)}`
+          : `0 16px 40px rgba(15,23,42,0.12), 0 0 0 1px ${accentRgba(accentRgb, 0.12)}, 0 0 24px ${accentRgba(accentRgb, 0.06)}`,
       }}
       role="dialog"
       aria-label={`${label} の設定`}
@@ -483,8 +483,8 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
       />
 
       <div
-        className={`flex shrink-0 items-center justify-between gap-2 border-b px-3.5 py-3 ${dk ? 'border-slate-700/80' : 'border-slate-200'}`}
-        style={{ backgroundColor: accentRgba(accentRgb, dk ? 0.1 : 0.06) }}
+        className={`flex shrink-0 items-center justify-between gap-2 border-b px-3.5 py-3 backdrop-blur-sm ${dk ? 'border-slate-600/40' : 'border-slate-200/50'}`}
+        style={{ backgroundColor: accentRgba(accentRgb, dk ? 0.12 : 0.08) }}
       >
         <div className="flex min-w-0 items-center gap-2.5">
           <span
@@ -505,10 +505,10 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className={`${PANEL_CLOSE_BTN} ${dk ? 'focus-visible:ring-offset-[#0f1118]' : 'focus-visible:ring-offset-white'}`}
+          className={`${PANEL_CLOSE_BTN} ${dk ? 'focus-visible:ring-offset-slate-950/55' : 'focus-visible:ring-offset-white/60'}`}
           style={{
             borderColor: dk ? 'rgba(148,163,184,0.35)' : 'rgba(148,163,184,0.45)',
-            backgroundColor: dk ? 'rgba(30,41,59,0.5)' : 'rgba(248,250,252,0.9)',
+            backgroundColor: dk ? 'rgba(30,41,59,0.45)' : 'rgba(255,255,255,0.55)',
             color: dk ? 'rgb(203,213,225)' : 'rgb(100,116,139)',
           }}
           aria-label="設定を閉じる"
