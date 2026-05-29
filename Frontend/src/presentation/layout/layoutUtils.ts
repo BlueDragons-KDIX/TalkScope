@@ -1,13 +1,14 @@
 import type { DropZone, LeafNode, LayoutNode, SplitNode } from '../../domain/entities/Layout'
 import { newNodeId } from '../../domain/entities/Layout'
+import { ScriptableLayoutTemplates } from './ScriptableLayoutTemplates'
 
 const L = (windowId: string): LeafNode => ({ type: 'leaf', id: newNodeId(), windowId })
 const S = (direction: 'h' | 'v', ratio: number, a: LayoutNode, b: LayoutNode): SplitNode =>
   ({ type: 'split', id: newNodeId(), direction, ratio, a, b })
 
-// ── 発表中フェーズのデフォルトレイアウト ──
+// ── 発表中フェーズのデフォルトレイアウト（バブル重視プリセット） ──
 export const makeDefaultLayout = (): LayoutNode =>
-  S('h', 0.42, L('transcription'), L('bubbleCloud'))
+  new ScriptableLayoutTemplates().bubbleFocusedPresentationSnapshot().layout
 
 export const makeLeftRightLayout = (): LayoutNode =>
   S('h', 0.34, L('transcription'), S('v', 0.4, L('bubbleCloud'), S('h', 0.5, L('detail'), S('v', 0.5, L('importanceRanking'), L('history')))))
