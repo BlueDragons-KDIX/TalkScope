@@ -165,13 +165,11 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
   const termMapMasterSizeScale = useTermMapWindowSettingsStore(s => s.masterSizeScale)
   const termMapBubbleSizeScale = useTermMapWindowSettingsStore(s => s.bubbleSizeScale)
   const termMapTextFontSizePx = useTermMapWindowSettingsStore(s => s.textFontSizePx)
-  const termMapAutoSwitchEnabled = useTermMapWindowSettingsStore(s => s.autoSwitchEnabled)
   const termMapAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.autoSwitchIntervalSec)
   const termMapMaxVisibleTerms = useTermMapWindowSettingsStore(s => s.maxVisibleTerms)
   const setTermMapMasterSizeScale = useTermMapWindowSettingsStore(s => s.setMasterSizeScale)
   const setTermMapBubbleSizeScale = useTermMapWindowSettingsStore(s => s.setBubbleSizeScale)
   const setTermMapTextFontSizePx = useTermMapWindowSettingsStore(s => s.setTextFontSizePx)
-  const setTermMapAutoSwitchEnabled = useTermMapWindowSettingsStore(s => s.setAutoSwitchEnabled)
   const setTermMapAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.setAutoSwitchIntervalSec)
   const setTermMapMaxVisibleTerms = useTermMapWindowSettingsStore(s => s.setMaxVisibleTerms)
   const importanceRankingMasterSizeScale = useImportanceRankingWindowSettingsStore(s => s.masterSizeScale)
@@ -348,45 +346,18 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
             </div>
           </SettingsSection>
 
-          <SettingsSection title="自動切り替え" icon={<RefreshCw size={13} />} darkMode={dk}>
-            <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5"
-              style={{
-                borderColor: accentRgba(accentRgb, dk ? 0.35 : 0.25),
-                backgroundColor: dk ? 'rgba(15,23,42,0.35)' : 'rgba(248,250,252,0.9)',
-              }}
-            >
-              <div className="min-w-0">
-                <p className="text-xs font-bold">自動切り替え</p>
-                <p className={`mt-0.5 text-[10px] leading-snug ${dk ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {termMapAutoSwitchEnabled ? '説明と用語を交互に表示' : '手動表示のみ'}
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={termMapAutoSwitchEnabled}
-                onClick={() => setTermMapAutoSwitchEnabled(!termMapAutoSwitchEnabled)}
-                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${termMapAutoSwitchEnabled ? '' : dk ? 'bg-slate-700' : 'bg-slate-300'}`}
-                style={termMapAutoSwitchEnabled ? { backgroundColor: accentRgba(accentRgb, dk ? 0.85 : 0.75) } : undefined}
-              >
-                <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${termMapAutoSwitchEnabled ? 'left-[22px]' : 'left-0.5'}`}
-                />
-              </button>
-            </div>
-            <div className="mt-2">
-              <SettingsSlider
-                label="切り替え間隔"
-                valueLabel={`${termMapAutoSwitchIntervalSec}秒`}
-                value={termMapAutoSwitchIntervalSec}
-                min={TERM_MAP_AUTO_SWITCH_INTERVAL_MIN}
-                max={TERM_MAP_AUTO_SWITCH_INTERVAL_MAX}
-                step={1}
-                darkMode={dk}
-                accentRgb={accentRgb}
-                onChange={setTermMapAutoSwitchIntervalSec}
-              />
-            </div>
+          <SettingsSection title="切り替え間隔" icon={<RefreshCw size={13} />} darkMode={dk}>
+            <SettingsSlider
+              label="切り替え間隔"
+              valueLabel={`${termMapAutoSwitchIntervalSec}秒`}
+              value={termMapAutoSwitchIntervalSec}
+              min={TERM_MAP_AUTO_SWITCH_INTERVAL_MIN}
+              max={TERM_MAP_AUTO_SWITCH_INTERVAL_MAX}
+              step={1}
+              darkMode={dk}
+              accentRgb={accentRgb}
+              onChange={setTermMapAutoSwitchIntervalSec}
+            />
           </SettingsSection>
         </div>
       )
