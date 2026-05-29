@@ -114,7 +114,7 @@ export class ScriptableLayoutTemplates {
           },
         },
       },
-      appearance: { darkMode: true, themeColor: 'indigo' },
+      appearance: { darkMode: false, themeColor: 'indigo' },
       contentFontScale: 1.1,
       floatingControlDock: {
         position: { x: 634.95703125, y: 685.3671875 },
@@ -175,7 +175,7 @@ export class ScriptableLayoutTemplates {
           b: { type: 'leaf', id: 'n13', windowId: 'history' },
         },
       },
-      appearance: { darkMode: true, themeColor: 'indigo' },
+      appearance: { darkMode: false, themeColor: 'emerald' },
       contentFontScale: 1.1,
       floatingControlDock: {
         position: { x: 634.95703125, y: 685.3671875 },
@@ -243,7 +243,7 @@ export class ScriptableLayoutTemplates {
           },
         },
       },
-      appearance: { darkMode: true, themeColor: 'indigo' },
+      appearance: { darkMode: true, themeColor: 'rose' },
       contentFontScale: 1.1,
       floatingControlDock: {
         position: { x: 16, y: 676.8289184570312 },
