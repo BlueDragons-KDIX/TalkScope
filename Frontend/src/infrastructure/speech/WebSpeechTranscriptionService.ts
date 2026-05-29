@@ -254,11 +254,19 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
 
   startListening(): void {
     if (this.status === 'listening' && this.isRunning) return
+    const resumingFromPause = this.status === 'paused'
     if (!this.recognition) this.initRecognition()
     if (!this.recognition) {
       this.status = 'error'
       this.notify()
       return
+    }
+
+    // 再開後は result index が 0 から振り直されるため、前セッションの index を捨てる
+    if (resumingFromPause) {
+      this.finalizedResultIndices.clear()
+      this.interimTranscript = ''
+      this.transcript = this.finalTranscript
     }
 
     this.suppressAutoRestart = false
@@ -289,6 +297,12 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
   pauseListening(): void {
     if (!this.recognition) return
     if (this.status !== 'listening' && this.status !== 'paused') return
+    const pending = this.interimTranscript.trim()
+    if (pending) {
+      this.finalTranscript += `${pending}。\n`
+      this.interimTranscript = ''
+      this.transcript = this.finalTranscript
+    }
     this.suppressAutoRestart = true
     this.isRunning = false
     this.status = 'paused'
