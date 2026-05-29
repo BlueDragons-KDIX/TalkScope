@@ -6,8 +6,12 @@ import {
   MAX_ORIGINAL_LAYOUT_TEMPLATES,
   useLayoutTemplateStore,
 } from '../../stores/layoutTemplateStore'
-import type { LayoutNode } from '../../domain/entities/Layout'
 import { getScriptableLayoutTemplates } from '../layout/ScriptableLayoutTemplates'
+import {
+  applyPresentationLayout,
+  capturePresentationSnapshot,
+} from '../layout/presentationSnapshot'
+import { buildOriginalLayoutTemplateSnapshot } from '../../stores/layoutTemplateStore'
 
 const SCRIPTABLE_TEMPLATES = getScriptableLayoutTemplates()
 
@@ -31,7 +35,6 @@ export const LayoutPresetMenu: React.FC<Props> = ({
 }) => {
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
-  const setLayout = useLayoutStore(s => s.setLayout)
   const currentLayout = useLayoutStore(s => s.layouts[phaseId])
   const originalTemplates = useLayoutTemplateStore(s => s.templates)
   const addOriginalTemplate = useLayoutTemplateStore(s => s.addTemplate)
@@ -62,9 +65,6 @@ export const LayoutPresetMenu: React.FC<Props> = ({
     ? 'pointer-events-none cursor-not-allowed opacity-[0.42] saturate-50'
     : ''}`
 
-  const cloneLayout = (layout: LayoutNode): LayoutNode =>
-    JSON.parse(JSON.stringify(layout)) as LayoutNode
-
   const addCurrentLayoutAsOriginal = () => {
     if (!currentLayout) {
       toast.warning('保存できる現在のレイアウトがありません')
@@ -84,8 +84,9 @@ export const LayoutPresetMenu: React.FC<Props> = ({
     }
 
     try {
-      addOriginalTemplate(trimmed, cloneLayout(currentLayout))
-      toast.success(`「${trimmed}」を保存しました`)
+      const snapshot = buildOriginalLayoutTemplateSnapshot(phaseId, currentLayout)
+      addOriginalTemplate(trimmed, snapshot)
+      toast.success(`「${trimmed}」を保存しました（レイアウト・各種設定を含む）`)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'レイアウトを保存できませんでした'
       toast.error(message)
@@ -140,8 +141,11 @@ export const LayoutPresetMenu: React.FC<Props> = ({
                 type="button"
                 role="menuitem"
                 onClick={() => {
-                  const layout = JSON.parse(JSON.stringify(template.layout)) as LayoutNode
-                  setLayout(phaseId, layout)
+                  applyPresentationLayout(
+                    phaseId,
+                    template.layout,
+                    template.snapshot ?? capturePresentationSnapshot(phaseId, template.layout),
+                  )
                   setOpen(false)
                 }}
                 className={`w-full px-3 py-2 text-left text-xs font-medium transition-colors ${dk
@@ -185,7 +189,7 @@ export const LayoutPresetMenu: React.FC<Props> = ({
                       type="button"
                       role="menuitem"
                       onClick={() => {
-                        setLayout(phaseId, cloneLayout(template.layout))
+                        applyPresentationLayout(phaseId, template.layout, template.snapshot)
                         setOpen(false)
                       }}
                       className={`min-w-0 flex-1 px-1.5 py-2 text-left text-xs font-medium transition-colors ${dk

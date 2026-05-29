@@ -21,6 +21,7 @@ import { AccentThemeProvider } from '../theme/AccentThemeContext'
 import { DEFAULT_SCORE_THRESHOLD } from '../infrastructure/adapters/ScoreThresholdFilter'
 import { usePipelineDebugStore } from '../stores/pipelineDebugStore'
 import { useBubbleLifecycle } from './hooks/useBubbleLifecycle'
+import { usePresentationAppearanceStore } from '../stores/presentationAppearanceStore'
 // ウィンドウを一度だけ登録
 let _registered = false
 if (!_registered) {
@@ -36,7 +37,9 @@ const DemoImportantTermsBridge: React.FC = () => {
 const App: React.FC = () => {
   const currentPhaseId = usePhaseStore(s => s.currentPhaseId)
   const [appearanceOpen, setAppearanceOpen] = useState(false)
-  const [appearance, setAppearance] = useState({ darkMode: true, themeColor: 'indigo' })
+  const darkMode = usePresentationAppearanceStore(s => s.darkMode)
+  const themeColor = usePresentationAppearanceStore(s => s.themeColor)
+  const applyAppearance = usePresentationAppearanceStore(s => s.applyAppearance)
   const [scoreThreshold, setScoreThreshold] = useState(DEFAULT_SCORE_THRESHOLD)
   useBubbleLifecycle()
 
@@ -44,10 +47,9 @@ const App: React.FC = () => {
     onAppend: text => getTranscriptionService().setTranscriptExternal(text),
   })
 
-  const darkMode = appearance.darkMode
   /** 発表中は設定色、発表後はその補色に近いテーマへ自動切替 */
   const phaseAccentColor =
-    currentPhaseId === 'during' ? appearance.themeColor : getOppositeThemeColor(appearance.themeColor)
+    currentPhaseId === 'during' ? themeColor : getOppositeThemeColor(themeColor)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
@@ -101,8 +103,8 @@ const App: React.FC = () => {
           <SettingsModal
             isOpen={appearanceOpen}
             onClose={() => setAppearanceOpen(false)}
-            settings={appearance}
-            updateSettings={partial => setAppearance(prev => ({ ...prev, ...partial }))}
+            settings={{ darkMode, themeColor }}
+            updateSettings={partial => applyAppearance(partial)}
             scoreThreshold={scoreThreshold}
             onScoreThresholdChange={setScoreThreshold}
           />

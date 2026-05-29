@@ -20,7 +20,8 @@ import { useLayoutStore } from '../../stores/layoutStore'
 import { usePhaseStore } from '../../stores/phaseStore'
 import { useAccentTheme } from '../../theme/AccentThemeContext'
 import { accentRgbSolid, accentSliderStyle } from '../../theme/accentStyles'
-import { formatLayoutTemplateMethod } from '../layout/layoutTemplateFormat'
+import { formatPresentationSnapshotExport } from '../layout/layoutTemplateFormat'
+import { capturePresentationSnapshot } from '../layout/presentationSnapshot'
 
 interface Props {
   darkMode?: boolean
@@ -54,7 +55,9 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
   const progress = demoStream.progress
   const pos = msToPos(demoStream.intervalMs)
   const layoutTemplate = useMemo(
-    () => currentLayout ? formatLayoutTemplateMethod(currentPhaseId, currentLayout) : '',
+    () => (currentLayout
+      ? formatPresentationSnapshotExport(capturePresentationSnapshot(currentPhaseId, currentLayout))
+      : ''),
     [currentLayout, currentPhaseId],
   )
 
@@ -78,14 +81,14 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
 
   const copyLayoutTemplate = async () => {
     if (!layoutTemplate) {
-      toast.warning('コピーできるレイアウトがありません')
+      toast.warning('コピーできるプレゼン設定がありません')
       return
     }
 
     try {
       await navigator.clipboard.writeText(layoutTemplate)
       setLayoutCopied(true)
-      toast.success('現在のレイアウトをコピーしました')
+      toast.success('現在のプレゼン設定をコピーしました')
       window.setTimeout(() => setLayoutCopied(false), 1600)
     } catch {
       toast.error('クリップボードへのコピーに失敗しました')
@@ -231,10 +234,10 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
                       <FileJson size={14} className={`mt-0.5 shrink-0 ${dk ? 'text-cyan-300' : 'text-cyan-700'}`} />
                       <div className="min-w-0">
                         <p className={`text-xs font-bold leading-tight ${dk ? 'text-slate-200' : 'text-slate-800'}`}>
-                          現在のレイアウト
+                          現在のプレゼン設定
                         </p>
                         <p className={`mt-1 text-[10px] leading-snug ${dk ? 'text-slate-500' : 'text-slate-500'}`}>
-                          `{currentPhaseId}` フェーズの状態をクラスに貼れるメソッド形式で表示します。
+                          レイアウト・各ウィンドウ設定・フロートUI・テーマ・全体文字サイズ・ダークモードを JSON で出力します。
                         </p>
                       </div>
                     </div>
@@ -253,10 +256,10 @@ export const TestFeaturesPopover: React.FC<Props> = ({ darkMode = true, align = 
                   <textarea
                     readOnly
                     value={layoutTemplate || '現在のフェーズにはまだレイアウトがありません。'}
-                    className={`h-32 w-full resize-y rounded-md border p-2 font-mono text-[10px] leading-relaxed outline-none ${dk
+                    className={`h-48 w-full resize-y rounded-md border p-2 font-mono text-[10px] leading-relaxed outline-none ${dk
                       ? 'border-slate-700 bg-[#080914] text-slate-300'
                       : 'border-slate-200 bg-white text-slate-700'}`}
-                    aria-label="現在のレイアウト情報"
+                    aria-label="現在のプレゼン設定"
                   />
                 </div>
 
