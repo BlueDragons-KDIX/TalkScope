@@ -45,7 +45,7 @@ export const BubbleAutoSwitchHeaderButton: React.FC<Props> = ({ darkMode, accent
         strokeWidth={2.25}
         className={enabled ? 'animate-[spin_3s_linear_infinite]' : 'opacity-70'}
       />
-      <span className="text-[10px] font-bold leading-none">自動</span>
+      {/* <span className="text-[10px] font-bold leading-none">自動</span> */}
       <span
         className="rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide"
         style={enabled
