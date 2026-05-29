@@ -1,6 +1,11 @@
 // 句点・改行で一文に分割（ベクトルAPI送信用チャンク）
 const SENTENCE_END = /([。．.!?！？\n]+)/;
 
+/** 文末の区切り文字を除いた本文（API 送信・重複判定のキーに使う） */
+export function stripTrailingSentenceDelimiters(text: string): string {
+  return text.replace(/[。．.!?！？\n]+\s*$/, '').trim();
+}
+
 /**
  * テキストを一文ごとに分割して返す。区切り文字はその文の末尾に含める。
  */
