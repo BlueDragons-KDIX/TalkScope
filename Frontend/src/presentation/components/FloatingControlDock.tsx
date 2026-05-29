@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
-import { AlertTriangle, GripVertical, Mic, Pause, Play, RotateCcw } from 'lucide-react'
+import { AlertTriangle, Mic, Pause, Play, RotateCcw } from 'lucide-react'
 import * as AlertDialog from '@radix-ui/react-alert-dialog'
 import { useTranscription } from '../hooks/useTranscription'
 import { usePresentationShell } from '../context/PresentationShellContext'
@@ -17,15 +17,44 @@ const EDGE_MARGIN = 16
 const MIN_SCALE = 0.8
 const MAX_SCALE = 1.8
 const RESIZE_BASE = 200
+/** 四隅のリサイズ判定エリア（px） */
+const CORNER_HIT = 18
 
 type Position = { x: number; y: number }
+type ResizeCorner = 'tl' | 'tr' | 'bl' | 'br'
+
+const RESIZE_CORNER_SIGNS: Record<ResizeCorner, { x: number; y: number }> = {
+  tl: { x: -1, y: -1 },
+  tr: { x: 1, y: -1 },
+  bl: { x: -1, y: 1 },
+  br: { x: 1, y: 1 },
+}
+
+const RESIZE_CORNER_CURSOR: Record<ResizeCorner, string> = {
+  tl: 'nw-resize',
+  tr: 'ne-resize',
+  bl: 'sw-resize',
+  br: 'se-resize',
+}
+
+const RESIZE_CORNER_POSITION: Record<ResizeCorner, string> = {
+  tl: 'left-0 top-0 -translate-x-1/2 -translate-y-1/2',
+  tr: 'right-0 top-0 translate-x-1/2 -translate-y-1/2',
+  bl: 'left-0 bottom-0 -translate-x-1/2 translate-y-1/2',
+  br: 'right-0 bottom-0 translate-x-1/2 translate-y-1/2',
+}
 
 const clampScale = (v: number): number => Math.min(MAX_SCALE, Math.max(MIN_SCALE, v))
 
+/** ボタン操作と干渉しないよう、インタラクティブ要素上ではドラッグを開始しない */
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  return Boolean(target.closest('button, a, input, select, textarea, [role="dialog"]'))
+}
+
 /**
  * 録音操作とリセットをまとめた、画面上を自由に移動できるフロート操作 UI。
- * 旧「操作（リモコン）ウィンドウ」を置き換える。
- * 他ウィンドウ同様、アクセントカラーの枠を持ち、ドラッグでサイズを変更できる。
+ * パネル背景全体で移動、枠の四隅で拡大縮小ができる。
  */
 export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
   const dk = darkMode
@@ -35,7 +64,13 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
 
   const dockRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<{ pointerId: number; offsetX: number; offsetY: number } | null>(null)
-  const resizeRef = useRef<{ pointerId: number; startX: number; startY: number; startScale: number } | null>(null)
+  const resizeRef = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    startScale: number
+    corner: ResizeCorner
+  } | null>(null)
   const [pos, setPos] = useState<Position | null>(null)
   const [scale, setScale] = useState(1)
   const [busy, setBusy] = useState(false)
@@ -53,7 +88,6 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
     }
   }, [])
 
-  // 初期位置: 画面下部中央
   useLayoutEffect(() => {
     if (pos) return
     const rect = dockRef.current?.getBoundingClientRect()
@@ -64,7 +98,6 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
     })
   }, [pos])
 
-  // サイズ変更・ウィンドウリサイズで画面外に出ないよう補正
   useEffect(() => {
     setPos((p) => (p ? clampToViewport(p.x, p.y) : p))
   }, [scale, clampToViewport])
@@ -75,19 +108,21 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
     return () => window.removeEventListener('resize', onResize)
   }, [clampToViewport])
 
-  // --- ドラッグ移動 ---
   const onDragPointerDown = (e: React.PointerEvent) => {
+    if (isInteractiveTarget(e.target)) return
     const rect = dockRef.current?.getBoundingClientRect()
     if (!rect) return
     dragRef.current = { pointerId: e.pointerId, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top }
     setBusy(true)
     e.currentTarget.setPointerCapture(e.pointerId)
   }
+
   const onDragPointerMove = (e: React.PointerEvent) => {
     const drag = dragRef.current
     if (!drag || drag.pointerId !== e.pointerId) return
     setPos(clampToViewport(e.clientX - drag.offsetX, e.clientY - drag.offsetY))
   }
+
   const endDrag = (e: React.PointerEvent) => {
     if (dragRef.current?.pointerId !== e.pointerId) return
     dragRef.current = null
@@ -95,24 +130,38 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
     e.currentTarget.releasePointerCapture?.(e.pointerId)
   }
 
-  // --- サイズ変更（拡大縮小） ---
-  const onResizePointerDown = (e: React.PointerEvent) => {
+  const onResizePointerDown = (corner: ResizeCorner) => (e: React.PointerEvent) => {
     e.stopPropagation()
-    resizeRef.current = { pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, startScale: scale }
+    resizeRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      startScale: scale,
+      corner,
+    }
     setBusy(true)
     e.currentTarget.setPointerCapture(e.pointerId)
   }
+
   const onResizePointerMove = (e: React.PointerEvent) => {
     const r = resizeRef.current
     if (!r || r.pointerId !== e.pointerId) return
-    const delta = (e.clientX - r.startX + (e.clientY - r.startY)) / 2
+    const dx = e.clientX - r.startX
+    const dy = e.clientY - r.startY
+    const sign = RESIZE_CORNER_SIGNS[r.corner]
+    const delta = (dx * sign.x + dy * sign.y) / 2
     setScale(clampScale(r.startScale + delta / RESIZE_BASE))
   }
+
   const endResize = (e: React.PointerEvent) => {
     if (resizeRef.current?.pointerId !== e.pointerId) return
     resizeRef.current = null
     setBusy(false)
     e.currentTarget.releasePointerCapture?.(e.pointerId)
+  }
+
+  const stopPanelPointer = (e: React.PointerEvent) => {
+    e.stopPropagation()
   }
 
   const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
@@ -123,12 +172,13 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
       key="pause"
       type="button"
       onClick={pauseListening}
+      onPointerDown={stopPanelPointer}
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.85 }}
       transition={{ duration: 0.14 }}
       whileTap={{ scale: 0.93 }}
-      className={`relative flex h-14 w-14 items-center justify-center rounded-full text-white transition-[filter] hover:brightness-110 ${focusRing} focus-visible:ring-amber-400/70 ${ringOffset}`}
+      className={`relative z-10 flex h-14 w-14 items-center justify-center rounded-full text-white transition-[filter] hover:brightness-110 ${focusRing} focus-visible:ring-amber-400/70 ${ringOffset}`}
       style={{
         background: 'radial-gradient(120% 120% at 50% 20%, #fcd34d, #d97706)',
         boxShadow: '0 6px 22px rgba(245,158,11,0.5), inset 0 1px 0 rgba(255,255,255,0.3)',
@@ -144,12 +194,13 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
       key={isPaused ? 'resume' : 'start'}
       type="button"
       onClick={startListening}
+      onPointerDown={stopPanelPointer}
       initial={{ opacity: 0, scale: 0.85 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.85 }}
       transition={{ duration: 0.14 }}
       whileTap={{ scale: 0.93 }}
-      className={`relative flex h-14 w-14 items-center justify-center rounded-full text-white transition-[filter] hover:brightness-110 ${focusRing} focus-visible:ring-emerald-400/70 ${ringOffset}`}
+      className={`relative z-10 flex h-14 w-14 items-center justify-center rounded-full text-white transition-[filter] hover:brightness-110 ${focusRing} focus-visible:ring-emerald-400/70 ${ringOffset}`}
       style={{
         background: 'radial-gradient(120% 120% at 50% 20%, #6ee7b7, #059669)',
         boxShadow: '0 6px 22px rgba(16,185,129,0.5), inset 0 1px 0 rgba(255,255,255,0.3)',
@@ -160,6 +211,28 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
       {isPaused ? <Play size={24} fill="currentColor" className="ml-0.5 shrink-0" /> : <Mic size={24} strokeWidth={2.25} className="shrink-0" />}
     </motion.button>
   )
+
+  const resizeCorners = (['tl', 'tr', 'bl', 'br'] as const).map((corner) => (
+    <button
+      key={corner}
+      type="button"
+      aria-label={`${corner} からサイズを変更`}
+      title="ドラッグでサイズ変更"
+      onPointerDown={onResizePointerDown(corner)}
+      onPointerMove={onResizePointerMove}
+      onPointerUp={endResize}
+      onPointerCancel={endResize}
+      className={`absolute z-20 ${RESIZE_CORNER_POSITION[corner]}`}
+      style={{
+        width: CORNER_HIT,
+        height: CORNER_HIT,
+        cursor: RESIZE_CORNER_CURSOR[corner],
+        background: 'transparent',
+        border: 'none',
+        padding: 0,
+      }}
+    />
+  ))
 
   return (
     <div
@@ -178,7 +251,7 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
       }}
     >
       <div
-        className={`relative flex items-center gap-1.5 rounded-full border-2 p-1.5 pr-2 backdrop-blur-md ${
+        className={`relative flex cursor-grab items-center gap-2 rounded-full border-2 px-3 py-2.5 backdrop-blur-md active:cursor-grabbing ${
           dk ? 'bg-slate-900/80' : 'bg-white/85'
         }`}
         style={{
@@ -187,35 +260,24 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
             ? `0 12px 36px rgba(2,6,23,0.55), 0 0 22px ${accentRgba(rgb, 0.22)}`
             : `0 12px 30px rgba(15,23,42,0.16), 0 0 18px ${accentRgba(rgb, 0.18)}`,
         }}
+        onPointerDown={onDragPointerDown}
+        onPointerMove={onDragPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        title="ドラッグで移動"
       >
-        {/* ドラッグハンドル */}
-        <button
-          type="button"
-          aria-label="操作パネルを移動"
-          title="ドラッグで移動"
-          onPointerDown={onDragPointerDown}
-          onPointerMove={onDragPointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-          className={`flex h-14 w-6 shrink-0 cursor-grab items-center justify-center rounded-full transition-colors active:cursor-grabbing ${
-            dk ? 'text-slate-500 hover:bg-white/5 hover:text-slate-300' : 'text-slate-400 hover:bg-black/5 hover:text-slate-600'
-          }`}
-        >
-          <GripVertical size={16} />
-        </button>
-
         <AnimatePresence mode="wait" initial={false}>
           {recordButton}
         </AnimatePresence>
 
-        {/* リセット（確認ダイアログ付き） */}
         <AlertDialog.Root open={resetOpen} onOpenChange={setResetOpen}>
           <AlertDialog.Trigger asChild>
             <button
               type="button"
+              onPointerDown={stopPanelPointer}
               title="文字起こし・用語・履歴などをすべてクリアします"
               aria-label="すべてリセット"
-              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors ${focusRing} focus-visible:ring-rose-400/60 ${ringOffset} ${
+              className={`relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors ${focusRing} focus-visible:ring-rose-400/60 ${ringOffset} ${
                 dk
                   ? 'border-slate-600/60 bg-slate-800/70 text-slate-400 hover:border-rose-500/55 hover:bg-rose-500/12 hover:text-rose-300'
                   : 'border-slate-200 bg-white text-slate-500 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600'
@@ -264,27 +326,7 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
           </AlertDialog.Portal>
         </AlertDialog.Root>
 
-        {/* サイズ変更ハンドル（右下） */}
-        <button
-          type="button"
-          aria-label="サイズを変更"
-          title="ドラッグでサイズ変更"
-          onPointerDown={onResizePointerDown}
-          onPointerMove={onResizePointerMove}
-          onPointerUp={endResize}
-          onPointerCancel={endResize}
-          className={`absolute -bottom-1 -right-1 flex h-5 w-5 cursor-nwse-resize items-center justify-center rounded-full border shadow-sm transition-colors ${
-            dk ? 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700' : 'border-slate-300 bg-white text-slate-500 hover:bg-slate-100'
-          }`}
-          style={{ borderColor: accentRgba(rgb, dk ? 0.6 : 0.5) }}
-        >
-          <span
-            className="block h-2.5 w-2.5"
-            style={{
-              background: `repeating-linear-gradient(135deg, ${accentRgba(rgb, dk ? 0.95 : 0.8)} 0, ${accentRgba(rgb, dk ? 0.95 : 0.8)} 1px, transparent 1.5px, transparent 3px)`,
-            }}
-          />
-        </button>
+        {resizeCorners}
       </div>
     </div>
   )
