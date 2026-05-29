@@ -13,6 +13,7 @@ import {
 import { getAccentRgb } from '../../theme/accentTokens'
 import { accentRgba } from '../../theme/accentStyles'
 import { getOppositeThemeColor } from '../utils/oppositeThemeColor'
+import { BubbleAutoSwitchHeaderButton } from '../components/BubbleAutoSwitchHeaderButton'
 import { WindowSettingsPanel } from '../components/WindowSettingsPanel'
 
 const DropOverlay: React.FC<{ zone: DropZone; rgb: string }> = ({ zone, rgb }) => {
@@ -198,6 +199,9 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
             <GripHorizontal size={14} className="opacity-35 flex-shrink-0 transition-all group-hover:opacity-75 group-hover:scale-110" />
             <span className="text-[10px] font-bold uppercase tracking-[0.12em]">{label}</span>
             <div className="ml-auto flex items-center gap-1.5">
+              {node.windowId === 'bubbleCloud' && (
+                <BubbleAutoSwitchHeaderButton darkMode={darkMode} accentRgb={accentRgb} />
+              )}
               <button
                 data-window-settings-trigger="true"
                 type="button"
