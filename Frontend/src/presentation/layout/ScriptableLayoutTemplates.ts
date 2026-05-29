@@ -1,9 +1,12 @@
 import type { LayoutNode } from '../../domain/entities/Layout'
+import type { PresentationSnapshot } from './presentationSnapshot'
 
 export interface ScriptableLayoutTemplate {
   id: string
   name: string
   layout: LayoutNode
+  /** ある場合、選択時にレイアウト以外の設定もまとめて反映 */
+  snapshot?: PresentationSnapshot
 }
 
 /**
@@ -11,8 +14,8 @@ export interface ScriptableLayoutTemplate {
  *
  * 使い方:
  * 1. アプリ上部の「テスト」から現在のレイアウトをコピーする。
- * 2. 下の `templates()` の配列に `this.template('表示名', this.createXxxLayout())` を追加する。
- * 3. コピーした `createXxxLayout(): LayoutNode { ... }` メソッドをこのクラス内に貼り付ける。
+ * 2. 下の `templates()` に `this.template('表示名', layout, snapshot?)` を追加する。
+ * 3. テストからコピーした JSON を `PresentationSnapshot` として貼り付け、`layout` はその `layout` フィールドを使う。
  *
  * ここに追加したテンプレートは、アプリ上部の「レイアウト」ボタンに表示される。
  */
@@ -26,11 +29,16 @@ export class ScriptableLayoutTemplates {
     ]
   }
 
-  template(name: string, layout: LayoutNode): ScriptableLayoutTemplate {
+  template(
+    name: string,
+    layout: LayoutNode,
+    snapshot?: PresentationSnapshot,
+  ): ScriptableLayoutTemplate {
     return {
       id: `scriptable:${name}`,
       name,
       layout,
+      snapshot,
     }
   }
 
