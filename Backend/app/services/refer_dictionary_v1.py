@@ -18,8 +18,6 @@ from app.core.database import get_database
 from app.services.enbedding import spacy_enbedding as sp_emb
 from typing import Callable
 
-GEMINI_TIMEOUT_SECONDS = int(os.getenv("GEMINI_TIMEOUT_SECONDS", "5"))
-
 # ================================ endpoint_service ======================================
 async def service_analyze_text(text: str) -> AsyncGenerator[str, None]:
     async for term_infos, text_vector, source in refer_dictionary(text):
@@ -80,7 +78,7 @@ async def refer_dictionary(text: str) -> AsyncIterator[tuple[list[TermInfo], lis
     # DBミスしたときの処理を宣言的に関数化しておく（後で並列化するため）
     async def _miss_terms_handler(terms_db_miss: list[str]) -> list[TermInfo]:
         # missした用語の意味候補をLLMで生成
-        result_senses = await _generate_senses_for_terms(
+        result_senses = await _generate_senses_for_terms_gather(
             senses_generater=llm.generate_term_senses,
             terms=terms_db_miss,
             group_size=REFER_DICTIONARY_V1_GROUP_SIZE,
@@ -107,7 +105,8 @@ async def refer_dictionary(text: str) -> AsyncIterator[tuple[list[TermInfo], lis
     
     # dedup（複数の形態素が同じ単語を指す場合があるため）
     unique_terms = list(set(search_targets))
-    unique_joined_terms = ["".join(term_tuple) for term_tuple in unique_terms]
+    # 複合語を連結かつて1文字の単語は除外して検索する（DB検索の精度向上のため。例: "AI"は複合語として"AI"で検索し、"A"や"I"は単独では検索しない）
+    unique_joined_terms = ["".join(term_tuple) for term_tuple in unique_terms if not (len(term_tuple) == 1 and len(term_tuple[0]) == 1)]
     db = get_database()
 
     fetch_term_info_task: asyncio.Task[list[TermInfo]] | None = None
@@ -147,7 +146,7 @@ async def refer_dictionary(text: str) -> AsyncIterator[tuple[list[TermInfo], lis
     # TODO: DB保存をスレッドに分離して並列化し、書き込みの確認をせずにreturnすることも検討
     # DB保存
     storetask: asyncio.Task | None = None
-    if db.is_available:
+    if db.is_available and results_terms:
         storetask = asyncio.create_task(
             asyncio.to_thread(
                 store_term_infos,
@@ -236,7 +235,52 @@ def _fetch_term_infos_or_empty(fetch_term_infos: FetchTermInfosProtocol, terms: 
 #     return [TermInfo(term=entry.term, idf_wiki=None, description_embeddings=[(entry.description, entry.meaning_vector)]) for entry in result]
 
 
-async def _generate_senses_for_terms(
+# タイムアウトまで待ち、完了済みのLLM結果だけをまとめる旧検証版。
+# async def _generate_senses_for_terms(
+#     senses_generater: GenerateTermSensesProtocol,
+#     terms: list[str],
+#     group_size: int = 10,
+#     generate_max_sense: int = 3,
+# ) -> dict[str, list[str]]:
+#     """
+#     辞書参照用に、用語ごとの意味候補をLLMで生成する。
+#     Args:
+#         senses_generater: 用語の意味候補を生成する関数
+#         terms: 意味候補を生成する用語のリスト
+#         group_size: 一度にLLMへ渡す用語数
+#         generate_max_sense: 一度に生成する意味の最大数
+#     Returns:
+#         result_senses: 用語をキー、意味候補の配列を値にした辞書
+#     """
+#     result_senses: dict[str, list[str]] = {}
+#     prompts = _build_prompts(
+#         terms,
+#         group_size=group_size,
+#         generate_max_sense=generate_max_sense,
+#     )
+#     # プロンプトごとにLLMを呼び出して意味候補を得る。複数プロンプトがある場合は並列で呼び出す。
+#     generate_senses_tasks = [
+#         asyncio.create_task(senses_generater(prompt)) for prompt in prompts
+#     ]
+#     # responses = await asyncio.gather(*generate_senses_tasks)
+#     done, pending = await asyncio.wait(
+#         generate_senses_tasks,
+#         timeout=GEMINI_TIMEOUT_SECONDS,
+#         return_when=asyncio.ALL_COMPLETED,
+#     )
+#     for task in pending:
+#         task.cancel()
+#     responses = [task.result() for task in done if not task.cancelled() and task.exception() is None]
+#     # 並列がすべて完了したら、結果を1つにまとめる
+#     for response in responses:
+#         result_senses.update(response)
+#     # 空の意味候補は除外する
+#     result_senses = {term: senses for term, senses in result_senses.items() if senses}
+#     return result_senses
+
+
+# すべてのLLM呼び出し完了を待ち、失敗時は例外として扱うgather版。
+async def _generate_senses_for_terms_gather(
     senses_generater: GenerateTermSensesProtocol,
     terms: list[str],
     group_size: int = 10,
@@ -262,15 +306,7 @@ async def _generate_senses_for_terms(
     generate_senses_tasks = [
         asyncio.create_task(senses_generater(prompt)) for prompt in prompts
     ]
-    # responses = await asyncio.gather(*generate_senses_tasks)
-    done, pending = await asyncio.wait(
-        generate_senses_tasks,
-        timeout=GEMINI_TIMEOUT_SECONDS,
-        return_when=asyncio.ALL_COMPLETED,
-    )
-    for task in pending:
-        task.cancel()
-    responses = [task.result() for task in done if not task.cancelled() and task.exception() is None]
+    responses = await asyncio.gather(*generate_senses_tasks)
     # 並列がすべて完了したら、結果を1つにまとめる
     for response in responses:
         result_senses.update(response)

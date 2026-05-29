@@ -104,6 +104,8 @@ async def _call_gemini_async(prompt: str, client: httpx.AsyncClient) -> str:
             status_code=502,
             detail="Gemini upstream returned invalid response",
         ) from exc
+    except httpx.TimeoutException as exc:
+        raise fastapi.HTTPException(status_code=504, detail=f"Gemini API request timed out: {exc}") from exc
 
     return _extract_text(payload_json)
 
