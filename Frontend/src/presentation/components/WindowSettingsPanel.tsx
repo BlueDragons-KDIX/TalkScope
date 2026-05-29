@@ -49,6 +49,19 @@ import {
 const PANEL_CLOSE_BTN =
   'flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-[filter,background-color] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent-rgb)/0.45)] focus-visible:ring-offset-1'
 
+/** 層が深いほどぼかしを強くするガラス面（0=パネル殻 … 3=最内層コントロール） */
+const glassLayer = (dk: boolean, depth: 0 | 1 | 2 | 3): string => {
+  const blur = ['backdrop-blur-sm', 'backdrop-blur', 'backdrop-blur-md', 'backdrop-blur-lg'][depth]
+  if (dk) {
+    const bg = ['bg-slate-950/42', 'bg-slate-900/28', 'bg-slate-900/32', 'bg-slate-800/38'][depth]
+    const border = ['border-slate-600/45', 'border-slate-600/40', 'border-slate-600/50', 'border-slate-500/55'][depth]
+    return `${blur} ${bg} ${border}`
+  }
+  const bg = ['bg-white/48', 'bg-white/38', 'bg-white/42', 'bg-white/48'][depth]
+  const border = ['border-white/50', 'border-slate-200/55', 'border-slate-200/65', 'border-slate-200/70'][depth]
+  return `${blur} ${bg} ${border}`
+}
+
 interface SettingsSliderProps {
   label: string
   valueLabel: string
@@ -74,17 +87,14 @@ const SettingsSlider: React.FC<SettingsSliderProps> = ({
 }) => {
   const dk = darkMode
   return (
-    <div
-      className={`rounded-lg border px-3 py-2.5 backdrop-blur-[2px] ${dk
-        ? 'border-slate-600/50 bg-slate-900/25'
-        : 'border-slate-200/70 bg-white/35'}`}
-    >
+    <div className={`rounded-lg border px-3 py-2.5 ${glassLayer(dk, 3)}`}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-xs font-bold leading-tight">{label}</span>
         <span
-          className="shrink-0 rounded-md px-2 py-0.5 text-[11px] font-mono font-bold tabular-nums"
+          className={`shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-mono font-bold tabular-nums backdrop-blur-xl ${dk
+            ? 'border-slate-500/50 bg-slate-800/45'
+            : 'border-slate-200/70 bg-white/55'}`}
           style={{
-            backgroundColor: accentRgba(accentRgb, dk ? 0.22 : 0.12),
             color: accentRgba(accentRgb, dk ? 0.98 : 0.88),
           }}
         >
@@ -98,7 +108,7 @@ const SettingsSlider: React.FC<SettingsSliderProps> = ({
         step={step}
         value={value}
         onChange={e => onChange(Number(e.target.value))}
-        className={`h-2 w-full cursor-pointer appearance-none rounded-full ${dk ? 'bg-slate-700' : 'bg-slate-200'}`}
+        className={`h-2 w-full cursor-pointer appearance-none rounded-full backdrop-blur-sm ${dk ? 'bg-slate-700/55' : 'bg-slate-200/70'}`}
         style={{ accentColor: `rgb(${accentRgb})` }}
         aria-label={label}
       />
@@ -116,16 +126,13 @@ interface SettingsSectionProps {
 const SettingsSection: React.FC<SettingsSectionProps> = ({ title, icon, darkMode, children }) => {
   const dk = darkMode
   return (
-    <section
-      className={`rounded-xl border p-3 backdrop-blur-[2px] ${dk
-        ? 'border-slate-600/45 bg-slate-900/20'
-        : 'border-slate-200/60 bg-white/30'}`}
-    >
+    <section className={`rounded-xl border p-3 ${glassLayer(dk, 2)}`}>
       <div className={`mb-3 flex items-center gap-2 text-xs font-bold ${dk ? 'text-slate-300' : 'text-slate-700'}`}>
         <span
-          className="flex h-6 w-6 items-center justify-center rounded-md"
+          className={`flex h-6 w-6 items-center justify-center rounded-md border backdrop-blur-xl ${dk
+            ? 'border-slate-500/45 bg-slate-800/40'
+            : 'border-slate-200/65 bg-white/50'}`}
           style={{
-            backgroundColor: dk ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.15)',
             color: dk ? 'rgb(203,213,225)' : 'rgb(71,85,105)',
           }}
         >
@@ -195,15 +202,17 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
       <button
         type="button"
         onClick={() => setMode(value)}
-        className={`flex-1 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${active
+        className={`flex-1 rounded-lg border px-3 py-2 text-xs font-bold transition-[filter,background-color,box-shadow] hover:brightness-105 ${active
+          ? 'backdrop-blur-md'
+          : glassLayer(dk, 3)} ${active
           ? ''
           : dk
-            ? 'border-slate-600 bg-slate-800/60 text-slate-400 hover:bg-slate-800'
-            : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`}
+            ? 'text-slate-400'
+            : 'text-slate-500'}`}
         style={active
           ? {
               borderColor: accentRgba(accentRgb, 0.62),
-              backgroundColor: accentRgba(accentRgb, dk ? 0.24 : 0.12),
+              backgroundColor: accentRgba(accentRgb, dk ? 0.28 : 0.16),
               color: accentRgba(accentRgb, dk ? 0.98 : 0.9),
               boxShadow: `0 0 12px ${accentRgba(accentRgb, dk ? 0.2 : 0.12)}`,
             }
@@ -233,9 +242,7 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
               <button
                 type="button"
                 onClick={() => refreshMicrophones()}
-                className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-colors ${dk
-                  ? 'border-slate-600 bg-slate-800 text-slate-300 hover:bg-slate-700'
-                  : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`}
+                className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-[filter,background-color] hover:brightness-105 ${glassLayer(dk, 3)} ${dk ? 'text-slate-300' : 'text-slate-600'}`}
                 title="マイク一覧を再取得"
               >
                 <RefreshCw size={12} />
@@ -245,9 +252,7 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
             <select
               value={selectedMicrophoneId}
               onChange={e => selectMicrophone(e.target.value)}
-              className={`w-full rounded-lg border px-3 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent-rgb)/0.4)] ${dk
-                ? 'border-slate-600 bg-slate-800 text-slate-100'
-                : 'border-slate-300 bg-white text-slate-800'}`}
+              className={`w-full rounded-lg border px-3 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent-rgb)/0.4)] ${glassLayer(dk, 3)} ${dk ? 'text-slate-100' : 'text-slate-800'}`}
             >
               {microphones.length === 0 && <option value="">利用可能マイクなし</option>}
               {microphones.map(mic => (
@@ -450,9 +455,7 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
 
     return (
       <p
-        className={`rounded-xl border px-4 py-6 text-center text-xs leading-relaxed backdrop-blur-[2px] ${dk
-          ? 'border-slate-600/45 bg-slate-900/20 text-slate-400'
-          : 'border-slate-200/60 bg-white/30 text-slate-500'}`}
+        className={`rounded-xl border px-4 py-6 text-center text-xs leading-relaxed ${glassLayer(dk, 2)} ${dk ? 'text-slate-400' : 'text-slate-500'}`}
       >
         このウィンドウ固有の設定は今後追加予定です。
       </p>
@@ -462,9 +465,7 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
   return (
     <div
       data-window-settings-panel="true"
-      className={`absolute top-11 right-2 bottom-2 z-[70] flex min-h-0 w-[min(calc(100%-1rem),20rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl backdrop-blur-md ${dk
-        ? 'border-slate-600/50 bg-slate-950/55 text-slate-100'
-        : 'border-white/55 bg-white/60 text-slate-900'}`}
+      className={`absolute top-11 right-2 bottom-2 z-[70] flex min-h-0 w-[min(calc(100%-1rem),20rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl ${glassLayer(dk, 0)} ${dk ? 'text-slate-100' : 'text-slate-900'}`}
       style={{
         boxShadow: dk
           ? `0 20px 50px rgba(0,0,0,0.35), 0 0 0 1px ${accentRgba(accentRgb, 0.18)}, 0 0 28px ${accentRgba(accentRgb, 0.1)}`
@@ -483,15 +484,16 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
       />
 
       <div
-        className={`flex shrink-0 items-center justify-between gap-2 border-b px-3.5 py-3 backdrop-blur-sm ${dk ? 'border-slate-600/40' : 'border-slate-200/50'}`}
-        style={{ backgroundColor: accentRgba(accentRgb, dk ? 0.12 : 0.08) }}
+        className={`flex shrink-0 items-center justify-between gap-2 border-b px-3.5 py-3 ${glassLayer(dk, 1)}`}
+        style={{ backgroundColor: accentRgba(accentRgb, dk ? 0.1 : 0.06) }}
       >
         <div className="flex min-w-0 items-center gap-2.5">
           <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border backdrop-blur-md ${dk
+              ? 'border-slate-500/50 bg-slate-800/35'
+              : 'border-slate-200/60 bg-white/45'}`}
             style={{
-              borderColor: accentRgba(accentRgb, dk ? 0.45 : 0.35),
-              backgroundColor: accentRgba(accentRgb, dk ? 0.2 : 0.1),
+              borderColor: accentRgba(accentRgb, dk ? 0.4 : 0.32),
               color: accentRgba(accentRgb, dk ? 0.98 : 0.88),
             }}
           >
@@ -505,10 +507,8 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className={`${PANEL_CLOSE_BTN} ${dk ? 'focus-visible:ring-offset-slate-950/55' : 'focus-visible:ring-offset-white/60'}`}
+          className={`${PANEL_CLOSE_BTN} backdrop-blur-lg ${glassLayer(dk, 3)} ${dk ? 'focus-visible:ring-offset-slate-950/42' : 'focus-visible:ring-offset-white/48'}`}
           style={{
-            borderColor: dk ? 'rgba(148,163,184,0.35)' : 'rgba(148,163,184,0.45)',
-            backgroundColor: dk ? 'rgba(30,41,59,0.45)' : 'rgba(255,255,255,0.55)',
             color: dk ? 'rgb(203,213,225)' : 'rgb(100,116,139)',
           }}
           aria-label="設定を閉じる"
