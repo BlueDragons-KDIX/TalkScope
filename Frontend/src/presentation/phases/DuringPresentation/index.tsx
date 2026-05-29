@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react'
 import { LayoutEngine } from '../../layout/LayoutEngine'
 import { useLayoutStore } from '../../../stores/layoutStore'
-import { makeDefaultLayout } from '../../layout/layoutUtils'
 import { removeLeaf } from '../../layout/layoutUtils'
+import { applyPresentationSnapshot } from '../../layout/presentationSnapshot'
+import { ScriptableLayoutTemplates } from '../../layout/ScriptableLayoutTemplates'
 import type { LayoutNode } from '../../../domain/entities/Layout'
 import { SYSTEM_CONTROL_WINDOW_ID } from '../../constants/systemControlWindow'
 
@@ -18,7 +19,10 @@ export const DuringPresentation: React.FC<Props> = ({ darkMode = true, themeColo
   const setLayout = useLayoutStore(s => s.setLayout)
 
   useEffect(() => {
-    if (!layout) setLayout(PHASE_ID, makeDefaultLayout())
+    if (layout) return
+    const snapshot = new ScriptableLayoutTemplates().bubbleFocusedPresentationSnapshot()
+    applyPresentationSnapshot(snapshot)
+    setLayout(PHASE_ID, snapshot.layout)
   }, [layout, setLayout])
 
   if (!layout) return null
