@@ -53,3 +53,7 @@ bun test src/presentation/layout/__tests__/layoutTemplateFormat.test.ts src/doma
 | `npm run build` | 合格 | `tsc -b && vite build` 成功（bundle size warning のみ） |
 | `bun test ...`（レイアウト関連） | 合格 | 10 件成功、0 件失敗 |
 | `bun test`（全体） | 参考 | 94 pass / 22 fail。22 failはハッピーDOM未登録による既存環境起因で、本変更前後で同一 |
+
+## 追補（order-012）
+
+フロート UI のガラス化・枠線 2px・設定ポップアップの z-index 修正は **test-spec-024** を参照。

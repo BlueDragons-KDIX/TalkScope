@@ -15,6 +15,7 @@ import { accentRgba } from '../../theme/accentStyles'
 import { getOppositeThemeColor } from '../utils/oppositeThemeColor'
 import { BubbleAutoSwitchHeaderButton } from '../components/BubbleAutoSwitchHeaderButton'
 import { WindowSettingsPanel } from '../components/WindowSettingsPanel'
+import { useWindowSettingsUiStore } from '../../stores/windowSettingsUiStore'
 
 const DropOverlay: React.FC<{ zone: DropZone; rgb: string }> = ({ zone, rgb }) => {
   const base: React.CSSProperties = {
@@ -123,9 +124,12 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
   const [dragging, setDragging] = useState<string | null>(null)
   const [dropInfo, setDropInfo] = useState<{ windowId: string; zone: DropZone } | null>(null)
   const [resizing, setResizing] = useState<ResizeState | null>(null)
-  const [settingsWindowId, setSettingsWindowId] = useState<string | null>(null)
+  const settingsWindowId = useWindowSettingsUiStore(s => s.openWindowId)
+  const setSettingsWindowId = useWindowSettingsUiStore(s => s.setOpenWindowId)
   const layoutRef = useRef(layout)
   layoutRef.current = layout
+
+  useEffect(() => () => setSettingsWindowId(null), [setSettingsWindowId])
 
   useEffect(() => {
     if (!resizing) return
@@ -209,7 +213,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => {
                   e.stopPropagation()
-                  setSettingsWindowId(prev => prev === node.windowId ? null : node.windowId)
+                  setSettingsWindowId(settingsWindowId === node.windowId ? null : node.windowId)
                 }}
                 className={`${WINDOW_HEADER_ACTION_BTN} ${darkMode ? 'focus-visible:ring-offset-[#0d0e1a]' : 'focus-visible:ring-offset-white'}`}
                 style={{

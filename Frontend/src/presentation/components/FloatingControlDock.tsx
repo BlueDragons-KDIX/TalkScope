@@ -239,7 +239,7 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
       ref={dockRef}
       role="group"
       aria-label="録音操作"
-      className="fixed z-[60] select-none"
+      className="fixed z-[40] select-none"
       style={{
         left: pos?.x ?? -9999,
         top: pos?.y ?? -9999,
@@ -251,11 +251,11 @@ export const FloatingControlDock: React.FC<Props> = ({ darkMode = true }) => {
       }}
     >
       <div
-        className={`relative flex cursor-grab items-center gap-2 rounded-full border px-3 py-2.5 backdrop-blur-[2px] active:cursor-grabbing ${
-          dk ? 'border-slate-500/25 bg-slate-950/8' : 'border-white/30 bg-white/10'
+        className={`relative flex cursor-grab items-center gap-2 rounded-full border-2 px-3 py-2.5 backdrop-blur-[2px] active:cursor-grabbing ${
+          dk ? 'bg-slate-950/8' : 'bg-white/10'
         }`}
         style={{
-          borderColor: accentRgba(rgb, dk ? 0.22 : 0.18),
+          borderColor: accentRgba(rgb, dk ? 0.72 : 0.66),
           boxShadow: dk
             ? `0 10px 28px rgba(2,6,23,0.18), 0 0 16px ${accentRgba(rgb, 0.08)}`
             : `0 10px 24px rgba(15,23,42,0.06), 0 0 12px ${accentRgba(rgb, 0.06)}`,

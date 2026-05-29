@@ -465,7 +465,7 @@ export const WindowSettingsPanel: React.FC<WindowSettingsPanelProps> = ({
   return (
     <div
       data-window-settings-panel="true"
-      className={`absolute top-11 right-2 z-[70] mb-2 flex h-fit max-h-[calc(100%-3.25rem)] w-[min(calc(100%-1rem),20rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl ${glassLayer(dk, 0)} ${dk ? 'text-slate-100' : 'text-slate-900'}`}
+      className={`absolute top-11 right-2 z-[80] mb-2 flex h-fit max-h-[calc(100%-3.25rem)] w-[min(calc(100%-1rem),20rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl ${glassLayer(dk, 0)} ${dk ? 'text-slate-100' : 'text-slate-900'}`}
       style={{
         boxShadow: dk
           ? `0 20px 50px rgba(0,0,0,0.35), 0 0 0 1px ${accentRgba(accentRgb, 0.18)}, 0 0 28px ${accentRgba(accentRgb, 0.1)}`
