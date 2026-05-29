@@ -162,6 +162,97 @@ async def refer_dictionary(text: str) -> AsyncIterator[tuple[list[TermInfo], lis
         await storetask
 
 
+async def refer_dictionary_stream(text: str) -> AsyncIterator[tuple[list[TermInfo], list[float], str]]:
+    """
+    refer_dictionaryのstream版。
+    DB missした用語は、LLMのプロンプト単位で完了したものから順次返す。
+    """
+
+    # DBミスした用語を、LLMプロンプト単位で順次処理する。
+    # 各プロンプトの意味候補が返った時点でembeddingまで行い、呼び出し元へ返せる形にする。
+    async def _miss_terms_stream_handler(terms_db_miss: list[str]) -> AsyncIterator[list[TermInfo]]:
+        # missした用語の意味候補をLLMで生成する。prompt単位で完了したものから受け取る。
+        async for result_senses in _generate_senses_for_terms_stream(
+            senses_generater=llm.generate_term_senses,
+            terms=terms_db_miss,
+            group_size=REFER_DICTIONARY_V1_GROUP_SIZE,
+            generate_max_sense=REFER_DICTIONARY_V1_GENERATE_MAX_SENSE,
+        ):
+            # ベクトル化
+            results_terms = _embed_terms(call_embedding_api=sp_emb.call_embedding_api, terms=result_senses)
+            if results_terms:
+                yield results_terms
+
+    # TODO: エンベディングと形態素・DB検索の並列化の検討 (しばらくは実装に着手しない)
+    # 入力テキストのembeddingを先に計算しておく（意味的な近さの計算に使うため）
+    input_text_embedding_task = asyncio.create_task(
+        asyncio.to_thread(
+            _compute_text_embedding,
+            call_embedding_api=sp_emb.call_embedding_api,
+            text=text,
+        )
+    )
+
+    # 形態素解析で検索対象の抽出
+    search_targets = rd._extract_search_targets(text)
+    if not search_targets:
+        return
+
+    # dedup（複数の形態素が同じ単語を指す場合があるため）
+    unique_terms = list(set(search_targets))
+    # 複合語を連結かつて1文字の単語は除外して検索する（DB検索の精度向上のため。例: "AI"は複合語として"AI"で検索し、"A"や"I"は単独では検索しない）
+    unique_joined_terms = [
+        "".join(term_tuple)
+        for term_tuple in unique_terms
+        if not (len(term_tuple) == 1 and len(term_tuple[0]) == 1)
+    ]
+    db = get_database()
+
+    fetch_term_info_task: asyncio.Task[list[TermInfo]] | None = None
+    if db.is_available:
+        # DB検索(バッチで検索)
+        fetch_term_info_task = asyncio.create_task(
+            asyncio.to_thread(
+                _fetch_term_infos_or_empty,
+                fetch_term_infos=crud_dict_v1.read_term_infos,
+                terms=unique_joined_terms
+            )
+        )
+
+    if fetch_term_info_task is None:
+        await input_text_embedding_task
+        results_term: list[TermInfo] = []
+    else:
+        await asyncio.gather(input_text_embedding_task, fetch_term_info_task)
+        results_term = fetch_term_info_task.result()
+    text_vector = input_text_embedding_task.result()
+
+    # hitした用語だけ先に返す。
+    if results_term:
+        yield (results_term, text_vector, "db")
+
+    if results_term.__len__() == unique_joined_terms.__len__():
+        # missがない場合はここで終わり
+        return
+
+    # missの処理（1.意味生成、2. embedding、3. DB保存）
+    terms_db_miss = [term for term in unique_joined_terms if term not in {r.term for r in results_term}]
+    all_results_terms: list[TermInfo] = []
+
+    async for results_terms in _miss_terms_stream_handler(terms_db_miss):
+        # DB保存は返却を遅らせないよう、返却中はメモリに貯めて最後にまとめて行う。
+        all_results_terms.extend(results_terms)
+        # missした用語を、prompt完了単位で返す。
+        yield (results_terms, text_vector, "llm")
+
+    if db.is_available and all_results_terms:
+        await asyncio.to_thread(
+            store_term_infos,
+            insert_db_term_infos=crud_dict_v1.insert_term_infos,
+            term_infos=all_results_terms
+        )
+
+
 # =========================== Domain ===================================
 
 def _compute_text_embedding(*, call_embedding_api: CallableEmbeddingAPIProtocol, text: str) -> list[float]:
@@ -314,6 +405,39 @@ async def _generate_senses_for_terms_gather(
     result_senses = {term: senses for term, senses in result_senses.items() if senses}
     return result_senses
 
+
+# LLMのプロンプト単位で完了した意味候補を順次返すstream版。
+async def _generate_senses_for_terms_stream(
+    senses_generater: GenerateTermSensesProtocol,
+    terms: list[str],
+    group_size: int = 10,
+    generate_max_sense: int = 3,
+) -> AsyncIterator[dict[str, list[str]]]:
+    """
+    辞書参照用に、用語ごとの意味候補をLLMで生成する。
+    プロンプトごとに並列実行し、完了したものから順次返す。
+    """
+    prompts = _build_prompts(
+        terms,
+        group_size=group_size,
+        generate_max_sense=generate_max_sense,
+    )
+    generate_senses_tasks = [
+        asyncio.create_task(senses_generater(prompt)) for prompt in prompts
+    ]
+
+    for task in asyncio.as_completed(generate_senses_tasks):
+        try:
+            response = await task
+        except Exception as e:
+            logger.exception("LLM意味候補生成に失敗しました。処理は継続します: %s", e)
+            continue
+
+        result_senses = {term: senses for term, senses in response.items() if senses}
+        if result_senses:
+            yield result_senses
+
+
 def store_term_infos(*, insert_db_term_infos: InsertDBTermInfosProtocol, term_infos: list[TermInfo]) -> None:
     """
     用語情報のリストをDBに保存する関数
@@ -323,6 +447,9 @@ def store_term_infos(*, insert_db_term_infos: InsertDBTermInfosProtocol, term_in
         term_infos: 保存する用語情報のリスト
     """
     try:
+        term_infos = [info for info in term_infos if getattr(info, "term", None)]
+        if not term_infos:
+            return
         insert_db_term_infos(term_infos)
     except Exception as e:
         logger.exception("DB保存に失敗: %s\n 処理は継続します。", e)
