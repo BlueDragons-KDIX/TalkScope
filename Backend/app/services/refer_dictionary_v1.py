@@ -20,7 +20,7 @@ from typing import Callable
 
 # ================================ endpoint_service ======================================
 async def service_analyze_text(text: str) -> AsyncGenerator[str, None]:
-    async for term_infos, text_vector, source in refer_dictionary(text):
+    async for term_infos, text_vector, source in refer_dictionary_stream(text):
         score_results = term_score.compute_term_score_by_term_info(
             term_infos=term_infos,
             text_vector=text_vector,
