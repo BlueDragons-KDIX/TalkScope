@@ -11,6 +11,8 @@ import {
   SYSTEM_CONTROL_DOCK_MIN_WIDTH_PX,
 } from '../constants/systemControlWindow'
 import { getAccentRgb } from '../../theme/accentTokens'
+import { accentRgba } from '../../theme/accentStyles'
+import { getOppositeThemeColor } from '../utils/oppositeThemeColor'
 import { WindowSettingsPanel } from '../components/WindowSettingsPanel'
 
 const DropOverlay: React.FC<{ zone: DropZone; rgb: string }> = ({ zone, rgb }) => {
@@ -102,10 +104,14 @@ export interface LayoutEngineProps {
   onClose?: (windowId: string) => void
 }
 
+const WINDOW_HEADER_ACTION_BTN =
+  'flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-[box-shadow,filter,background-color,border-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--app-accent-rgb)/0.45)] focus-visible:ring-offset-1 hover:brightness-110'
+
 export const LayoutEngine: React.FC<LayoutEngineProps> = ({
   layout, onLayoutChange, darkMode, themeColor = 'indigo', onClose,
 }) => {
   const accentRgb = getAccentRgb(themeColor)
+  const invertedAccentRgb = getAccentRgb(getOppositeThemeColor(themeColor))
   const borderStyle = `2px solid rgba(${accentRgb},0.72)`
   const headerBg = `rgba(${accentRgb},${darkMode ? 0.18 : 0.12})`
   const dotColor = `rgba(${accentRgb},1)`
@@ -191,7 +197,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: dotColor }} />
             <GripHorizontal size={14} className="opacity-35 flex-shrink-0 transition-all group-hover:opacity-75 group-hover:scale-110" />
             <span className="text-[10px] font-bold uppercase tracking-[0.12em]">{label}</span>
-            <div className="ml-auto flex items-center gap-1">
+            <div className="ml-auto flex items-center gap-1.5">
               <button
                 data-window-settings-trigger="true"
                 type="button"
@@ -201,11 +207,18 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
                   e.stopPropagation()
                   setSettingsWindowId(prev => prev === node.windowId ? null : node.windowId)
                 }}
-                className={`p-0.5 rounded transition-colors ${darkMode ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-200 hover:text-black'}`}
+                className={`${WINDOW_HEADER_ACTION_BTN} ${darkMode ? 'focus-visible:ring-offset-[#0d0e1a]' : 'focus-visible:ring-offset-white'}`}
+                style={{
+                  borderColor: accentRgba(accentRgb, darkMode ? 0.58 : 0.45),
+                  backgroundColor: accentRgba(accentRgb, darkMode ? 0.28 : 0.18),
+                  color: accentRgba(accentRgb, darkMode ? 0.98 : 0.92),
+                  boxShadow: `0 0 10px ${accentRgba(accentRgb, darkMode ? 0.22 : 0.14)}`,
+                }}
                 aria-label={`${label} の設定`}
                 title={`${label} の設定`}
+                aria-pressed={settingsWindowId === node.windowId}
               >
-                <Settings size={12} />
+                <Settings size={16} strokeWidth={2.25} />
               </button>
             {onClose && closable && (
               <button
@@ -213,10 +226,17 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({
                 draggable={false}
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => { e.stopPropagation(); onClose(node.windowId) }}
-                className={`p-0.5 rounded transition-colors ${darkMode ? 'hover:bg-slate-700 hover:text-white' : 'hover:bg-slate-200 hover:text-black'}`}
+                className={`${WINDOW_HEADER_ACTION_BTN} ${darkMode ? 'focus-visible:ring-offset-[#0d0e1a]' : 'focus-visible:ring-offset-white'}`}
+                style={{
+                  borderColor: accentRgba(invertedAccentRgb, darkMode ? 0.55 : 0.42),
+                  backgroundColor: accentRgba(invertedAccentRgb, darkMode ? 0.34 : 0.24),
+                  color: accentRgba(invertedAccentRgb, darkMode ? 0.98 : 0.94),
+                  boxShadow: `0 0 10px ${accentRgba(invertedAccentRgb, darkMode ? 0.26 : 0.16)}`,
+                }}
                 aria-label="閉じる"
+                title="ウィンドウを閉じる"
               >
-                <X size={12} />
+                <X size={16} strokeWidth={2.25} />
               </button>
             )}
             </div>
