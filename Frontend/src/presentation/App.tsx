@@ -5,6 +5,7 @@ import { AfterPresentation } from './phases/AfterPresentation'
 import { usePhaseStore } from '../stores/phaseStore'
 import { registerAllWindows } from './windows'
 import { PresentationAppHeader } from './components/PresentationAppHeader'
+import { FloatingControlDock } from './components/FloatingControlDock'
 import { PresentationShellProvider } from './context/PresentationShellContext'
 import { DemoToolsProvider } from './context/DemoToolsContext'
 import { useDemoStream } from '../debug/hooks/useDemoStream'
@@ -106,6 +107,8 @@ const App: React.FC = () => {
             scoreThreshold={scoreThreshold}
             onScoreThresholdChange={setScoreThreshold}
           />
+
+          <FloatingControlDock darkMode={darkMode} />
 
           <Toaster position="bottom-right" theme={darkMode ? 'dark' : 'light'} />
         </div>

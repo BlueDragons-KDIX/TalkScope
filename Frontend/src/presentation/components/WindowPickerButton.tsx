@@ -2,11 +2,10 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Layers } from 'lucide-react'
 import { useLayoutStore } from '../../stores/layoutStore'
 import {
-  addUserWindowToDockedLayout,
-  attachSystemControlDock,
-  collectUserWindowIdsInLayout,
+  addWindowToLayout,
+  collectWindowIdsInLayout,
   leafNode,
-  removeUserWindowFromDockedLayout,
+  removeWindowFromLayout,
 } from '../layout/layoutUtils'
 import { getLayoutSelectableWindows } from '../windows/registry'
 import { useAccentTheme } from '../../theme/AccentThemeContext'
@@ -39,7 +38,7 @@ export const WindowPickerButton: React.FC<Props> = ({
   const dk = darkMode
 
   const selectable = getLayoutSelectableWindows()
-  const activeIds = layout ? collectUserWindowIdsInLayout(layout) : new Set<string>()
+  const activeIds = layout ? collectWindowIdsInLayout(layout) : new Set<string>()
   const activeCount = activeIds.size
 
   const sortByLabel = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label, 'ja')
@@ -65,11 +64,11 @@ export const WindowPickerButton: React.FC<Props> = ({
   const applyToggle = (windowId: string, checked: boolean) => {
     const cur = useLayoutStore.getState().layouts[phaseId]
     if (checked) {
-      if (!cur) setLayout(phaseId, attachSystemControlDock(leafNode(windowId)))
-      else setLayout(phaseId, addUserWindowToDockedLayout(cur, windowId))
+      if (!cur) setLayout(phaseId, leafNode(windowId))
+      else setLayout(phaseId, addWindowToLayout(cur, windowId))
     } else {
       if (!cur) return
-      setLayout(phaseId, removeUserWindowFromDockedLayout(cur, windowId))
+      setLayout(phaseId, removeWindowFromLayout(cur, windowId))
     }
   }
 
