@@ -26,10 +26,11 @@ export class ScriptableLayoutTemplates {
   templates(): ScriptableLayoutTemplate[] {
     const bubbleFocused = this.bubbleFocusedPresentationSnapshot()
     const rankingFocused = this.rankingFocusedPresentationSnapshot()
+    const fullCustom = this.fullCustomPresentationSnapshot()
     return [
       this.template('バブル重視', bubbleFocused.layout, bubbleFocused),
       this.template('ランキング重視', rankingFocused.layout, rankingFocused),
-      this.template('フルカスタム', this.createFullCustomLayout()),
+      this.template('フルカスタム', fullCustom.layout, fullCustom),
     ]
   }
 
@@ -209,56 +210,72 @@ export class ScriptableLayoutTemplates {
     return this.rankingFocusedPresentationSnapshot().layout
   }
 
-  createFullCustomLayout(): LayoutNode {
+  fullCustomPresentationSnapshot(): PresentationSnapshot {
     return {
-      type: 'split',
-      id: 'n19',
-      direction: 'h',
-      ratio: 0.4,
-      a: {
-        type: 'leaf',
-        id: 'n11',
-        windowId: 'transcription',
-      },
-      b: {
+      version: PRESENTATION_SNAPSHOT_VERSION,
+      phaseId: 'during',
+      layout: {
         type: 'split',
-        id: 'n18',
-        direction: 'v',
-        ratio: 0.38,
-        a: {
-          type: 'leaf',
-          id: 'n12',
-          windowId: 'bubbleCloud',
-        },
+        id: 'n19',
+        direction: 'h',
+        ratio: 0.3433833560709414,
+        a: { type: 'leaf', id: 'n11', windowId: 'transcription' },
         b: {
           type: 'split',
-          id: 'n17',
+          id: 'n10',
           direction: 'h',
-          ratio: 0.5,
+          ratio: 0.5957925140419322,
           a: {
-            type: 'leaf',
-            id: 'n13',
-            windowId: 'detail',
+            type: 'split',
+            id: 'n20',
+            direction: 'v',
+            ratio: 0.4726205997392438,
+            a: { type: 'leaf', id: 'n12', windowId: 'bubbleCloud' },
+            b: { type: 'leaf', id: 'n19', windowId: 'importanceRanking' },
           },
           b: {
             type: 'split',
             id: 'n16',
             direction: 'v',
-            ratio: 0.5,
-            a: {
-              type: 'leaf',
-              id: 'n14',
-              windowId: 'importanceRanking',
-            },
-            b: {
-              type: 'leaf',
-              id: 'n15',
-              windowId: 'history',
-            },
+            ratio: 0.42046936114732725,
+            a: { type: 'leaf', id: 'n15', windowId: 'detail' },
+            b: { type: 'leaf', id: 'n17', windowId: 'history' },
           },
         },
       },
+      appearance: { darkMode: true, themeColor: 'indigo' },
+      contentFontScale: 1.1,
+      floatingControlDock: {
+        position: { x: 16, y: 676.8289184570312 },
+        scale: 1.7396386718749999,
+      },
+      windowSettings: {
+        bubbleCloud: {
+          masterSizeScale: 0.8,
+          bubbleSizeScale: 0.8,
+          textFontSizePx: 15,
+          autoSwitchEnabled: true,
+          autoSwitchIntervalSec: 6,
+          maxVisibleTerms: 15,
+        },
+        transcription: {
+          masterFontScale: 1,
+          plainTextFontSizePx: 14,
+          importantTermFontSizePx: 16,
+        },
+        detail: { fontSizePx: 10 },
+        importanceRanking: {
+          masterSizeScale: 1,
+          fontSizePx: 16,
+          visibleCount: 10,
+        },
+        history: { fontSizePx: 10 },
+      },
     }
+  }
+
+  createFullCustomLayout(): LayoutNode {
+    return this.fullCustomPresentationSnapshot().layout
   }
 }
 
