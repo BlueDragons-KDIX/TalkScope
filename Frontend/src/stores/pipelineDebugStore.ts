@@ -44,7 +44,7 @@ function keepRecent<T>(items: T[]): T[] {
 export const usePipelineDebugStore = create<PipelineDebugState>((set) => ({
   sentInputs: [],
   sseTerms: [],
-  filteredThreshold: 0.1,
+  filteredThreshold: 0.42,
   filteredPassedTerms: [],
   filteredRejectedTerms: [],
   bubbleTerms: [],

@@ -1,6 +1,6 @@
 import type { Term } from '../../domain/entities/Term'
 
-export const DEFAULT_SCORE_THRESHOLD = 0.1
+export const DEFAULT_SCORE_THRESHOLD = 0.42
 
 export interface ScoreThresholdPartition {
   passed: Term[]

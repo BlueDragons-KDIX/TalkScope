@@ -8,6 +8,7 @@ import {
 } from '../../stores/contentFontScaleStore';
 import { useAccentTheme } from '../../theme/AccentThemeContext';
 import { accentRgba, accentRgbSolid, accentSliderStyle } from '../../theme/accentStyles';
+import { DEFAULT_SCORE_THRESHOLD } from '../../infrastructure/adapters/ScoreThresholdFilter';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -52,7 +53,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSimilarityFilterStrengthChange,
   similarityReferenceWord = 'it',
   similarityReady = false,
-  scoreThreshold = 0.1,
+  scoreThreshold = DEFAULT_SCORE_THRESHOLD,
   onScoreThresholdChange,
 }) => {
   const contentFontScale = useContentFontScaleStore(s => s.scale);

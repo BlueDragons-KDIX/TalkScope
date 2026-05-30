@@ -8,11 +8,11 @@ import {
 describe('DefaultScoreUpdateStrategy', () => {
   const strategy = new DefaultScoreUpdateStrategy()
 
-  it('onFrequency は固定量を加算する', () => {
-    expect(strategy.onFrequency(0.4, 3)).toBe(0.4 + FREQUENCY_DELTA)
+  it('onFrequency は 0.01 を加算する', () => {
+    expect(strategy.onFrequency(0.42, 3)).toBe(0.42 + FREQUENCY_DELTA)
   })
 
-  it('onClick は固定量を加算する', () => {
-    expect(strategy.onClick(0.4)).toBe(0.4 + CLICK_DELTA)
+  it('onClick は 0.01 を加算する', () => {
+    expect(strategy.onClick(0.42)).toBe(0.42 + CLICK_DELTA)
   })
 })
