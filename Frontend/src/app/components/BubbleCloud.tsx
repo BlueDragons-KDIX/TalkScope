@@ -10,6 +10,7 @@ import { termChipStyle } from '../../theme/accentStyles';
 import {
   useTermMapWindowSettingsStore,
 } from '../../stores/termMapWindowSettingsStore';
+import { bubbleRadiusFromScore } from '../../infrastructure/adapters/bubbleSizeFromScore';
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
   Frontend: { bg: 'bg-blue-500/20',    text: 'text-blue-300',    border: 'border-blue-500/30',    dot: '#60a5fa' },
@@ -128,23 +129,13 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   for (const id of Array.from(engineNodes.keys())) {
     if (!activeIds.has(id)) engineNodes.delete(id);
   }
-  const SCORE_SCALE_FACTOR = 3.0;
   for (const term of activeTerms) {
     const isTermPinned = isPinned?.has(term.id);
-    const baseR = 20;
-    const scoreMult = 1 + term.score * SCORE_SCALE_FACTOR;
-    let r = baseR * scaleFactor * scoreMult;
-    r = Math.min(r, 95); // 極端に大きくなりすぎないよう上限
-
-    // ピン留めされているバブルは、標準より一回り大きいサイズに統一
-    if (isTermPinned) {
-      r = 38 * scaleFactor;
-    }
-
-    // ユーザー指定の倍率を適用
-    r = r * effectiveBubbleScale;
-    // バブルの最小半径を20に統一
-    r = Math.max(20, r);
+    const r = bubbleRadiusFromScore(term.score, {
+      scaleFactor,
+      effectiveBubbleScale,
+      isPinned: isTermPinned,
+    });
 
     if (!engineNodes.has(term.id)) {
       const cw = engineRef.current.width || 800;

@@ -14,11 +14,11 @@ const makeTerm = (id: string, score: number): Term => ({
 })
 
 describe('ScoreThresholdFilter', () => {
-  it('デフォルト閾値(0.1)以上の用語のみ返す', () => {
+  it('デフォルト閾値(0.42)以上の用語のみ返す', () => {
     const result = filterByScore([
-      makeTerm('a', 0.05),
-      makeTerm('b', 0.1),
-      makeTerm('c', 0.2),
+      makeTerm('a', 0.41),
+      makeTerm('b', 0.42),
+      makeTerm('c', 0.45),
     ])
     expect(result.map((term) => term.id)).toEqual(['b', 'c'])
   })
