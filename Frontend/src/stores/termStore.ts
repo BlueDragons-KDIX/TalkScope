@@ -5,56 +5,81 @@ import { DEMO_IMPORTANT_TERM_ID_PREFIX } from '../debug/demo/mockImportantTerms'
 
 interface TermState {
   activeTerms: Term[]
+  termTimestamps: Record<string, number>
   selectedTerm: Term | null
   searchHistory: Term[]
   pinnedTermIds: Set<string>
-  termClickWeights: Record<string, number>
 
   addTerms: (terms: Term[]) => void
+  updateTermScore: (id: string, score: number) => void
   removeTermById: (id: string) => void
   /** デモ重要語マーキングで注入した用語だけ除去（prefix は mockImportantTerms と一致させる） */
   stripDemoImportantTerms: () => void
   selectTerm: (term: Term | null) => void
   togglePin: (termId: string) => void
-  incrementClickWeight: (termId: string) => void
   addToHistory: (term: Term) => void
   clearHistory: () => void
   clearActiveTerms: () => void
-  /** 用語・選択・履歴・ピン・クリック重みをまとめて初期化（グローバルリセット用） */
+  /** 用語・選択・履歴・ピンをまとめて初期化（グローバルリセット用） */
   resetSession: () => void
 }
 
 export const useTermStore = create<TermState>((set) => ({
   activeTerms: [],
+  termTimestamps: {},
   selectedTerm: null,
   searchHistory: [],
   pinnedTermIds: new Set(),
-  termClickWeights: {},
 
   addTerms: (terms) => set((state) => {
-    const existingIds = new Set(state.activeTerms.map(t => t.id))
-    const newTerms: Term[] = []
+    const now = Date.now()
+    const existingIds = new Set(state.activeTerms.map((term) => term.id))
+    const nextActiveTerms = [...state.activeTerms]
+    const nextTermTimestamps = { ...state.termTimestamps }
+
     for (const t of terms) {
-      if (!existingIds.has(t.id)) {
-        existingIds.add(t.id)
-        newTerms.push({
-          ...t,
-          category: normalizeTermCategory(t.category),
-        })
+      if (existingIds.has(t.id)) continue
+
+      const normalized: Term = {
+        ...t,
+        category: normalizeTermCategory(t.category),
       }
+      nextActiveTerms.push(normalized)
+      nextTermTimestamps[normalized.id] = now
+      existingIds.add(normalized.id)
     }
-    return { activeTerms: [...state.activeTerms, ...newTerms] }
+
+    return {
+      activeTerms: nextActiveTerms,
+      termTimestamps: nextTermTimestamps,
+    }
   }),
 
-  removeTermById: (id) => set((state) => ({
-    activeTerms: state.activeTerms.filter(t => t.id !== id),
+  updateTermScore: (id, score) => set((state) => ({
+    activeTerms: state.activeTerms.map((term) => (
+      term.id === id ? { ...term, score } : term
+    )),
   })),
 
-  stripDemoImportantTerms: () => set((state) => ({
-    activeTerms: state.activeTerms.filter(
+  removeTermById: (id) => set((state) => {
+    const nextTermTimestamps = { ...state.termTimestamps }
+    delete nextTermTimestamps[id]
+    return {
+      activeTerms: state.activeTerms.filter(t => t.id !== id),
+      termTimestamps: nextTermTimestamps,
+    }
+  }),
+
+  stripDemoImportantTerms: () => set((state) => {
+    const activeTerms = state.activeTerms.filter(
       t => !t.id.startsWith(DEMO_IMPORTANT_TERM_ID_PREFIX),
-    ),
-  })),
+    )
+    const activeIds = new Set(activeTerms.map((term) => term.id))
+    const nextTermTimestamps = Object.fromEntries(
+      Object.entries(state.termTimestamps).filter(([id]) => activeIds.has(id)),
+    )
+    return { activeTerms, termTimestamps: nextTermTimestamps }
+  }),
 
   selectTerm: (term) => set({ selectedTerm: term }),
 
@@ -65,13 +90,6 @@ export const useTermStore = create<TermState>((set) => ({
     return { pinnedTermIds: next }
   }),
 
-  incrementClickWeight: (termId) => set((state) => ({
-    termClickWeights: {
-      ...state.termClickWeights,
-      [termId]: (state.termClickWeights[termId] ?? 0) + 1,
-    },
-  })),
-
   addToHistory: (term) => set((state) => {
     if (state.searchHistory.some(t => t.id === term.id)) return {}
     return { searchHistory: [...state.searchHistory, term] }
@@ -79,13 +97,13 @@ export const useTermStore = create<TermState>((set) => ({
 
   clearHistory: () => set({ searchHistory: [] }),
 
-  clearActiveTerms: () => set({ activeTerms: [] }),
+  clearActiveTerms: () => set({ activeTerms: [], termTimestamps: {} }),
 
   resetSession: () => set({
     activeTerms: [],
+    termTimestamps: {},
     selectedTerm: null,
     searchHistory: [],
     pinnedTermIds: new Set(),
-    termClickWeights: {},
   }),
 }))

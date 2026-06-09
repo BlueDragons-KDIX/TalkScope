@@ -1,7 +1,7 @@
 [project]
-name = "lexiflow-backend"
+name = "TalkScope"
 version = "0.1.0"
-description = "FastAPI backend for LexiFlow"
+description = "FastAPI backend for TalkScope"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -12,9 +12,9 @@ dependencies = [
     "httpx>=0.27.0",
     "sudachipy>=0.6.10",
     "sudachidict-core>=20240109",
-    "spacy>=3.7.0",
-    "ginza>=5.2.0",
-    "ja-ginza>=5.2.0",
+    "spacy>=3.7,<3.8",
+    "ginza>=5.2,<5.3",
+    "ja-ginza>=5.2,<5.3",
     "pgvector>=0.4.2",
     "psycopg2-binary>=2.9.11",
     "sqlalchemy>=2.0.46",
@@ -24,4 +24,9 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.2.0",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that use external services such as DB or LLM",
 ]

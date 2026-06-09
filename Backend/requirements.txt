@@ -9,6 +9,7 @@ pgvector
 httpx
 sudachipy
 sudachidict-core
-spacy
-ginza
-ja-ginza
+spacy>=3.7,<3.8
+ginza>=5.2,<5.3
+ja-ginza>=5.2,<5.3
+asyncio

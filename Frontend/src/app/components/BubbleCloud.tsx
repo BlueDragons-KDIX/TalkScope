@@ -1,25 +1,16 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Term } from '../data/terms';
 import { TermBubble } from './TermBubble';
-import { Hexagon, Shuffle, Pause, ChevronUp, ChevronDown } from 'lucide-react';
-import {
-  getMockTermVector,
-  getMockThemeVector,
-  getMockConversationVector,
-  cosineSimilarity,
-  similarityToScore,
-  MOCK_DIM,
-} from '../utils/mockVectors';
+import { Hexagon } from 'lucide-react';
 import { useContentFontScaleStore } from '../../stores/contentFontScaleStore';
 import { scaledContentFontPx } from '../utils/contentFontScale';
 import { useAccentTheme } from '../../theme/AccentThemeContext';
-import { accentRgba, accentSliderStyle, micStartButtonStyle, termChipStyle } from '../../theme/accentStyles';
+import { termChipStyle } from '../../theme/accentStyles';
 import {
-  TERM_MAP_AUTO_SWITCH_INTERVAL_MAX,
-  TERM_MAP_AUTO_SWITCH_INTERVAL_MIN,
   useTermMapWindowSettingsStore,
 } from '../../stores/termMapWindowSettingsStore';
+import { bubbleRadiusFromScore } from '../../infrastructure/adapters/bubbleSizeFromScore';
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string; dot: string }> = {
   Frontend: { bg: 'bg-blue-500/20',    text: 'text-blue-300',    border: 'border-blue-500/30',    dot: '#60a5fa' },
@@ -40,20 +31,11 @@ export interface ThemeVectorResult {
 
 interface BubbleCloudProps {
   activeTerms: Term[];
-  termWeights: Record<string, number>;
-  /** 文字起こしでの出現回数（バブルサイズの頻度に利用） */
-  termFrequencies?: Record<string, number>;
   onTermClick: (term: Term) => void;
   darkMode?: boolean;
   selectedTermId?: string;
   isPinned: Set<string>;
   onTogglePin: (termId: string) => void;
-  /** 主題ベクトル（あればバブルサイズの主題類似度に利用） */
-  themeVector?: ThemeVectorResult | null;
-  /** 主題テキスト（用語がこれと一致するとき主題との類似度を 1 とする） */
-  themeText?: string;
-  /** API から取得した用語の意味ベクトル（termId → vector）。あればモックの代わりに使用 */
-  termVectors?: Record<string, number[]>;
   /** カテゴリフィルター（'ALL' または category 名） */
   categoryFilter?: string;
   /** カテゴリフィルター変更 */
@@ -62,16 +44,11 @@ interface BubbleCloudProps {
 
 export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   activeTerms,
-  termWeights,
-  termFrequencies = {},
   onTermClick,
   darkMode = true,
   selectedTermId,
   isPinned,
   onTogglePin,
-  themeVector,
-  themeText = '',
-  termVectors = {},
   categoryFilter = 'ALL',
   onCategoryFilterChange,
 }) => {
@@ -83,19 +60,11 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   const textFontSizePx = useTermMapWindowSettingsStore(s => s.textFontSizePx);
   const isAutoPlay = useTermMapWindowSettingsStore(s => s.autoSwitchEnabled);
   const intervalSec = useTermMapWindowSettingsStore(s => s.autoSwitchIntervalSec);
+  const maxVisibleTerms = useTermMapWindowSettingsStore(s => s.maxVisibleTerms);
   const setAutoSwitchEnabled = useTermMapWindowSettingsStore(s => s.setAutoSwitchEnabled);
-  const setAutoSwitchIntervalSec = useTermMapWindowSettingsStore(s => s.setAutoSwitchIntervalSec);
   const categories = ['ALL', 'ピン中', ...Object.keys(CATEGORY_COLORS)];
   const effectiveBubbleScale = masterSizeScale * bubbleSizeScale;
 
-  const dim = themeVector?.dim ?? MOCK_DIM;
-  const themeVec = useMemo(() => {
-    if (themeVector?.vector?.length) return themeVector.vector;
-    return getMockThemeVector(dim);
-  }, [themeVector?.vector, dim]);
-  const conversationVec = useMemo(() => getMockConversationVector(dim), [dim]);
-
-  const [showSlider, setShowSlider] = useState(false);
   const activeTermsRef = useRef(activeTerms);
 
   // 用語⇔説明の反転状態を管理するIDセット（Auto-Play ONのときのみ使用）
@@ -160,51 +129,14 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
   for (const id of Array.from(engineNodes.keys())) {
     if (!activeIds.has(id)) engineNodes.delete(id);
   }
-  const isDev = typeof import.meta !== 'undefined' && import.meta.env?.DEV;
-  const themeTextTrimmed = themeText.trim();
   for (const term of activeTerms) {
-    const freq = termFrequencies[term.id] ?? 0;
-    // 優先順: 1) 主題と同じ単語→主題ベクトル  2) APIの実ベクトル  3) モックベクトル
-    const apiVec = termVectors[term.id];
-    const termVec = (themeTextTrimmed && term.word === themeTextTrimmed)
-      ? themeVec
-      : apiVec && apiVec.length > 0
-        ? apiVec
-        : getMockTermVector(term.id, dim);
-    const themeSim = cosineSimilarity(termVec, themeVec);
-    const convSim = cosineSimilarity(termVec, conversationVec);
-    const themeScore = similarityToScore(themeSim);   // 0〜1
-    const convScore = similarityToScore(convSim);    // 0〜1
-    const displayCount = Math.min(freq, 10);        // 表示回数は10回まで反映
     const isTermPinned = isPinned?.has(term.id);
-    const w = isTermPinned ? 0 : (termWeights[term.id] || 0);
-    // 重みで基本半径に差をつける（小: 18 〜 大: 38 程度）
-    const baseR = Math.min(Math.max(36, w * 12), 76) / 1.8;
-    // 主題・会話類似度と表示回数で差をつける
-    const similarityMult = (1 + 0.6 * themeScore) * (1 + convScore);
-    const freqMult = 1 + 0.12 * displayCount;
-    let r = baseR * scaleFactor * similarityMult * freqMult;
-    r = Math.min(r, 95); // 極端に大きくなりすぎないよう上限
+    const r = bubbleRadiusFromScore(term.score, {
+      scaleFactor,
+      effectiveBubbleScale,
+      isPinned: isTermPinned,
+    });
 
-    // ピン留めされているバブルは、標準より一回り大きいサイズに統一
-    if (isTermPinned) {
-      r = 38 * scaleFactor;
-    }
-
-    // ユーザー指定の倍率を適用
-    r = r * effectiveBubbleScale;
-    // バブルの最小半径を20に統一
-    r = Math.max(20, r);
-
-    if (isDev && activeTerms.indexOf(term) <= 4) {
-      console.log(`[BubbleCloud] 類似度(モック) ${term.word}`, {
-        themeScore: Math.round(themeScore * 1000) / 1000,
-        convScore: Math.round(convScore * 1000) / 1000,
-        freq,
-        radius: Math.round(r * 10) / 10,
-      });
-    }
-    
     if (!engineNodes.has(term.id)) {
       const cw = engineRef.current.width || 800;
       const ch = engineRef.current.height || 500;
@@ -299,11 +231,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
     if (activeTerms.length === 0 && isAutoPlay) setAutoSwitchEnabled(false);
   }, [activeTerms.length, isAutoPlay, setAutoSwitchEnabled]);
 
-  const toggleAutoPlay = () => {
-    if (activeTerms.length === 0) return;
-    setAutoSwitchEnabled(!isAutoPlay);
-  };
-
   return (
     <div className={`flex flex-col h-full transition-colors ${dk ? 'bg-[#0d0e1a]' : 'bg-white'}`}>
       {/* Header: filter + scale slider + term count — 1 row */}
@@ -321,7 +248,9 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
           </select>
         )}
         <span className={`ml-auto text-[10px] font-mono border px-1.5 py-0.5 rounded shrink-0 ${dk ? 'bg-slate-800/50 border-slate-700/50 text-slate-500' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
-          {categoryFilter === 'ピン中' ? `${activeTerms.length} ピン` : `${activeTerms.length} terms`}
+          {categoryFilter === 'ピン中'
+            ? `${activeTerms.length} ピン`
+            : `${activeTerms.length}/${maxVisibleTerms} terms`}
         </span>
       </div>
       {/* ピン中: IndexedDB のピン留め一覧を表で表示（文字起こしハイライト風） */}
@@ -431,7 +360,7 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
                   >
                     <TermBubble
                       term={term}
-                      weight={isPinned.has(term.id) ? 0 : (termWeights[term.id] || 0)}
+                      weight={term.score}
                       onClick={onTermClick}
                       darkMode={dk}
                       isActive={selectedTermId === term.id}
@@ -451,156 +380,6 @@ export const BubbleCloud: React.FC<BubbleCloudProps> = ({
           </AnimatePresence>
         )}
 
-        {/* Auto-play button (bottom-right, always visible) */}
-        <div className="absolute bottom-4 right-4 flex flex-col items-end gap-3 z-10">
-
-          {/* Slider panel (appears above button) */}
-          <AnimatePresence>
-            {showSlider && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                transition={{ duration: 0.18 }}
-                className={`flex flex-col gap-3 p-4 rounded-2xl border shadow-2xl ${
-                  dk ? 'bg-[#12132a] border-slate-700/60 text-slate-200' : 'bg-white border-slate-200 text-slate-700'
-                }`}
-                style={{ minWidth: 180 }}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black">切換え間隔</span>
-                  <span
-                    className={`text-lg font-black tabular-nums ${isAutoPlay ? '' : dk ? 'text-slate-400' : 'text-slate-500'}`}
-                    style={isAutoPlay ? { color: accentRgba(rgb, dk ? 0.95 : 0.85) } : undefined}
-                  >
-                    {intervalSec}<span className="text-xs font-bold ml-0.5">秒</span>
-                  </span>
-                </div>
-
-                {/* Large slider */}
-                <div className="relative flex items-center">
-                  <input
-                    type="range"
-                    min={TERM_MAP_AUTO_SWITCH_INTERVAL_MIN}
-                    max={TERM_MAP_AUTO_SWITCH_INTERVAL_MAX}
-                    step={1}
-                    value={intervalSec}
-                    onChange={e => setAutoSwitchIntervalSec(Number(e.target.value))}
-                    disabled={activeTerms.length === 0}
-                    className={`w-full h-2.5 rounded-full appearance-none cursor-pointer ${
-                      activeTerms.length === 0 ? 'cursor-not-allowed opacity-40' : ''
-                    }`}
-                    style={{
-                      background: dk ? '#1e293b' : '#e2e8f0',
-                      ...(activeTerms.length === 0 ? {} : accentSliderStyle(rgb)),
-                    }}
-                  />
-                </div>
-
-                {/* Tick labels */}
-                <div className={`flex justify-between text-[9px] font-bold -mt-1 ${dk ? 'text-slate-600' : 'text-slate-400'}`}>
-                  <span>遅(1s)</span>
-                  <span>速(10s)</span>
-                </div>
-
-                {/* Step buttons */}
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setAutoSwitchIntervalSec(intervalSec - 1)}
-                    disabled={intervalSec <= TERM_MAP_AUTO_SWITCH_INTERVAL_MIN}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                      dk ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-30' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-30'
-                    }`}
-                  >
-                    <ChevronDown size={14} className="mx-auto" />
-                  </button>
-                  <span
-                    className={`text-xs font-mono font-black w-10 text-center ${isAutoPlay ? '' : dk ? 'text-slate-400' : 'text-slate-500'}`}
-                    style={isAutoPlay ? { color: accentRgba(rgb, dk ? 0.95 : 0.85) } : undefined}
-                  >
-                    {intervalSec}s
-                  </span>
-                  <button
-                    onClick={() => setAutoSwitchIntervalSec(intervalSec + 1)}
-                    disabled={intervalSec >= TERM_MAP_AUTO_SWITCH_INTERVAL_MAX}
-                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                      dk ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-30' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-30'
-                    }`}
-                  >
-                    <ChevronUp size={14} className="mx-auto" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Auto-play main button */}
-          <div className="flex flex-col items-center gap-1.5">
-            <div className="flex items-end gap-2">
-              {/* Speed toggle (小) */}
-              <motion.button
-                onClick={() => setShowSlider(s => !s)}
-                whileTap={{ scale: 0.92 }}
-                whileHover={{ scale: 1.06 }}
-                title="間隔の設定"
-                className={`w-10 h-10 rounded-full flex items-center justify-center border-2 shadow-lg text-xs font-black transition-colors ${
-                  showSlider ? '' : (dk ? 'bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-500' : 'bg-white border-slate-300 text-slate-500 hover:border-slate-400')
-                }`}
-                style={
-                  showSlider
-                    ? {
-                        backgroundColor: accentRgba(rgb, dk ? 0.28 : 0.12),
-                        borderColor: accentRgba(rgb, dk ? 0.55 : 0.45),
-                        color: accentRgba(rgb, dk ? 0.95 : 0.9),
-                      }
-                    : undefined
-                }
-              >
-                {intervalSec}s
-              </motion.button>
-
-              {/* Main auto-play button (大) */}
-              <motion.button
-                onClick={toggleAutoPlay}
-                disabled={activeTerms.length === 0}
-                whileTap={{ scale: 0.92 }}
-                whileHover={{ scale: activeTerms.length === 0 ? 1 : 1.06 }}
-                className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl relative transition-[filter] ${
-                  activeTerms.length === 0
-                    ? (dk ? 'bg-slate-800 border-2 border-slate-700 text-slate-700 cursor-not-allowed' : 'bg-slate-100 border-2 border-slate-200 text-slate-300 cursor-not-allowed')
-                    : isAutoPlay
-                      ? 'border-2 border-transparent text-white hover:brightness-110'
-                      : (dk ? 'bg-slate-800 border-2 border-slate-600 text-slate-300 cursor-pointer hover:brightness-110' : 'bg-white border-2 border-slate-300 text-slate-500 cursor-pointer hover:brightness-110')
-                }`}
-                style={
-                  activeTerms.length === 0
-                    ? undefined
-                    : isAutoPlay
-                      ? micStartButtonStyle(rgb, dk)
-                      : {
-                          borderColor: accentRgba(rgb, dk ? 0.48 : 0.35),
-                          color: accentRgba(rgb, dk ? 0.92 : 0.82),
-                        }
-                }
-                title={isAutoPlay ? '自動切換えを停止' : '自動切換えを開始'}
-              >
-                {isAutoPlay && (
-                  <span
-                    className="absolute inset-0 rounded-full animate-ping opacity-20 pointer-events-none"
-                    style={{ backgroundColor: accentRgba(rgb, 0.45) }}
-                  />
-                )}
-                {isAutoPlay ? <Pause size={22} fill="currentColor" /> : <Shuffle size={22} />}
-              </motion.button>
-            </div>
-            <span
-              className={`text-[10px] font-bold ${isAutoPlay ? '' : dk ? 'text-slate-600' : 'text-slate-400'}`}
-              style={isAutoPlay ? { color: accentRgba(rgb, dk ? 0.95 : 0.88) } : undefined}
-            >
-              {isAutoPlay ? '切換え中' : '自動切換え'}
-            </span>
-          </div>
-        </div>
       </div>
         </>
       )}

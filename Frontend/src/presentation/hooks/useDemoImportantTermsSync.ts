@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useTranscriptStore } from '../../stores/transcriptStore'
 import { useDemoImportantMarkingStore } from '../../stores/demoImportantMarkingStore'
 import { useTermStore } from '../../stores/termStore'
+import { useBubbleStore } from '../../stores/bubbleStore'
 import { findMockImportantTermsInText } from '../../debug/demo/mockImportantTerms'
 
 /**
@@ -17,6 +18,12 @@ export function useDemoImportantTermsSync(): void {
     stripDemoImportantTerms()
     if (!enabled || !transcript.trim()) return
     const found = findMockImportantTermsInText(transcript)
-    if (found.length > 0) addTerms(found)
+    if (found.length > 0) {
+      addTerms(found)
+      const bubbleStore = useBubbleStore.getState()
+      found.forEach((term) => {
+        bubbleStore.addVisibleTermId(term.id)
+      })
+    }
   }, [transcript, enabled])
 }

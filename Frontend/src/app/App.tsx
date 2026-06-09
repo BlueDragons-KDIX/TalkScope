@@ -13,7 +13,6 @@ import { HistoryPanel } from './components/HistoryPanel';
 import { DictionaryManagerModal } from './components/DictionaryManagerModal';
 import { Term } from './data/terms';
 import { getAllPinnedTerms, addPinnedTerm, removePinnedTerm } from './db';
-import { countTermFrequencies } from './utils/termDetection';
 import { Book, LayoutGrid, LibraryBig, Settings, Target } from 'lucide-react';
 import { SettingsModal } from './components/SettingsModal';
 import { Toaster, toast } from 'sonner';
@@ -79,6 +78,8 @@ const App: React.FC = () => {
   const [isItReferenceReady, setIsItReferenceReady] = useState(false);
   /** term.id が未解決なときの補助ベクトル（word単位） */
   const [wordVectors, setWordVectors] = useState<Record<string, number[]>>({});
+  void termWeights;
+  void themeVector;
 
   // ── バブル寿命管理 refs ────────────────────────────────────────
   const termTimestamps    = useRef<Record<string, number>>({});       // termId → 追加時刻
@@ -442,7 +443,6 @@ const App: React.FC = () => {
     isSimilarityFilterEnabled && categoryFilter !== 'ピン中' && itReferenceVector?.length
       ? categoryFilteredTerms.filter((term) => (termSimilarities[term.id] ?? -1) >= similarityThreshold)
       : categoryFilteredTerms;
-  const termFrequencies = useMemo(() => countTermFrequencies(transcript, activeTerms), [transcript, activeTerms]);
 
   // パネルコンテンツ（useMemo で過剰な再生成を抑制）
   const panels: Record<PanelId, React.ReactNode> = useMemo(() => ({
@@ -465,16 +465,11 @@ const App: React.FC = () => {
     bubbleCloud: (
       <BubbleCloud
         activeTerms={filteredTerms}
-        termWeights={termWeights}
-        termFrequencies={termFrequencies}
         onTermClick={handleTermClick}
         darkMode={dk}
         selectedTermId={selectedTerm?.id}
         isPinned={isPinned}
         onTogglePin={handleTogglePin}
-        themeVector={themeVector}
-        themeText={themeText}
-        termVectors={termVectors}
         categoryFilter={categoryFilter}
         onCategoryFilterChange={setCategoryFilter}
       />
@@ -498,7 +493,7 @@ const App: React.FC = () => {
       />
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [transcript, isListening, filteredTerms, termWeights, termFrequencies, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, themeVector, themeText, termVectors, apiTerms]);
+  }), [transcript, isListening, filteredTerms, selectedTerm, searchHistory, dk, categoryFilter, handleTermClick, isPinned, handleTogglePin, apiTerms]);
 
   const shellRgb = getAccentRgb(settings.themeColor);
 

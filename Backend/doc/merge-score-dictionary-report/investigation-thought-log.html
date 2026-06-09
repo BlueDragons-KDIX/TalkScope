@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>merge-score-dictionary 調査メモ</title>
+  <style>
+    :root {
+      --ink: #171923;
+      --muted: #5d6475;
+      --line: #ded8ff;
+      --paper: #ffffff;
+      --violet: #6554e8;
+      --pink: #d93682;
+      --mint: #11a889;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.8;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 40px 28px 64px;
+      color: var(--ink);
+      background: linear-gradient(135deg, #f2f0ff 0%, #fff7fb 50%, #effffb 100%);
+    }
+    body::before {
+      content: "thinking log";
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      color: var(--violet);
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(101, 84, 232, 0.24);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(32px, 5vw, 52px);
+      line-height: 1.08;
+    }
+    h2 {
+      margin-top: 36px;
+      color: var(--violet);
+      border-bottom: 3px solid rgba(101, 84, 232, 0.22);
+      padding-bottom: 6px;
+      line-height: 1.3;
+    }
+    p, li { color: var(--muted); }
+    code {
+      background: #f0edff;
+      color: #4938c7;
+      padding: 0.15em 0.4em;
+      border-radius: 5px;
+      font-weight: 650;
+    }
+    .note {
+      position: relative;
+      border: 1px solid var(--line);
+      border-left: 7px solid var(--violet);
+      border-radius: 10px;
+      padding: 14px 16px 14px 18px;
+      margin: 16px 0;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 12px 28px rgba(62, 49, 145, 0.08);
+    }
+    .note:nth-of-type(3n) { border-left-color: var(--pink); }
+    .note:nth-of-type(3n + 1) { border-left-color: var(--mint); }
+    ul {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px 22px 16px 34px;
+    }
+  </style>
+</head>
+<body>
+  <h1>調査中の思考メモ</h1>
+  <p>
+    マージ後の違和感や確認順を小まめに残すためのメモ。
+    後で正式な修正方針に落とす前の、観察ログとして使う。
+  </p>
+
+  <h2>2026-05-23 調査開始</h2>
+  <div class="note">
+    <p>
+      最初に見るべきは <code>Backend/main.py</code>。
+      マージ衝突の中心で、DB初期化・dotenv・router・IDF初期化が集まっている。
+    </p>
+  </div>
+
+  <div class="note">
+    <p>
+      <code>main.py</code> は <code>init_idf_table</code> を import しているが、実行はコメントアウト。
+      これは「今は壊したくないので止めた」状態に見える。
+      ただし未使用importになり、さらに <code>idf_runtime.py</code> のimport自体が壊れるならアプリ起動に影響する。
+    </p>
+  </div>
+
+  <div class="note">
+    <p>
+      <code>idf_runtime.py</code> が <code>from app.core.database import db</code> を使っている。
+      現在の <code>database.py</code> は <code>get_database()</code> を提供する構成なので、ここはマージ時に取り残された可能性が高い。
+    </p>
+  </div>
+
+  <div class="note">
+    <p>
+      IDF辞書の実データは見つからない。
+      <code>.env.example</code> の <code>IDF_JSON_PATH=data/idf/ja_wiki_idf.json</code> は例だけで、ファイル本体はない。
+      したがって、今すぐIDFバフを有効化する運用はまだ成立していない。
+    </p>
+  </div>
+
+  <div class="note">
+    <p>
+      既存辞書DBには <code>dictionary_terms.idf_wiki</code> がある。
+      新規スコア側には <code>term_idf.idf_value</code> がある。
+      名前の意味は近いが、保存先・型・用途が違う。ここはチーム内で合意が必要。
+    </p>
+  </div>
+
+  <div class="note">
+    <p>
+      スコア計算APIは <code>term_vector</code> をクライアント入力として受け取る。
+      既存辞書の <code>meaning_vector</code> を使うのか、フロント側で別途ベクトルを作るのか、現時点では接続が見えにくい。
+    </p>
+  </div>
+
+  <div class="note">
+    <p>
+      <code>THEME_EMA_ENABLED</code> はコード定数で <code>False</code>。
+      テーマEMAのAPIは生えているが、デフォルトではテーマ更新もテーマ類似バフも無効。
+      使うにはコード変更が必要という設計。
+    </p>
+  </div>
+
+  <div class="note">
+    <p>
+      <code>score_building_blocks.py</code> は機能が多い。
+      現行APIに直結するのは cosine / EMA / IDF / count axis / compose あたり。
+      PMIやmulti-sense選択は将来用に見える。
+    </p>
+  </div>
+
+  <div class="note">
+    <p>
+      テストはよく書かれているが、スコア系だけ <code>sys.path</code> をテストファイルごとに差し込む傾向がある。
+      既存テストの流儀と少し違う。実行ディレクトリ依存を減らすなら、pytest設定側に寄せたほうがよさそう。
+    </p>
+  </div>
+
+  <h2>次に深掘りしたい問い</h2>
+  <ul>
+    <li>IDFバフは今回のMVPで必要か、それとも将来用として寝かせるか。</li>
+    <li><code>term_vector</code> の生成元は辞書DBの <code>meaning_vector</code> か、解析APIの出力か、フロント入力か。</li>
+    <li>テーマEMAをコード定数ではなく環境変数や設定にするべきか。</li>
+    <li><code>idf_wiki</code> を廃止予定にするか、<code>term_idf</code> へ統合するか。</li>
+    <li>起動時DB初期化とIDFロードを同じlifespanで扱う場合、DB未設定時に確実に落ちないか。</li>
+  </ul>
+</body>
+</html>

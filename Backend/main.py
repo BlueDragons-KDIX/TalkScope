@@ -1,6 +1,3 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import os
 import logging
 from contextlib import asynccontextmanager
@@ -21,16 +18,17 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
     """アプリの起動・終了時に実行されるライフスパンイベント。"""
-    # 起動時: 明示的に有効化された場合のみ DB 初期化を実行する。
+    from app.core.database import get_database
+
+    db = get_database()
     db_init_enabled = os.environ.get("ENABLE_DB_INIT", "").lower() in {"1", "true", "yes"}
-    if db_init_enabled and os.environ.get("DATABASE_URL"):
-        from app.core.database import db
+    if db.is_available and db_init_enabled:
         db.init_db()
         logger.info("DB 初期化完了")
-    elif os.environ.get("DATABASE_URL"):
-        logger.info("DATABASE_URL は設定済みだが ENABLE_DB_INIT が無効のためスキップ")
+    elif db.is_available:
+        logger.info("DB 接続設定はありますが、起動時DB初期化は無効です。")
     else:
-        logger.warning("DATABASE_URL 未設定のため、DB 初期化をスキップ")
+        logger.warning("DB 接続設定が未設定または接続失敗のため、DB 初期化をスキップ")
     yield
     # 終了時: 必要に応じてクリーンアップ
 
@@ -44,7 +42,7 @@ app = fastapi.FastAPI(
         " フロント連携時は /analysis/vectorize を利用してください。"
     ),
     openapi_tags=[
-        {"name": "analysis", "description": "テキスト解析・ベクトル化API"},
+        {"name": "analysis", "description": "テキスト解析・ベクトル化・用語スコア・テーマEMA"},
         {"name": "dictionary", "description": "単語の意味概要検索API"},
         {"name": "hoge", "description": "サンプルAPI"},
     ],
@@ -57,7 +55,8 @@ default_origins = [
     "http://127.0.0.1:5173",
     "https://127.0.0.1:5173",
     "http://127.0.0.1:51080",
-    "https://talkscope-kc3hack.vercel.app"
+    "https://talkscope-kc3hack.vercel.app",
+    "https://talk-scope-kohl.vercel.app",
 ]
 env_origins = [
     origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()

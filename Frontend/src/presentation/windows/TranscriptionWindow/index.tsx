@@ -5,14 +5,17 @@ import { useDemoTools } from '../../context/DemoToolsContext'
 import { useTermStore } from '../../../stores/termStore'
 import type { WindowProps } from '../IWindowDefinition'
 import type { Term } from '../../../domain/entities/Term'
+import { useScoreUpdate } from '../../hooks/useScoreUpdate'
 
 export const TranscriptionWindow: React.FC<WindowProps> = ({ darkMode = true }) => {
   const demoStream = useDemoTools()
   const { transcript, isListening } = useTranscription()
   const selectTerm = useTermStore(s => s.selectTerm)
+  const addToHistory = useTermStore(s => s.addToHistory)
   const togglePin = useTermStore(s => s.togglePin)
   const isPinned = useTermStore(s => s.pinnedTermIds)
   const activeTerms = useTermStore(s => s.activeTerms)
+  const { onClick: onScoreClick } = useScoreUpdate()
 
   return (
     <TranscriptionView
@@ -20,7 +23,11 @@ export const TranscriptionWindow: React.FC<WindowProps> = ({ darkMode = true }) 
       isListening={isListening}
       showRecordingCluster={false}
       showEmbeddedResetButton={false}
-      onTermClick={(term: Term) => selectTerm(term)}
+      onTermClick={(term: Term) => {
+        selectTerm(term)
+        addToHistory(term)
+        onScoreClick(term.id)
+      }}
       onTermHover={() => {}}
       isPinned={isPinned}
       onTogglePin={togglePin}

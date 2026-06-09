@@ -1,20 +1,16 @@
 import React, { useMemo, useState } from 'react'
 import { Star } from 'lucide-react'
 import { useTermStore } from '../../../stores/termStore'
-import { useTranscriptStore } from '../../../stores/transcriptStore'
 import type { Term } from '../../../domain/entities/Term'
-import { countTermFrequencies } from '../../../app/utils/termDetection'
 import { useThrottledValue } from '../../hooks/useThrottledValue'
-import {
-  rankTermsByImportance,
-  type RankingSignal,
-} from '../../utils/importanceRanking'
+import { rankTermsByImportance } from '../../utils/importanceRanking'
 import type { WindowProps } from '../IWindowDefinition'
 import { useContentFontScaleStore } from '../../../stores/contentFontScaleStore'
 import { scaledContentFontPx } from '../../../app/utils/contentFontScale'
 import { useAccentTheme } from '../../../theme/AccentThemeContext'
 import { accentRgba, accentRgbSolid } from '../../../theme/accentStyles'
 import { useImportanceRankingWindowSettingsStore } from '../../../stores/importanceRankingWindowSettingsStore'
+import { useScoreUpdate } from '../../hooks/useScoreUpdate'
 
 const RANK_THROTTLE_MS = 160
 const BASE_ROW_HEIGHT = 66
@@ -26,13 +22,12 @@ const RANK_BADGE_SIZE_PER_FONT = 1.9
 export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ darkMode = true }) => {
   const [filterMode, setFilterMode] = useState<'all' | 'starred'>('all')
 
-  const transcript = useTranscriptStore(s => s.transcript)
   const activeTerms = useTermStore(s => s.activeTerms)
-  const termClickWeights = useTermStore(s => s.termClickWeights)
   const selectTerm = useTermStore(s => s.selectTerm)
   const addToHistory = useTermStore(s => s.addToHistory)
   const pinnedTermIds = useTermStore(s => s.pinnedTermIds)
   const togglePin = useTermStore(s => s.togglePin)
+  const { onClick: onScoreClick } = useScoreUpdate()
 
   const contentFontScale = useContentFontScaleStore(s => s.scale)
   const masterSizeScale = useImportanceRankingWindowSettingsStore(s => s.masterSizeScale)
@@ -40,9 +35,7 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   const visibleCount = useImportanceRankingWindowSettingsStore(s => s.visibleCount)
   const { rgb } = useAccentTheme()
 
-  const throttledTranscript = useThrottledValue(transcript, RANK_THROTTLE_MS)
   const throttledTerms = useThrottledValue(activeTerms as Term[], RANK_THROTTLE_MS)
-  const throttledWeights = useThrottledValue(termClickWeights, RANK_THROTTLE_MS)
   const wordFontSize = scaledContentFontPx(rankingFontSizePx, contentFontScale)
   const rowHeight = Math.round(Math.max(
     BASE_ROW_HEIGHT * masterSizeScale,
@@ -54,21 +47,10 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   ))
   const starIconSize = Math.round(BASE_STAR_ICON_SIZE * masterSizeScale)
 
-  const termFrequencies = useMemo(
-    () => countTermFrequencies(throttledTranscript, throttledTerms),
-    [throttledTranscript, throttledTerms],
+  const ranked = useMemo(
+    () => rankTermsByImportance(throttledTerms),
+    [throttledTerms],
   )
-
-  const ranked = useMemo(() => {
-    const signals: Record<string, RankingSignal> = {}
-    for (const term of throttledTerms) {
-      signals[term.id] = {
-        frequency: termFrequencies[term.id] ?? 0,
-        clickWeight: throttledWeights[term.id] ?? 0,
-      }
-    }
-    return rankTermsByImportance(throttledTerms, signals)
-  }, [throttledTerms, termFrequencies, throttledWeights])
 
   const filteredRanked = useMemo(() => {
     if (filterMode === 'all') return ranked
@@ -82,6 +64,7 @@ export const ImportanceRankingWindow: React.FC<WindowProps> = React.memo(({ dark
   const onTermClick = (term: Term) => {
     selectTerm(term)
     addToHistory(term)
+    onScoreClick(term.id)
   }
 
   const onTermContextMenu = (event: React.MouseEvent, termId: string) => {

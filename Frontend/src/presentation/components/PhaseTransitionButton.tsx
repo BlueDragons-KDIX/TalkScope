@@ -14,14 +14,14 @@ interface Props {
 export const PhaseTransitionButton: React.FC<Props> = ({ darkMode = true, compact = false, compactClassName = '' }) => {
   const currentPhaseId = usePhaseStore(s => s.currentPhaseId)
   const transitionTo = usePhaseStore(s => s.transitionTo)
-  const clearBubbles = useBubbleStore(s => s.clearBubbles)
+  const clearVisible = useBubbleStore(s => s.clearVisible)
   const dk = darkMode
 
   const isDuring = currentPhaseId === 'during'
 
   const handleClick = () => {
     if (isDuring) {
-      clearBubbles()
+      clearVisible()
       transitionTo('after')
     } else {
       transitionTo('during')

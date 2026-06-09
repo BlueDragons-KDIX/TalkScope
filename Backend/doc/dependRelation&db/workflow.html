@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Backend Survey Workflow</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="page">
+    <header class="hero compact">
+      <p class="eyebrow">TalkScope Backend Survey</p>
+      <h1>調査ワークフロー</h1>
+      <p>依存関係とDB周辺を、実装を変更せず読み取り調査する。書き込み先は <code>Backend/survey</code> 配下のみ。</p>
+    </header>
+
+    <section class="section">
+      <h2>進め方</h2>
+      <ol class="steps">
+        <li><strong>現状確認</strong><span>規約、ファイル構成、依存定義、DB定義、主要テストを確認する。</span></li>
+        <li><strong>関数依存の抽出</strong><span>ASTで関数・メソッド定義、呼び出し、モジュールimportを抽出し、層ごとに整理する。</span></li>
+        <li><strong>循環依存チェック</strong><span>アプリ内モジュールのimportグラフと主要関数呼び出しの閉路を確認する。</span></li>
+        <li><strong>DB調査</strong><span>設定、SQLAlchemyモデル、CRUD、サービス、スクリプト、テスト、SQL定義の整合性を確認する。</span></li>
+        <li><strong>Turso移行評価</strong><span>現在のDB前提とTurso/SQLite系への移行差分を、難易度・リスク・手順で評価する。</span></li>
+        <li><strong>報告作成</strong><span>HTML/CSSで可読性の高い調査レポートと依存図を作成する。</span></li>
+      </ol>
+    </section>
+  </main>
+</body>
+</html>

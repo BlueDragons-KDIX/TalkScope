@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>merge-score-dictionary 調査レポート</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #18202f;
+      --muted: #596579;
+      --paper: #ffffff;
+      --line: #d9e1ec;
+      --soft: #f6f8fc;
+      --blue: #246bfe;
+      --cyan: #0f9fb7;
+      --pink: #d93682;
+      --amber: #b96b00;
+      --red: #c22535;
+      --green: #16815f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.8;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 40px 28px 64px;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, #eef6ff 0%, #fff7fb 45%, #f3fff9 100%);
+    }
+    body::before {
+      content: "merge-score-dictionary";
+      display: inline-block;
+      margin-bottom: 16px;
+      padding: 5px 10px;
+      border: 1px solid rgba(36, 107, 254, 0.25);
+      border-radius: 999px;
+      color: var(--blue);
+      background: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(32px, 5vw, 56px);
+      line-height: 1.08;
+      color: #111827;
+    }
+    h2 {
+      margin-top: 36px;
+      padding: 10px 14px;
+      border-left: 7px solid var(--blue);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
+      line-height: 1.3;
+    }
+    p, li { color: var(--muted); }
+    code {
+      background: #eef3ff;
+      color: #0f3f9e;
+      padding: 0.15em 0.4em;
+      border-radius: 5px;
+      font-weight: 650;
+    }
+    table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--paper);
+      box-shadow: 0 12px 30px rgba(30, 43, 70, 0.08);
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 12px 14px;
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: 0; }
+    th {
+      color: #ffffff;
+      background: linear-gradient(90deg, var(--blue), var(--cyan));
+      text-align: left;
+    }
+    ul, ol {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(217, 225, 236, 0.8);
+      border-radius: 10px;
+      padding: 16px 22px 16px 34px;
+    }
+    .risk-high { color: var(--red); font-weight: 800; }
+    .risk-mid { color: var(--amber); font-weight: 800; }
+    .risk-low { color: var(--green); font-weight: 800; }
+  </style>
+</head>
+<body>
+  <h1>merge-score-dictionary 調査レポート</h1>
+  <p>
+    スコア計算ロジックのマージ後に確認した矛盾点、未使用箇所、名前・内容の重複、テスト方法の違いをまとめる。
+    本レポートは静的調査ベースであり、コード修正はまだ行っていない。
+  </p>
+
+  <h2>要約</h2>
+  <table>
+    <thead>
+      <tr><th>分類</th><th>内容</th><th>影響</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>矛盾点</td>
+        <td><code>Backend/main.py</code> は <code>init_idf_table</code> を import しているが、lifespan 内の呼び出しはコメントアウトされている。</td>
+        <td><span class="risk-mid">中</span>: IDF バフは常に無効に近い状態になる。</td>
+      </tr>
+      <tr>
+        <td>矛盾点</td>
+        <td><code>Backend/app/services/idf_runtime.py</code> は <code>from app.core.database import db</code> を前提にしているが、現在のDB層は <code>get_database()</code> / <code>get_transaction_manager()</code> 中心。</td>
+        <td><span class="risk-high">高</span>: import 時点で落ちる可能性がある。</td>
+      </tr>
+      <tr>
+        <td>矛盾点</td>
+        <td><code>Backend/AGENTS.md</code> には「.envを読まない」とある一方、<code>Backend/main.py</code> は <code>Backend/.env</code> を読み込む。</td>
+        <td><span class="risk-mid">中</span>: 運用ルールと実装方針が不一致。</td>
+      </tr>
+      <tr>
+        <td>未使用箇所</td>
+        <td><code>score_building_blocks.py</code> の PMI / bigram 系関数はHTTP経路では利用されない。</td>
+        <td><span class="risk-low">低</span>: テスト済み補助関数だが、MVPに必要か判断が必要。</td>
+      </tr>
+      <tr>
+        <td>名前の重複</td>
+        <td><code>dictionary_terms.idf_wiki</code> と新規 <code>term_idf.idf_value</code> が似た概念を別テーブルで持つ。</td>
+        <td><span class="risk-mid">中</span>: どちらを正とするか曖昧。</td>
+      </tr>
+      <tr>
+        <td>内容の重複</td>
+        <td>既存 <code>text_analysis.tfidf_scores()</code> と新規IDFバフ設計が、どちらもIDF/Tf-idf語スコアに関わる。</td>
+        <td><span class="risk-low">低</span>: 目的は違うが、説明なしでは混同しやすい。</td>
+      </tr>
+      <tr>
+        <td>テスト方法の違い</td>
+        <td>スコア系テストは <code>sys.path</code> を個別に挿入するものが多く、既存テストは <code>from main import app</code> だけのものもある。</td>
+        <td><span class="risk-low">低</span>: 実行場所により成功条件が変わりやすい。</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>矛盾点</h2>
+  <ul>
+    <li>
+      <code>Backend/main.py</code> で <code>init_idf_table</code> を import しているが、実行行はコメントアウトされている。
+      そのため <code>term_score.compute_term_scores_for_request()</code> が <code>get_idf_table()</code> を呼んでも、通常は <code>None</code> になる。
+    </li>
+    <li>
+      <code>idf_runtime.py</code> は <code>app.core.database.db</code> というグローバル変数を参照するが、現在の <code>database.py</code> にはその名前がない。
+      現在の設計は <code>get_database()</code> で共有インスタンスを返す方式。
+    </li>
+    <li>
+      <code>Backend/docs/IDF_DATA_PIPELINE.md</code> では起動時にDB初期化後 <code>init_idf_table()</code> を実行すると書かれているが、
+      現在の <code>main.py</code> ではコメントアウトされている。
+    </li>
+    <li>
+      <code>Backend/AGENTS.md</code> は <code>.env</code> を読まない方針だが、<code>main.py</code> は <code>load_dotenv()</code> で <code>Backend/.env</code> を読む。
+    </li>
+  </ul>
+
+  <h2>利用していない箇所</h2>
+  <ul>
+    <li>
+      <code>term_score.adjacent_bigrams_for_scoring_text()</code> はテスト用・補助用であり、
+      <code>POST /analysis/score/terms</code> からは呼ばれない。
+    </li>
+    <li>
+      <code>score_building_blocks.window_bigram_counts()</code>,
+      <code>log_pmi_with_smoothing()</code>,
+      <code>marginal_counts_from_bigrams()</code>,
+      <code>term_adjacent_ppmi_max()</code> は現行HTTP経路では未使用。
+    </li>
+    <li>
+      <code>score_building_blocks.best_sense_index_by_context()</code> はmulti-sense将来対応向けで、現行HTTP経路では未使用。
+    </li>
+    <li>
+      <code>Backend/.env.example</code> に <code>IDF_JSON_PATH=data/idf/ja_wiki_idf.json</code> の例があるが、該当JSON本体はリポジトリ内に見当たらない。
+    </li>
+  </ul>
+
+  <h2>名前の重複・概念の衝突</h2>
+  <ul>
+    <li>
+      既存の <code>dictionary_terms.idf_wiki</code> と、新規の <code>term_idf.idf_value</code> がどちらもWikipedia IDF風の値を表せる。
+      ただし型は前者が <code>Integer</code>、後者が <code>Float</code>。
+    </li>
+    <li>
+      <code>term</code> と <code>lemma</code> の使い分けが要注意。スコア計算は <code>lemma</code> を前提にしているが、辞書DBは <code>term</code> を主キー的に扱う。
+    </li>
+    <li>
+      <code>score</code> という語が、既存の <code>refer_dictionary_get_scores</code> 系と新規 <code>/analysis/score/terms</code> 系で別意味になっている。
+    </li>
+  </ul>
+
+  <h2>内容の重複</h2>
+  <ul>
+    <li>
+      <code>text_analysis.tfidf_scores()</code> は入力コーパス内でTF-IDFを計算する。
+      新規 <code>term_idf</code> / <code>IdfLookupTable</code> は外部コーパス由来の語ごとのIDFマスタを読む。
+      目的は違うが、どちらも「IDF」を扱うためREADMEでの整理が必要。
+    </li>
+    <li>
+      形態素フィルタが <code>text_analysis._terms_for_tfidf()</code> と <code>term_score.morph_tokens_for_scoring()</code> に分かれている。
+      前者は名詞・動詞・形容詞・ALPHAを通し、後者は名詞・固有名詞中心で代名詞を除外する。
+    </li>
+    <li>
+      テーマベクトル、用語ベクトル、意味ベクトルがすべてベクトルとして登場する。
+      <code>dictionary.meaning_vector</code> は300次元固定、<code>term_vector</code> はAPI入力で次元制約が弱い。
+    </li>
+  </ul>
+
+  <h2>テスト方法の違い</h2>
+  <ul>
+    <li>
+      スコア系テストは <code>sys.path.insert</code> を各ファイルで実施している。
+      一方で既存APIテストは <code>from main import app</code> のみのものがある。
+    </li>
+    <li>
+      <code>test_idf_runtime.py</code> は一時JSONを作成してローダを単体テストする。
+      DB読み込みは <code>_load_idf_lookup_from_database</code> を monkeypatch するため、実DBとの結合確認は薄い。
+    </li>
+    <li>
+      <code>test_score_analysis_endpoint.py</code> は <code>TestClient(app)</code> をモジュールグローバルで作成する。
+      lifespanとIDF初期化の挙動を検証するには、別途lifespanを明示的に踏むテストが必要。
+    </li>
+    <li>
+      既存辞書DB系には <code>integration</code> marker やDB availabilityによるskipがある。
+      スコア系のIDF DBロードは同じ粒度のintegrationテストがまだない。
+    </li>
+  </ul>
+
+  <h2>優先して確認すべきこと</h2>
+  <ol>
+    <li><code>idf_runtime.py</code> のDB参照方式を現在の <code>get_database()</code> 方式に合わせるか判断する。</li>
+    <li><code>init_idf_table()</code> を本当に起動時に呼ぶのか、IDF辞書がない間はimportも外すのか判断する。</li>
+    <li><code>dictionary_terms.idf_wiki</code> と <code>term_idf</code> の責務を決める。</li>
+    <li>スコア計算APIをMVPに含める場合、<code>term_vector</code> を誰が生成して渡すのかを決める。</li>
+    <li>テスト実行方法を <code>cd Backend &amp;&amp; uv run pytest</code> に寄せるか、各テストの <code>sys.path</code> を整理する。</li>
+  </ol>
+</body>
+</html>

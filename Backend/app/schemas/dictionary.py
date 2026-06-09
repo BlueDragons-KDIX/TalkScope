@@ -178,3 +178,30 @@ class DictionaryBulkRegisterResponse(BaseModel):
         default_factory=list,
         description="用語ごとの処理結果",
     )
+
+
+# ========================== refer_dictionary_v1 ===================================
+class TermInfo:
+    """
+    DBからヒットした用語情報を表すクラス
+    Args:
+        term: 用語
+        idf_wiki: WikiのIDF値
+        description_embeddings: 用語の意味のリスト。各意味は (説明, embedding) のタプル
+    """
+    def __init__(
+            self,
+            term: str, 
+            idf_wiki: float | None, 
+            description_embeddings: list[tuple[str, list[float]]]
+        ):
+        self.term : str = term
+        self.idf_wiki : float | None = idf_wiki
+        # 意味とベクトルの対応付けをしつつ、複数の意味を保持できるようにする
+        self.description_embeddings : list[tuple[str, list[float]]] = description_embeddings
+
+class ResponseTermScore(BaseModel):
+    term : str = Field(description="重要単語")
+    description : str = Field(description="重要単語の説明")
+    score : float = Field(description="基本スコア")
+    source : str = Field(description='回答ソース')

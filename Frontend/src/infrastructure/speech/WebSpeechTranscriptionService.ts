@@ -19,6 +19,8 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
   private status: TranscriptionStatus = 'idle'
   private recognition: any = null
   private isRunning = false
+  /** stop / pause 時に true。onend で自動再開しない */
+  private suppressAutoRestart = false
   private microphones: MicrophoneDevice[] = []
   private selectedMicrophoneId = ''
   private selectedMicStream: MediaStream | null = null
@@ -76,25 +78,28 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
         }
       }
 
-      // 不正確でも文字を残したい要件のため、途中文字列が短くなる更新では縮めない
-      const nextInterimTrimmed = nextInterim.trim()
-      if (nextInterimTrimmed.length >= this.interimTranscript.trim().length) {
-        this.interimTranscript = nextInterim
-      }
+      this.interimTranscript = nextInterim
       this.transcript = `${this.finalTranscript}${this.interimTranscript}`
       this.notify()
     }
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: any) => {
+      const code = event?.error as string | undefined
+      if (code === 'aborted' && this.suppressAutoRestart) return
+      if (code === 'no-speech') return
+      this.suppressAutoRestart = true
       this.status = 'error'
       this.isRunning = false
       this.notify()
     }
 
     recognition.onend = () => {
-      if (this.isRunning) {
-        try { recognition.start() } catch { /* ignore */ }
+      this.isRunning = false
+      if (!this.suppressAutoRestart && this.status === 'listening') {
+        this.restartRecognitionAfterBrowserEnd()
+        return
       }
+      this.notify()
     }
 
     this.recognition = recognition
@@ -213,6 +218,47 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
     this.selectedMicStream = null
   }
 
+  /**
+   * recognition が stop 後に start し直すと result index は 0 から振り直される。
+   * 前セッションの index を捨てないと確定文が追加されなくなる。
+   */
+  private resetRecognitionResultIndices(): void {
+    const pending = this.interimTranscript.trim()
+    if (pending) {
+      this.finalTranscript += `${pending}。\n`
+    }
+    this.finalizedResultIndices.clear()
+    this.interimTranscript = ''
+    this.transcript = this.finalTranscript
+  }
+
+  /** ブラウザが recognition を切ったときだけ再開（ユーザー stop / pause では呼ばない） */
+  private restartRecognitionAfterBrowserEnd(): void {
+    if (!this.recognition || this.suppressAutoRestart || this.status !== 'listening') {
+      this.notify()
+      return
+    }
+    this.resetRecognitionResultIndices()
+    try {
+      this.recognition.start()
+    } catch {
+      window.setTimeout(() => {
+        if (!this.recognition || this.suppressAutoRestart || this.status !== 'listening') {
+          this.notify()
+          return
+        }
+        try {
+          this.recognition.start()
+        } catch {
+          this.suppressAutoRestart = true
+          this.status = 'error'
+          this.isRunning = false
+          this.notify()
+        }
+      }, 100)
+    }
+  }
+
   getStatus(): TranscriptionStatus {
     return this.status
   }
@@ -222,7 +268,8 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
   }
 
   startListening(): void {
-    if (this.isRunning) return
+    if (this.status === 'listening' && this.isRunning) return
+    const resumingFromPause = this.status === 'paused'
     if (!this.recognition) this.initRecognition()
     if (!this.recognition) {
       this.status = 'error'
@@ -230,32 +277,27 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
       return
     }
 
+    if (resumingFromPause) {
+      this.resetRecognitionResultIndices()
+    }
+
+    this.suppressAutoRestart = false
     this.status = 'listening'
     this.isRunning = true
     void this.prepareSelectedMicrophone()
     try {
       this.recognition.start()
     } catch {
-      // ブラウザ状態で start() が失敗するケースがあるため、1回だけ再初期化して再試行する。
-      this.initRecognition()
-      if (!this.recognition) {
-        this.status = 'error'
-        this.isRunning = false
-        this.notify()
-        return
-      }
-      try {
-        this.recognition.start()
-      } catch {
-        this.status = 'error'
-        this.isRunning = false
-      }
+      this.status = 'error'
+      this.isRunning = false
+      this.suppressAutoRestart = true
     }
     this.notify()
   }
 
   stopListening(): void {
-    if (!this.recognition || !this.isRunning) return
+    if (!this.recognition) return
+    this.suppressAutoRestart = true
     this.isRunning = false
     this.status = 'idle'
     try { this.recognition.stop() } catch { /* ignore */ }
@@ -265,7 +307,10 @@ export class WebSpeechTranscriptionService implements ITranscriptionService {
   }
 
   pauseListening(): void {
-    if (!this.recognition || !this.isRunning) return
+    if (!this.recognition) return
+    if (this.status !== 'listening' && this.status !== 'paused') return
+    this.resetRecognitionResultIndices()
+    this.suppressAutoRestart = true
     this.isRunning = false
     this.status = 'paused'
     try { this.recognition.stop() } catch { /* ignore */ }
